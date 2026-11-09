@@ -91,10 +91,13 @@ There's no real geography. The scene is built from a palette, landmark silhouett
 
 ## Assets (all free)
 
-- **World and traffic:** Kenney Car Kit, City Kit (Commercial), City Kit (Roads) (all CC0)
-- **Props, cacti, cow (becomes the longhorn):** Quaternius / Poly Pizza (CC0)
-- **Player car:** a low-poly Roadster from Sketchfab (6k triangles, CC-BY), or a stylized look-alike
-- **Capitol:** a low-poly Sketchfab model (CC-BY). The other landmarks are simple hand-made silhouettes.
+Full use-vs-build table with verified licenses: `ART_SOURCES.md`.
+
+- **World and traffic:** Kenney Car Kit, City Kit (Commercial, Suburban, Roads), Nature Kit (all CC0). Kenney is the base family.
+- **Props, cacti, bull (becomes the longhorn), bats, food truck:** Quaternius / Poly Pizza (CC0), the second family, remapped to the same palette
+- **Player car:** an original roadster built from a Codex mockup. The Tesla-shaped Sketchfab model is a trade-dress risk once public, so it's a private stand-in at most.
+- **Capitol:** "Texas State Capitol" by bartdenny on Sketchfab (CC-BY 4.0, 3.2k faces). The other landmarks are code-built silhouettes.
+- **Avoid:** "Bevo" longhorn models (UT trademark), anything NC, ND or SA, and Sketchfab Standard.
 - **Textures:** Poly Haven, ambientCG (CC0)
 - **Audio:** Kenney SFX, a CC0 EV acceleration clip from Freesound, CC0 music
 - **Fonts:** Fredoka (OFL), self-hosted
