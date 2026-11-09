@@ -19,12 +19,14 @@ Every third-party asset, with source URL and license. CC-BY assets are also cred
 | **Scooter** | `assets-src/polypizza-ccby/scooter-minipoly.glb` | **MiniPoly** | https://poly.pizza/m/3vLV1QtLFP | **CC-BY 3.0** (credit required) |
 
 ## Audio
-| Asset | File | Author | Source | License |
-|---|---|---|---|---|
-| Pure Raceway (160 bpm) | `assets-src/audio/music/pure-raceway-160.ogg` | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
-| Pure Raceway climax (175 bpm) | `assets-src/audio/music/pure-raceway-climax-175.ogg` | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
-| Title Screen (5 Chiptunes Action) | `assets-src/audio/music/juhani-junkala-title-screen.mp3` | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/5-chiptunes-action | CC0 |
-| Bicycle horn | `assets-src/audio/sfx/bicycle-horn.wav` | AntumDeluge | https://opengameart.org/content/bicycle-horn | CC0 |
+Shipped files are trimmed, mono AAC copies made by `scripts/convert-audio.sh`. CC0 needs no credit; the in-game Credits list them anyway.
+
+| Asset | File | Ships as | Author | Source | License |
+|---|---|---|---|---|---|
+| Pure Raceway (160 bpm) | `assets-src/audio/music/pure-raceway-160.ogg` | `public/themes/austin/audio/music-run.m4a` (run music) | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
+| Pure Raceway climax (175 bpm) | `assets-src/audio/music/pure-raceway-climax-175.ogg` | `public/themes/austin/audio/music-climax.m4a` (Ludicrous) | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
+| Title Screen (5 Chiptunes Action) | `assets-src/audio/music/juhani-junkala-title-screen.mp3` | `public/themes/austin/audio/music-menu.m4a` (start/finish) | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/5-chiptunes-action | CC0 |
+| Bicycle horn | `assets-src/audio/sfx/bicycle-horn.wav` | `public/themes/austin/audio/horn-bike.m4a` (`honk('bike')`) | AntumDeluge | https://opengameart.org/content/bicycle-horn | CC0 |
 
 ## Fonts
 | Asset | File | Author | Source | License |
