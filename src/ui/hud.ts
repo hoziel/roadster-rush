@@ -1,6 +1,7 @@
 import { BATTERIES } from '../sim/config';
 import type { PowerKind } from '../sim/spawner';
 import type { World } from '../sim/world';
+import { CREDITS } from './credits';
 
 const POWER_LABEL: Record<PowerKind, string> = {
   ludicrous: 'LUDICROUS!', autopilot: 'AUTOPILOT', hover: 'HOVER', supercharger: 'CHARGED!',
@@ -30,6 +31,8 @@ export class Hud {
       <div class="toast" id="toast"></div>
       <div class="card" id="card"></div>
       <div class="confetti" id="confetti"></div>
+      <button class="pill credits-btn" id="creditsBtn">Credits</button>
+      <div class="credits" id="credits"></div>
       <div class="debug" id="debug"></div>`;
     const q = (id: string) => this.root.querySelector<HTMLElement>('#' + id)!;
     this.el = {
@@ -42,7 +45,24 @@ export class Hud {
     this.muteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.muteBtn.addEventListener('pointerup', (e) => e.stopPropagation());
     this.muteBtn.addEventListener('click', onMute);
+
+    const creditsBtn = q('creditsBtn');
+    const credits = q('credits');
+    credits.innerHTML = `<h2>Credits</h2>
+      <p>Made by Ofir with Claude and Codex.</p>
+      <ul>${CREDITS.map((c) => `<li><b>${c.what}</b><br>${c.who} · ${c.license}</li>`).join('')}</ul>
+      <p class="go">Tap to close</p>`;
+    for (const el of [creditsBtn, credits]) {
+      // Keep these taps from reaching the game (which would start a run).
+      el.addEventListener('pointerdown', (e) => e.stopPropagation());
+      el.addEventListener('pointerup', (e) => e.stopPropagation());
+    }
+    creditsBtn.addEventListener('click', () => credits.classList.add('show'));
+    credits.addEventListener('click', () => credits.classList.remove('show'));
+    this.creditsBtn = creditsBtn;
   }
+
+  private creditsBtn!: HTMLElement;
 
   setMuted(muted: boolean): void { this.muteBtn.textContent = muted ? '🔇' : '🔊'; }
 
@@ -78,11 +98,13 @@ export class Hud {
   powerToast(kind: PowerKind): void { this.toast(POWER_LABEL[kind], POWER_COLOR[kind]); }
 
   showReady(best: number): void {
+    this.creditsBtn.classList.add('show');
     this.el.card.className = 'card show';
     this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to jump</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}`;
   }
 
   hideCard(): void {
+    this.creditsBtn.classList.remove('show');
     this.el.card.className = 'card';
     this.el.confetti.innerHTML = '';
     cancelAnimationFrame(this.countUp);
@@ -90,6 +112,7 @@ export class Hud {
 
   /** "Great drive!" with a coin count-up, and confetti on a new best. */
   showFinish(score: number, coins: number, best: number, newBest: boolean, caught: boolean): void {
+    this.creditsBtn.classList.add('show');
     this.el.card.className = 'card show finish';
     this.el.card.innerHTML = `
       <h1>Great drive!</h1>

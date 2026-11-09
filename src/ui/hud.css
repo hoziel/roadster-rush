@@ -34,3 +34,11 @@
 .confetti i { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 2px; animation: fall linear forwards; }
 @keyframes fall { to { top: 110%; transform: rotate(720deg) translateX(40px); } }
 .debug { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 8px); font: 11px ui-monospace, monospace; opacity: .8; }
+.credits-btn { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 28px); transform: translateX(-50%); font-size: 16px; pointer-events: auto; cursor: pointer; display: none; }
+.credits-btn.show { display: block; }
+.credits { position: absolute; inset: 0; background: rgba(30, 14, 50, .92); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; pointer-events: auto; }
+.credits.show { display: flex; }
+.credits h2 { color: #ffd23f; font-size: 32px; margin: 0 0 10px; }
+.credits ul { list-style: none; padding: 0; margin: 10px 0; font-size: 16px; line-height: 1.4; }
+.credits li { margin: 10px 0; }
+.credits .go { margin-top: 14px; font-weight: 700; }
