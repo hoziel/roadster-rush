@@ -4,7 +4,8 @@ A casual, Subway Surfers–style endless runner for a young kid: drive an electr
 
 ## Key files
 - `SCOPE.md`: the initial scope (concept, Austin look, tech stack, architecture, budgets, assets, roadmap, risks). Source of truth for direction until a vision doc replaces it
-- `TODO.md`: next steps
+- **Board:** https://github.com/users/hoziel/projects/2 (issues by milestone M0–M5). `TODO.md` just points there.
+- **Roles:** Claude orchestrates (owns the board, writes issues and Codex art briefs, reviews results) and does code (`agent:claude`). Codex makes art mockups (`agent:codex`). Ofir decides, playtests and signs off (`ofir`, column Review (Ofir)).
 - **About Ofir** (skills, time, goals): `../ofir-master/knowledge/me.md`
 - The initiative record lives in master: `../ofir-master/initiatives/roadster-rush/`. Update its decision log and the catalog (`../ofir-master/INITIATIVES.md`) when major decisions are made here.
 

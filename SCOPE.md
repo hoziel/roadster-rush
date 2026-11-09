@@ -119,6 +119,25 @@ Every CC-BY asset gets credited on an in-game Credits screen and in `CREDITS.md`
 | 2: Austin v1 | Chunks, skyline and landmarks, power-ups (incl. Hover), police chase, kid mode, driver select (preset characters), paint shop, sunset-to-night, "Great drive!" finish, audio, PWA, credits | 2–4 weekends |
 | 3: More scenes | Theme packs (Gigafactory interior, space, other cities), car customizer, daily seed | Ongoing |
 
+### Milestones
+Each milestone ends with something Ofir can try on a phone and sign off. They're tracked as GitHub milestones on the board, with no dates.
+
+| # | Milestone | Done when |
+|---|---|---|
+| M0 | Skeleton | A spinning cube on the sunset sky loads on Ofir's phone over home Wi-Fi. Vitest runs. |
+| M1 | Playable grey box | Endless 3-lane run with swipe and jump, coins, cones, speed ramp with a cap, best score, motor whine, honk. Grey-box art. |
+| M2 | Postcard | Codex mockups approved for the car, police car, a road stretch and the skyline. One polished stretch is playable and approved as the look. |
+| M3 | Full game loop | Power-ups (Ludicrous, Autopilot, Supercharger, Hover), police chase, kid mode batteries, "Great drive!" finish. |
+| M4 | Austin v1 | Chunk library, landmarks, Bat Swarm, sunset-to-night, driver select with Ofir's characters, paint shop, horns, full audio, PWA, Credits screen. |
+| M5 | Publish | Tesla terms renamed, every asset's license checked and credited, repo public, GitHub Pages deploy. Only when Ofir decides. |
+| Later | More scenes | Theme packs, car customizer, daily seed. |
+
+### Who does what (board labels)
+- `agent:claude`: code, technical design, asset integration, tests. Claude also orchestrates: it owns the board, writes the issues, hands art briefs to Codex and reviews what comes back.
+- `agent:codex`: art mockups and concept images for anything new (car, characters, landmarks, UI screens, icons).
+- `ofir`: decisions, playtests on the phone, sign-off on milestones and mockups.
+- Type labels: `art`, `code`, `audio`, `decision`. Columns: Todo → In progress → Review (Ofir) → Done.
+
 ---
 
 ## Repo layout
