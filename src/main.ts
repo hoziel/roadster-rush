@@ -1,57 +1,82 @@
-import * as THREE from 'three';
-import { advanceAngle } from './sim/spin';
-import { createSky } from './view/sky';
+import { GameAudio } from './audio/audio';
+import { bindInput } from './input/input';
+import { storage } from './storage';
+import { Hud } from './ui/hud';
+import { GameView } from './view/scene';
+import { createWorld, jump, score, start, steer, step } from './sim/world';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-document.body.appendChild(renderer.domElement);
+const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
+const FINISH_LOCK_MS = 900; // ignore taps right after a crash so a swipe doesn't restart instantly
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog('#ff9a3c', 20, 120);
-const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-camera.position.set(0, 1.5, 5);
+const world = createWorld();
+const view = new GameView(document.getElementById('game')!);
+const audio = new GameAudio(storage.muted);
+const hud = new Hud(() => {
+  storage.set({ muted: !storage.muted });
+  audio.unlock();
+  audio.setMuted(storage.muted);
+  hud.setMuted(storage.muted);
+});
+hud.setMuted(storage.muted);
+hud.showPhase('ready', 0, storage.best, false);
 
-scene.add(createSky());
-scene.add(new THREE.HemisphereLight('#ffd9a8', '#3b1f5c', 1.2));
-const sun = new THREE.DirectionalLight('#ffb070', 2);
-sun.position.set(-3, 4, 2);
-scene.add(sun);
+const debug = new URLSearchParams(location.search).has('debug');
+let finishedAt = 0;
 
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(1.4, 1.4, 1.4),
-  new THREE.MeshToonMaterial({ color: '#e8344e' }),
-);
-cube.position.y = 1.2;
-scene.add(cube);
-
-function resize(): void {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+function honk(): void {
+  audio.honk();
+  view.honk();
 }
-window.addEventListener('resize', resize);
-resize();
 
-const hud = document.getElementById('hud')!;
-const timer = new THREE.Timer();
-let angle = 0;
-let frames = 0;
-let fpsTime = 0;
+bindInput(view.renderer.domElement, (action, x, y) => {
+  audio.unlock();
+  if (world.phase !== 'running') {
+    if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
+      start(world);
+      hud.showPhase('running', 0, storage.best, false);
+    }
+    return;
+  }
+  if (action === 'left') steer(world, -1);
+  else if (action === 'right') steer(world, 1);
+  else if (action === 'jump') jump(world);
+  else if (action === 'honk') honk();
+  else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
+});
 
-renderer.setAnimationLoop(() => {
-  timer.update();
-  const dt = Math.min(timer.getDelta(), 0.1);
-  angle = advanceAngle(angle, dt);
-  cube.rotation.set(angle * 0.5, angle, 0);
-  renderer.render(scene, camera);
+let last = performance.now();
+let acc = 0;
+let frames = 0, fpsTime = 0;
 
-  frames++;
-  fpsTime += dt;
-  if (fpsTime >= 1) {
-    hud.textContent = `${Math.round(frames / fpsTime)} fps · ${renderer.info.render.calls} draws`;
-    frames = 0;
-    fpsTime = 0;
+view.renderer.setAnimationLoop((now: number) => {
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  acc += dt;
+  while (acc >= SIM_DT) {
+    for (const ev of step(world, SIM_DT)) {
+      if (ev === 'coin') audio.coin();
+      if (ev === 'crash') {
+        audio.crash();
+        const s = score(world);
+        const newBest = s > storage.best;
+        if (newBest) storage.set({ best: s });
+        finishedAt = performance.now();
+        hud.showPhase('over', s, storage.best, newBest);
+      }
+    }
+    acc -= SIM_DT;
+  }
+
+  audio.motorUpdate(world.speed, world.phase === 'running');
+  hud.update(score(world), world.coins);
+  view.render(world, dt, now / 1000);
+
+  if (debug) {
+    frames++; fpsTime += dt;
+    if (fpsTime >= 0.5) {
+      const info = view.renderer.info.render;
+      hud.debug(`${Math.round(frames / fpsTime)} fps · ${info.calls} draws · ${info.triangles} tris · ${world.speed.toFixed(1)} m/s`);
+      frames = 0; fpsTime = 0;
+    }
   }
 });
