@@ -1,7 +1,8 @@
 # TODO
 
 ## Phase 0: Skeleton
-- [ ] `git init`, create the public GitHub repo
+- [x] `git init`
+- [ ] Create the public GitHub repo
 - [ ] Scaffold Vite + TypeScript + Three.js with the folder layout from `SCOPE.md`
 - [ ] Add Vitest and one placeholder sim test
 - [ ] GitHub Actions → GitHub Pages deploy
