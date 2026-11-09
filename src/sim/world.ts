@@ -3,7 +3,10 @@ import {
   DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
+  SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
 } from './config';
+import { SWARM_SPAN, conesIn, swarmCoins } from './batswarm';
+import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
 import { CHUNK_LENGTH, placeChunk } from './chunks';
 import { isPower, type EntityKind, type PowerKind } from './spawner';
@@ -20,7 +23,7 @@ export interface Entity {
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end';
+  | 'power' | 'power-end' | 'swarm';
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -48,6 +51,12 @@ export interface World {
   caught: boolean; // run ended by the police
   entities: Entity[]; // pooled: dead entries are reused
   nextRowAt: number;
+  dayOffset: number; // shifts the sunset-to-night cycle (debug jumps); kept across runs
+  swarmAt: number; // s where the current/last Bat Swarm coin rain starts, -1 if none
+  swarmEnd: number; // s where it ends
+  swarmSeen: boolean; // 'swarm' event already sent for it
+  nextSwarmAt: number; // no new swarm laid before this s
+  swarmQueued: boolean; // lay one at the next chunk slot whatever the time of day
   rng: Rng;
 }
 
@@ -57,10 +66,11 @@ const runState = () => ({
   time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, coins: 0,
   batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
+  swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
 });
 
 export function createWorld(seed = Date.now()): World {
-  return { phase: 'ready', kidMode: true, ...runState(), entities: [], rng: createRng(seed) };
+  return { phase: 'ready', kidMode: true, ...runState(), dayOffset: 0, entities: [], rng: createRng(seed) };
 }
 
 export function score(w: World): number {
@@ -110,6 +120,7 @@ export function step(w: World, dt: number): SimEvent[] {
   if (w.power === 'ludicrous') speed *= LUDICROUS_BOOST;
   w.speed = speed;
   w.distance += speed * dt;
+  if (!w.swarmSeen && w.swarmAt >= 0 && w.distance >= w.swarmAt) { w.swarmSeen = true; events.push('swarm'); }
 
   if (w.power === 'autopilot') autopilot(w);
   const dx = laneX(w.lane) - w.x;
@@ -206,6 +217,7 @@ function pickPower(w: World): PowerKind {
 function spawn(w: World): void {
   while (w.nextRowAt < w.distance + SPAWN_AHEAD) {
     const difficulty = (speedAt(w.time) - SPEED_START) / (SPEED_MAX - SPEED_START);
+    if (layBatSwarm(w)) continue;
     const powersOk = w.time > POWER_START_AFTER && !w.power;
     for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
       let kind: EntityKind;
@@ -218,6 +230,26 @@ function spawn(w: World): void {
     }
     w.nextRowAt += CHUNK_LENGTH;
   }
+}
+
+/** Ask for a Bat Swarm at the next chunk slot, whatever the time of day (debug). */
+export function queueSwarm(w: World): void { w.swarmQueued = true; }
+
+/** At dusk, sometimes lay a Bat Swarm in place of the next chunk. Only on cone-free road. */
+function layBatSwarm(w: World): boolean {
+  const s0 = w.nextRowAt;
+  if (!w.swarmQueued) {
+    if (!isDusk(dayPhase(w)) || s0 < w.nextSwarmAt || w.rng() >= SWARM_CHANCE) return false;
+  }
+  if (conesIn(w.entities, s0, s0 + SWARM_SPAN)) return false;
+  for (const c of swarmCoins(s0)) add(w, 'coin', c.lane, c.s);
+  w.swarmAt = s0 + SWARM_PAD;
+  w.swarmEnd = w.swarmAt + SWARM_LENGTH;
+  w.swarmSeen = false;
+  w.swarmQueued = false;
+  w.nextRowAt += SWARM_SPAN;
+  w.nextSwarmAt = w.nextRowAt + SWARM_MIN_GAP;
+  return true;
 }
 
 function add(w: World, kind: EntityKind, lane: number, s: number): void {
