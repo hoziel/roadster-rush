@@ -79,6 +79,7 @@ view.renderer.setAnimationLoop((now: number) => {
   const running = world.phase === 'running';
   audio.motorUpdate(world.speed, running);
   audio.siren(running && world.chase > 0, now / 1000);
+  audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   view.render(world, dt, now / 1000);
 
@@ -96,6 +97,7 @@ view.renderer.setAnimationLoop((now: number) => {
 if (debug) {
   (window as unknown as { rr: unknown }).rr = {
     world,
+    honk: (kind?: string) => audio.honk(kind),
     give: (k: 'ludicrous' | 'autopilot' | 'hover') => { world.power = k; world.powerTime = POWER_TIME[k]; world.lastPower = k; hud.powerToast(k); },
   };
 }
