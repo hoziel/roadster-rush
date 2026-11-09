@@ -1,4 +1,7 @@
 // All sound is generated with Web Audio: nothing to download yet.
+import type { HornId } from '../sim/shop';
+import { playHorn } from './horns';
+
 export class GameAudio {
   private ctx?: AudioContext;
   private master?: GainNode;
@@ -49,8 +52,11 @@ export class GameAudio {
     this.motor.gain.gain.setTargetAtTime(on ? 0.05 : 0, t, on ? 0.2 : 0.08);
   }
 
-  honk(): void {
-    this.tone([392, 494], 'square', 0.28, 0.12);
+  /** The equipped horn (set from the garage). */
+  horn: HornId = 'classic';
+
+  honk(id: HornId = this.horn): void {
+    if (this.ctx && this.master) playHorn(id, this.ctx, this.master);
   }
 
   coin(): void {
