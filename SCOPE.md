@@ -13,9 +13,12 @@ A casual, Subway Surfers–style endless runner for kids. You drive an electric 
 
 - Three lanes. Swipe left or right to steer and swipe up to jump. Arrow keys or WASD on desktop.
 - Collect coins and dodge cones, food trucks, barriers and the occasional longhorn.
-- Speed ramps up gently and then levels off.
+- **Endless:** a run can go on forever. The longer you play, the faster it gets, up to a fixed top speed that stays playable for a young kid. After that it stays at that speed.
+- **Police chase:** a friendly police roadster follows behind you. After a crash it pulls up close for a few seconds. Crash again while it's close and it catches you, which ends the run. Otherwise it drops back.
 - **Kid mode is on by default.** A crash uses up one of three "batteries" instead of ending the run. A run ends with "Great drive!", never "Game over".
-- Unlocks are cosmetic only: paint colors, horns, a cowboy hat.
+- **Choose your driver:** the start screen shows a few preset driver characters, which Ofir will supply later. There's no photo upload. The chosen driver shows in the car and on the "Great drive!" screen.
+- **Paint shop:** spend coins on paint colors (solid, metallic, neon, patterns). The car is previewed on a turntable.
+- Other unlocks are cosmetic only: horns, a cowboy hat. Nothing affects gameplay.
 
 ### Power-ups
 | Power-up | Effect |
@@ -23,7 +26,22 @@ A casual, Subway Surfers–style endless runner for kids. You drive an electric 
 | Ludicrous Mode | ~5 s speed boost, can't crash, collects coins in your lane |
 | Autopilot | ~8 s of auto-steering toward coins and away from obstacles |
 | Supercharger | Refills a battery |
+| Hover | Pick up a hover pad and the roadster floats for a few seconds, gliding over ground obstacles (cones, barriers) and grabbing coins. When it lands, it's back on the road. |
 | Bat Swarm (Austin) | At dusk on the Congress Ave bridge, bats scatter coins across all lanes |
+
+### Wow factors
+- **Bat Swarm:** at dusk on the Congress Ave bridge, bats burst out and rain coins.
+- **Sunset to night during a run:** the sky darkens and the SoCo neon and Sixth Street lights switch on.
+- **Ludicrous rush:** a speed burst with an EV acceleration sound.
+- **Hover:** the car floats over everything.
+- **Police chase:** lights flashing in the mirror, with the tension of "don't crash twice".
+- **Honk button:** tap the car to honk. Unlockable horns.
+- **Pick your driver:** a character on the driver card and in the car, and the driver's name on the license plate.
+- **Big "Great drive!" finish:** confetti, a coin count-up and a new-best fanfare.
+- **Motor whine:** generated in code, rising in pitch with speed.
+
+### Open questions
+- **Driver characters:** Ofir will supply them. If any are based on real photos of the kids, keep them out of the repo (it goes public with its full history).
 
 ---
 
@@ -83,6 +101,13 @@ There's no real geography. The scene is built from a palette, landmark silhouett
 
 Every CC-BY asset gets credited on an in-game Credits screen and in `CREDITS.md`.
 
+### Art direction and production
+- **Look:** stylized low-poly with flat or toon shading, one shared palette texture, and lighting from the sunset shader and fog. Gameplay pieces (coins, power-ups, hover pads) are bright and bouncy.
+- **Approach:** a hybrid. Filler comes from CC0 kits of one family (Kenney first) recolored to the palette. Sky, road and landmark silhouettes are built in code or simple shapes. Hero assets (roadster, police roadster, Capitol, longhorn, food truck) are custom.
+- **Mockups:** Codex makes the art mockups for new things. Claude builds them in code afterwards.
+- **Prefer existing public art** over making new art, but only with verified rights: CC0 or CC-BY (credited), or a license that allows commercial use and redistribution in a public repo. Record the source URL and license for every asset in `CREDITS.md` when it's added.
+- **Postcard pass before Phase 2:** one polished stretch of road for Ofir to approve, then everything is produced to match it.
+
 ---
 
 ## Roadmap
@@ -90,8 +115,8 @@ Every CC-BY asset gets credited on an in-game Credits screen and in `CREDITS.md`
 | Phase | Scope | Effort |
 |---|---|---|
 | 0: Skeleton | Vite + TS + Three.js, loads on a phone over home Wi-Fi | 1 evening |
-| 1: MVP | Road, lanes, swipe, car, coins, cones, speed ramp, best score, motor whine | 1 weekend |
-| 2: Austin v1 | Chunks, skyline and landmarks, power-ups, kid mode, audio, PWA, credits | 2–4 weekends |
+| 1: MVP | Road, lanes, swipe, car, coins, cones, endless speed ramp, best score, motor whine, honk | 1 weekend |
+| 2: Austin v1 | Chunks, skyline and landmarks, power-ups (incl. Hover), police chase, kid mode, driver select (preset characters), paint shop, sunset-to-night, "Great drive!" finish, audio, PWA, credits | 2–4 weekends |
 | 3: More scenes | Theme packs (Gigafactory interior, space, other cities), car customizer, daily seed | Ongoing |
 
 ---
