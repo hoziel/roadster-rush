@@ -13,6 +13,7 @@ A casual, Subway Surfers–style endless runner for a young kid: drive an electr
 Vite + TS + Three.js project that loads on Ofir's phone from the dev server over home Wi-Fi (`vite --host`).
 
 ## Working rules
+- **Codex shares this folder** (its instructions: `AGENTS.md`). It writes only in `art/mockups/` and commits only those paths. Claude never edits `art/mockups/`, and stages its own files by path (no `git add -A` / `git add .`) so it never commits Codex's work in progress. Claude pushes for both.
 - Keep `src/sim/` free of Three.js imports so the rules stay unit-testable (Vitest).
 - The repo is private now but goes public at publish, with its full history: commit only CC0/CC-BY assets from day one; credit every CC-BY asset in `CREDITS.md` and the in-game Credits screen.
 - Tesla brand terms (Roadster styling, Autopilot, Ludicrous, Supercharger) are fine while private; rename them before publishing (see `SCOPE.md` → Risks).
