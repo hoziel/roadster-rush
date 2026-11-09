@@ -33,17 +33,12 @@ gh project item-list 2 --owner hoziel --limit 200 --format json \
 
 ## 3. Hand over the turn
 1. Comment: the header, then what you did or what you need (which files, done when).
-2. Set **Turn** to the other party:
+2. Set **Turn** to the other party (and Status when it changes):
 ```bash
-# usage: turn <issue-number> <Claude|Codex|Ofir>
-turn() {
-  local item opt
-  item=$(gh project item-list 2 --owner hoziel --limit 200 --format json -q ".items[] | select(.content.number==$1) | .id")
-  case $2 in Claude) opt=10ec38dc;; Codex) opt=1fe53265;; Ofir) opt=03fbf60a;; esac
-  gh project item-edit --id "$item" --project-id PVT_kwHOAAmJfc4Bq5YK --field-id PVTSSF_lAHOAAmJfc4Bq5YKzhpO1O8 --single-select-option-id "$opt"
-}
+gh project item-edit 2 --owner hoziel --url https://github.com/hoziel/roadster-rush/issues/<N> --field Turn --value Claude
+gh project item-edit 2 --owner hoziel --url https://github.com/hoziel/roadster-rush/issues/<N> --field Status --value "In Progress"
 ```
-Set Status the same way with field `PVTSSF_lAHOAAmJfc4Bq5YKzhpOb6E`. Option IDs: Todo `58a8e88d`, In Progress `8c6e0b32`, Review (Ofir) `78b61b6b`, Done `71802f52`.
+Turn values: `Claude`, `Codex`, `Ofir`. Status values: `Todo`, `In Progress`, `Review (Ofir)`, `Done`.
 
 ## 4. Ask for new work (any agent, for any agent)
 ```bash
@@ -54,7 +49,7 @@ Inputs: … (files, issue links)
 Output: … (paths)
 Done when: …")
 gh project item-add 2 --owner hoziel --url "$URL"
-turn "${URL##*/}" Claude
+gh project item-edit 2 --owner hoziel --url "$URL" --field Turn --value Claude
 ```
 Claude triages: it accepts, reshapes, or closes the issue with a reason.
 
@@ -103,7 +98,7 @@ These files are committed like everything else, so the next session (or another 
 | `agents/claude/**`, `art/briefs/**`, `src/**`, `tests/**`, `public/**`, `assets-src/**`, configs, `*.md` at the repo root | Claude |
 
 - Edit only paths you own. If you need a change elsewhere, open an issue (step 4).
-- Stage and commit **by path only**: `git commit -m "…" -- <your paths>`. Never use `git add -A`, `git add .` or `git commit -a`.
+- Stage and commit **by path only**: `git add <your paths> && git commit -m "…" -- <your paths>` (the `git add` is needed for new files). Never use `git add -A`, `git add .` or `git commit -a`.
 - `index.lock` error: wait and retry. Never delete it.
 - Only Claude pushes. Nobody rebases, resets, stashes, switches branches or rewrites history.
 

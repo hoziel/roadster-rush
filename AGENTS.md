@@ -27,4 +27,4 @@ You're the **art mockup** agent on Roadster Rush: Austin, a kid-friendly 3-lane 
 Yours to organize: `NOTES.md` (session memory), `prompts/` or `agents/` (your own sub-agent definitions and reusable prompts), checklists, templates. Text only, no secrets. See `COLLAB.md` §9.
 
 ## Git (shared folder with Claude): `COLLAB.md` §10
-You write only in `art/mockups/**` and `agents/codex/**`. Commit by path (`git commit -m "…" -- art/mockups/NN-name agents/codex`). Never use `git add -A` or `git add .`. Never push, reset, stash or switch branches. Want a change anywhere else, including this file? Open an issue for Claude.
+You write only in `art/mockups/**` and `agents/codex/**`. Commit by path (`git add art/mockups/NN-name agents/codex && git commit -m "…" -- art/mockups/NN-name agents/codex`). Never use `git add -A` or `git add .`. Never push, reset, stash or switch branches. Want a change anywhere else, including this file? Open an issue for Claude.
