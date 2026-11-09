@@ -19,3 +19,21 @@ export const HIT_DEPTH = 0.9; // m half-depth of the collision box along the roa
 export const HIT_HALF_WIDTH = 1.0; // m half-width across lanes
 export const CONE_HEIGHT = 0.75; // m; clear it by jumping
 export const COIN_VALUE = 10;
+
+// Kid mode and police chase
+export const BATTERIES = 3;
+export const INVULN_TIME = 1.5; // s of blinking grace after a crash
+export const STUMBLE_TIME = 1.5; // s of slowdown after a crash
+export const STUMBLE_SLOWDOWN = 0.4; // fraction of speed lost right after a crash
+export const CHASE_TIME = 6; // s the police stays close after a crash
+
+// Power-ups
+export const POWER_CHANCE = 0.08; // per row, in a free lane
+export const POWER_START_AFTER = 12; // s into a run before power-ups appear
+export const LUDICROUS_TIME = 5;
+export const LUDICROUS_BOOST = 1.5;
+export const AUTOPILOT_TIME = 8;
+export const HOVER_TIME = 5;
+export const HOVER_HEIGHT = 1.6;
+export const HOVER_RISE = 6; // m/s up/down
+export const AUTOPILOT_LOOKAHEAD = 22;

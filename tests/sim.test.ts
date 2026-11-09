@@ -63,8 +63,9 @@ describe('world', () => {
     expect(w.coins).toBe(1);
   });
 
-  it('ends the run on a cone hit', () => {
+  it('kid mode off: a cone hit ends the run', () => {
     const w = emptyRunning();
+    w.kidMode = false;
     w.entities.push({ kind: 'cone', lane: 1, s: 5, alive: true });
     expect(run(w, 1)).toContain('crash');
     expect(w.phase).toBe('over');

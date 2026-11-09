@@ -11,21 +11,6 @@
       html, body { margin: 0; height: 100%; overflow: hidden; background: #3b1f5c; touch-action: none;
         -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
       #game, canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-      #ui { position: fixed; inset: 0; pointer-events: none; font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif; color: #fff; }
-      .top { position: absolute; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 10px); display: flex; gap: 8px; align-items: center; }
-      .pill { background: rgba(30, 14, 50, .55); border-radius: 999px; padding: 6px 14px; font-size: 20px; font-weight: 700; border: 0; color: #fff; }
-      .coins { color: #ffd23f; }
-      .mute { margin-left: auto; pointer-events: auto; font-size: 20px; cursor: pointer; }
-      .card { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.9); opacity: 0; transition: .25s;
-        text-align: center; background: rgba(30, 14, 50, .7); padding: 22px 30px; border-radius: 24px; min-width: 240px; }
-      .card.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-      .card h1 { margin: 0 0 8px; font-size: 34px; color: #ffd23f; }
-      .card p { margin: 6px 0; font-size: 17px; }
-      .card .big { font-size: 44px; font-weight: 800; }
-      .card .best { color: #ffb8d0; }
-      .card .go { margin-top: 14px; font-size: 22px; font-weight: 700; animation: pulse 1.2s infinite; }
-      @keyframes pulse { 50% { opacity: .55; } }
-      .debug { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 8px); font: 11px ui-monospace, monospace; opacity: .8; }
     </style>
   </head>
   <body>

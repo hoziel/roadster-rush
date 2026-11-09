@@ -4,6 +4,8 @@ export class GameAudio {
   private master?: GainNode;
   private motor?: { osc: OscillatorNode; sub: OscillatorNode; gain: GainNode; filter: BiquadFilterNode };
   private muted: boolean;
+  private sirenOsc?: OscillatorNode;
+  private sirenGain?: GainNode;
 
   constructor(muted: boolean) { this.muted = muted; }
 
@@ -80,6 +82,54 @@ export class GameAudio {
     src.start(t);
     this.tone([330, 262], 'triangle', 0.4, 0.1, t + 0.1);
   }
+
+  /** Two-tone siren while the police is close. */
+  siren(on: boolean, time: number): void {
+    if (!this.ctx || !this.master) return;
+    if (!this.sirenOsc) {
+      const o = this.ctx.createOscillator();
+      o.type = 'triangle';
+      const g = this.ctx.createGain();
+      g.gain.value = 0;
+      o.connect(g).connect(this.master);
+      o.start();
+      this.sirenOsc = o;
+      this.sirenGain = g;
+    }
+    const t = this.ctx.currentTime;
+    this.sirenOsc.frequency.setTargetAtTime(Math.floor(time * 2.5) % 2 ? 660 : 880, t, 0.02);
+    this.sirenGain!.gain.setTargetAtTime(on ? 0.035 : 0, t, 0.15);
+  }
+
+  powerUp(): void {
+    [523, 659, 784, 1046].forEach((f, i) => this.tone([f], 'square', 0.09, 0.07, this.now() + i * 0.06));
+  }
+
+  /** Soft kid-friendly bonk when a crash costs a battery. */
+  bonk(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.25);
+    g.gain.setValueAtTime(0.35, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    o.connect(g).connect(this.master);
+    o.start(t); o.stop(t + 0.32);
+  }
+
+  smash(): void {
+    this.tone([880, 1320], 'triangle', 0.08, 0.08);
+  }
+
+  fanfare(): void {
+    const n = this.now();
+    [[523, 0], [659, 0.12], [784, 0.24], [1046, 0.36]].forEach(([f, d]) => this.tone([f, f * 1.5], 'square', d === 0.36 ? 0.5 : 0.11, 0.06, n + d));
+  }
+
+  private now(): number { return this.ctx ? this.ctx.currentTime : 0; }
 
   private tone(freqs: number[], type: OscillatorType, dur: number, vol: number, at?: number): void {
     if (!this.ctx || !this.master) return;

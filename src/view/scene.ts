@@ -1,27 +1,46 @@
 import * as THREE from 'three';
 import { LANE_COUNT, LANE_WIDTH } from '../sim/config';
-import type { World } from '../sim/world';
+import { isPower, type PowerKind } from '../sim/spawner';
+import { laneX, type World } from '../sim/world';
+import { buildCar, buildPolice, type CarParts } from './cars';
 import { createSky } from './sky';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
+const MAX_POWERS = 8;
 const ROAD_LENGTH = 220;
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
+const POLICE_FAR = 18; // behind the camera, out of view
+const POLICE_CLOSE = 3.7; // just behind the player, in view
+
+export const POWER_COLORS: Record<PowerKind, string> = {
+  ludicrous: '#ff4fd8',
+  autopilot: '#35e0ff',
+  supercharger: '#4cff6a',
+  hover: '#b18cff',
+};
 
 /** Grey-box renderer: draws the sim state, owns nothing about the rules. */
 export class GameView {
   readonly renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
-  private car = new THREE.Group();
-  private carBody!: THREE.Mesh;
+  private baseFov = 62;
+  private car: CarParts;
+  private police: ReturnType<typeof buildPolice>;
+  private policeZ = POLICE_FAR;
+  private policeX = 0;
+  private hoverPad: THREE.Mesh;
   private coins: THREE.InstancedMesh;
   private cones: THREE.InstancedMesh;
+  private powers: THREE.InstancedMesh;
   private laneTex: THREE.CanvasTexture;
   private sideTex: THREE.CanvasTexture;
   private dummy = new THREE.Object3D();
+  private color = new THREE.Color();
   private raycaster = new THREE.Raycaster();
   private honkBounce = 0;
+  private shake = 0;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -35,122 +54,142 @@ export class GameView {
     sun.position.set(-4, 6, 3);
     this.scene.add(sun);
 
-    // Road with scrolling lane markings (one draw call).
     this.laneTex = makeLaneTexture();
     this.laneTex.repeat.set(1, ROAD_LENGTH / 8);
-    const road = new THREE.Mesh(
-      new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_LENGTH),
-      new THREE.MeshLambertMaterial({ map: this.laneTex }),
-    );
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_LENGTH), new THREE.MeshLambertMaterial({ map: this.laneTex }));
     road.rotation.x = -Math.PI / 2;
-    road.position.z = -ROAD_LENGTH / 2 + 15;
+    road.position.z = -ROAD_LENGTH / 2 + 25;
     this.scene.add(road);
 
-    // Ground on both sides, with a scrolling stripe pattern so speed reads.
     this.sideTex = makeSideTexture();
     this.sideTex.repeat.set(20, ROAD_LENGTH / 10);
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(200, ROAD_LENGTH),
-      new THREE.MeshLambertMaterial({ map: this.sideTex }),
-    );
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, ROAD_LENGTH), new THREE.MeshLambertMaterial({ map: this.sideTex }));
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 15);
+    ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 25);
     this.scene.add(ground);
 
-    this.buildCar();
+    this.car = buildCar('#e8344e');
+    this.scene.add(this.car.group);
+    this.police = buildPolice();
+    this.police.group.position.z = POLICE_FAR;
+    this.scene.add(this.police.group);
+
+    this.hoverPad = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.3, 0.12, 24),
+      new THREE.MeshBasicMaterial({ color: POWER_COLORS.hover, transparent: true, opacity: 0.75 }),
+    );
+    this.hoverPad.visible = false;
+    this.car.group.add(this.hoverPad);
 
     const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 20).rotateX(Math.PI / 2);
-    this.coins = new THREE.InstancedMesh(coinGeo, new THREE.MeshToonMaterial({ color: '#ffd23f', emissive: '#7a5200' }), MAX_COINS);
-    this.coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.coins.frustumCulled = false;
-    this.scene.add(this.coins);
-
+    this.coins = instanced(coinGeo, new THREE.MeshToonMaterial({ color: '#ffd23f', emissive: '#7a5200' }), MAX_COINS);
     const coneGeo = new THREE.ConeGeometry(0.42, 0.85, 16).translate(0, 0.425, 0);
-    this.cones = new THREE.InstancedMesh(coneGeo, new THREE.MeshToonMaterial({ color: '#ff6a1a' }), MAX_CONES);
-    this.cones.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.cones.frustumCulled = false;
-    this.scene.add(this.cones);
+    this.cones = instanced(coneGeo, new THREE.MeshToonMaterial({ color: '#ff6a1a' }), MAX_CONES);
+    this.powers = instanced(new THREE.OctahedronGeometry(0.55), new THREE.MeshBasicMaterial({ color: '#ffffff' }), MAX_POWERS);
+    // Create the per-instance color buffer up front so the shader compiles with it.
+    for (let i = 0; i < MAX_POWERS; i++) this.powers.setColorAt(i, this.color.set('#ffffff'));
+    this.scene.add(this.coins, this.cones, this.powers);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
-  }
-
-  private buildCar(): void {
-    const paint = new THREE.MeshToonMaterial({ color: '#e8344e' });
-    const glass = new THREE.MeshToonMaterial({ color: '#2b2f4a' });
-    const tyre = new THREE.MeshToonMaterial({ color: '#1b1b22' });
-    this.carBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 3.0), paint);
-    this.carBody.position.y = 0.45;
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 1.3), glass);
-    cabin.position.set(0, 0.85, 0.2);
-    this.car.add(this.carBody, cabin);
-    const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.25, 14).rotateZ(Math.PI / 2);
-    for (const [x, z] of [[-0.75, -1.0], [0.75, -1.0], [-0.75, 1.0], [0.75, 1.0]]) {
-      const w = new THREE.Mesh(wheelGeo, tyre);
-      w.position.set(x, 0.32, z);
-      this.car.add(w);
-    }
-    this.scene.add(this.car);
   }
 
   resize(): void {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    // Portrait phones need a wider vertical FOV to see all three lanes.
-    this.camera.fov = w / h < 0.8 ? 72 : 62;
+    this.baseFov = w / h < 0.8 ? 72 : 62; // portrait needs more vertical FOV to see all lanes
+    this.camera.fov = this.baseFov;
     this.camera.updateProjectionMatrix();
   }
 
-  /** True if a screen tap hit the car. */
   hitsCar(clientX: number, clientY: number): boolean {
     const ndc = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
     this.raycaster.setFromCamera(ndc, this.camera);
-    return this.raycaster.intersectObject(this.car, true).length > 0;
+    return this.raycaster.intersectObject(this.car.group, true).length > 0;
   }
 
   honk(): void { this.honkBounce = 1; }
+  bump(): void { this.shake = 0.35; }
 
   render(w: World, dt: number, time: number): void {
-    // Car follows the sim; tilts into lane changes and bounces on honk.
-    const lean = THREE.MathUtils.clamp((this.car.position.x - w.x) * 0.5, -0.25, 0.25);
-    this.car.position.set(w.x, w.y, 0);
-    this.car.rotation.set(w.y > 0 ? -0.08 : 0, 0, lean);
+    const car = this.car.group;
+    const lean = THREE.MathUtils.clamp((car.position.x - w.x) * 0.5, -0.25, 0.25);
+    car.position.set(w.x, w.y, 0);
+    car.rotation.set(w.y > 0 ? -0.08 : 0, 0, lean);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
-    this.carBody.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
+    this.car.body.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
+    // Blink during the post-crash grace period.
+    car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
+    // Glow in the power-up's color.
+    this.car.paint.emissive.set(w.power ? POWER_COLORS[w.power] : '#000000');
+    this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : 0;
+    this.hoverPad.visible = w.power === 'hover';
+    this.hoverPad.position.y = -w.y + 0.08 + Math.sin(time * 6) * 0.05;
 
-    // Camera trails the car a little sideways.
-    this.camera.position.set(w.x * 0.6, 5, 9.5);
+    // Police: slides in close after a crash, drops back out of view otherwise.
+    const targetZ = w.chase > 0 && w.phase !== 'ready' ? POLICE_CLOSE : POLICE_FAR;
+    this.policeZ += (targetZ - this.policeZ) * Math.min(1, dt * (targetZ < this.policeZ ? 2.5 : 0.8));
+    this.policeX += (w.x - this.policeX) * Math.min(1, dt * 3);
+    this.police.group.position.set(this.policeX, 0, this.policeZ);
+    this.police.group.visible = this.policeZ < POLICE_FAR - 1;
+    const flash = Math.floor(time * 6) % 2 === 0;
+    this.police.red.color.set(flash ? '#ff2a3a' : '#4a0c12');
+    this.police.blue.color.set(flash ? '#0e1f4a' : '#2a6bff');
+
+    // Camera trails the car; widens and shakes for speed and bumps.
+    this.shake = Math.max(0, this.shake - dt);
+    const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
+    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + (w.power === 'hover' ? 0.6 : 0), 9.5);
     this.camera.lookAt(w.x * 0.4, 1, -12);
+    const fov = this.baseFov + (w.power === 'ludicrous' ? 10 : 0);
+    if (Math.abs(this.camera.fov - fov) > 0.05) {
+      this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
+      this.camera.updateProjectionMatrix();
+    }
 
-    // Treadmill: scroll textures instead of moving geometry.
     this.laneTex.offset.y = (w.distance / 8) % 1;
     this.sideTex.offset.y = (w.distance / 10) % 1;
 
-    let nc = 0, nk = 0;
+    let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {
       if (!e.alive) continue;
       const z = -(e.s - w.distance);
-      const x = (e.lane - (LANE_COUNT - 1) / 2) * LANE_WIDTH;
+      const x = laneX(e.lane);
       if (e.kind === 'coin' && nc < MAX_COINS) {
-        this.dummy.position.set(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08, z);
-        this.dummy.rotation.set(0, time * 3 + e.s, 0);
-        this.dummy.updateMatrix();
+        this.place(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08, z, time * 3 + e.s);
         this.coins.setMatrixAt(nc++, this.dummy.matrix);
       } else if (e.kind === 'cone' && nk < MAX_CONES) {
-        this.dummy.position.set(x, 0, z);
-        this.dummy.rotation.set(0, 0, 0);
-        this.dummy.updateMatrix();
+        this.place(x, 0, z, 0);
         this.cones.setMatrixAt(nk++, this.dummy.matrix);
+      } else if (isPower(e.kind) && np < MAX_POWERS) {
+        this.place(x, 1.1 + Math.sin(time * 3) * 0.15, z, time * 2);
+        this.powers.setMatrixAt(np, this.dummy.matrix);
+        this.powers.setColorAt(np++, this.color.set(POWER_COLORS[e.kind]));
       }
     }
-    this.coins.count = nc;
-    this.cones.count = nk;
-    this.coins.instanceMatrix.needsUpdate = true;
-    this.cones.instanceMatrix.needsUpdate = true;
+    for (const [mesh, n] of [[this.coins, nc], [this.cones, nk], [this.powers, np]] as const) {
+      mesh.count = n;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
 
     this.renderer.render(this.scene, this.camera);
   }
+
+  private place(x: number, y: number, z: number, rotY: number): void {
+    this.dummy.position.set(x, y, z);
+    this.dummy.rotation.set(0, rotY, 0);
+    this.dummy.updateMatrix();
+  }
+}
+
+function instanced(geo: THREE.BufferGeometry, mat: THREE.Material, max: number): THREE.InstancedMesh {
+  const m = new THREE.InstancedMesh(geo, mat, max);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  m.frustumCulled = false;
+  m.count = 0;
+  return m;
 }
 
 function makeLaneTexture(): THREE.CanvasTexture {
