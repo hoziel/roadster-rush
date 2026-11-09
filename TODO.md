@@ -2,7 +2,7 @@
 
 ## Phase 0: Skeleton
 - [x] `git init`
-- [ ] Create the public GitHub repo
+- [x] Create the public GitHub repo (hoziel/roadster-rush)
 - [ ] Scaffold Vite + TypeScript + Three.js with the folder layout from `SCOPE.md`
 - [ ] Add Vitest and one placeholder sim test
 - [ ] GitHub Actions → GitHub Pages deploy
