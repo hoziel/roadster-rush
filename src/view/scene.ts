@@ -4,6 +4,11 @@ import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
 import { createSky } from './sky';
+import { dayPhase } from '../sim/daycycle';
+import { BatSwarm, coinRainLift } from './bats';
+import { DayNight } from './daynight';
+import { Landmarks } from './landmarks';
+import { NightLights } from './nightlights';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
@@ -41,15 +46,24 @@ export class GameView {
   private raycaster = new THREE.Raycaster();
   private honkBounce = 0;
   private shake = 0;
+  private dayNight: DayNight;
+  private nightLights = new NightLights();
+  private landmarks: Landmarks;
+  private batSwarm = new BatSwarm();
+  /** Last cycle phase drawn (for the debug overlay). */
+  phase = 0;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
-    this.scene.fog = new THREE.Fog('#e9784a', 40, 150);
-    this.scene.add(createSky());
-    this.scene.add(new THREE.HemisphereLight('#ffd9a8', '#4a2a6a', 1.4));
+    const fog = new THREE.Fog('#e9784a', 40, 150);
+    this.scene.fog = fog;
+    const sky = createSky();
+    this.scene.add(sky);
+    const hemi = new THREE.HemisphereLight('#ffd9a8', '#4a2a6a', 1.4);
+    this.scene.add(hemi);
     const sun = new THREE.DirectionalLight('#ffb070', 1.8);
     sun.position.set(-4, 6, 3);
     this.scene.add(sun);
@@ -89,6 +103,14 @@ export class GameView {
     // Create the per-instance color buffer up front so the shader compiles with it.
     for (let i = 0; i < MAX_POWERS; i++) this.powers.setColorAt(i, this.color.set('#ffffff'));
     this.scene.add(this.coins, this.cones, this.powers);
+
+    this.dayNight = new DayNight({
+      sky, fog, hemi, sun,
+      coinMat: this.coins.material as THREE.MeshToonMaterial,
+      coneMat: this.cones.material as THREE.MeshToonMaterial,
+    });
+    this.landmarks = new Landmarks(this.dayNight.silhouette);
+    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -151,13 +173,19 @@ export class GameView {
     this.laneTex.offset.y = (w.distance / 8) % 1;
     this.sideTex.offset.y = (w.distance / 10) % 1;
 
+    this.phase = dayPhase(w);
+    this.dayNight.update(this.phase);
+    this.nightLights.update(w.distance, this.dayNight.lights, time);
+    this.landmarks.update(w.distance);
+    this.batSwarm.update(w, dt, time);
+
     let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {
       if (!e.alive) continue;
       const z = -(e.s - w.distance);
       const x = laneX(e.lane);
       if (e.kind === 'coin' && nc < MAX_COINS) {
-        this.place(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08, z, time * 3 + e.s);
+        this.place(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08 + coinRainLift(e.s, w), z, time * 3 + e.s);
         this.coins.setMatrixAt(nc++, this.dummy.matrix);
       } else if (e.kind === 'cone' && nk < MAX_CONES) {
         this.place(x, 0, z, 0);
