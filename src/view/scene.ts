@@ -13,7 +13,7 @@ const ROAD_LENGTH = 220;
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 3.7; // just behind the player, in view
-const TURNTABLE = { radius: 6.5, height: 2.6, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
+const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',

@@ -36,8 +36,8 @@ export class CarStyle {
     const head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 18, 14), this.skin);
     head.position.copy(HEAD_POS);
     // Hair/cap blob: a squashed sphere sitting on the back and top of the head.
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R * 1.08, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), this.hair);
-    hair.position.copy(HEAD_POS).add(new THREE.Vector3(0, 0.03, 0.03));
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R * 1.08, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), this.hair);
+    hair.position.copy(HEAD_POS).add(new THREE.Vector3(0, 0.02, 0.07));
     hair.scale.set(1, 0.85, 1);
     // Eyes face forward (-z), seen on the turntable.
     const eyeGeo = mergeGeometries([
