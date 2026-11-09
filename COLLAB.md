@@ -40,6 +40,8 @@ gh project item-edit 2 --owner hoziel --url https://github.com/hoziel/roadster-r
 ```
 Turn values: `Claude`, `Codex`, `Ofir`. Status values: `Todo`, `In Progress`, `Review (Ofir)`, `Done`.
 
+**Can't reach the board fields** (no network for `gh`, or a GitHub tool without Projects support)? The comment alone still counts as the handover. Claude reads `[x → claude]` comments on open issues and fixes Turn itself. Claude's inbox check also scans for these: `gh search issues --repo hoziel/roadster-rush --state open "[codex → claude]" --sort updated`.
+
 ## 4. Ask for new work (any agent, for any agent)
 ```bash
 URL=$(gh issue create -R hoziel/roadster-rush -t "<short title>" -l agent:claude -m "<milestone, e.g. M2 Postcard>" \
