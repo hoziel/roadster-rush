@@ -37,3 +37,15 @@ export const HOVER_TIME = 5;
 export const HOVER_HEIGHT = 1.6;
 export const HOVER_RISE = 6; // m/s up/down
 export const AUTOPILOT_LOOKAHEAD = 22;
+
+// Sunset-to-night cycle (phase 0..1 loops: 0 sunset, ~0.3 dusk, ~0.5-0.8 night, back to sunset)
+export const DAY_CYCLE = 210; // s of driving for one full loop
+export const DUSK_START = 0.18; // phase window when the Bat Swarm can happen
+export const DUSK_END = 0.42;
+
+// Bat Swarm: a stretch of coin lines across every lane, laid in place of a chunk
+export const SWARM_PAD = 6; // m of empty road before and after the coin rain
+export const SWARM_LENGTH = 30; // m of coin rain
+export const SWARM_COIN_SPACING = 2.2; // m between coin rows
+export const SWARM_CHANCE = 0.35; // per chunk slot at dusk, once the gap has passed
+export const SWARM_MIN_GAP = 350; // m between swarms

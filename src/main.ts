@@ -6,7 +6,8 @@ import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, jump, score, start, steer, step } from './sim/world';
+import { POWER_TIME, createWorld, jump, queueSwarm, score, start, steer, step } from './sim/world';
+import { dayLabel, offsetFor } from './sim/daycycle';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
 const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn't restart instantly
@@ -85,6 +86,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
         case 'power': audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
         case 'battery': audio.powerUp(); hud.powerToast('supercharger'); break;
+        case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
     }
@@ -102,7 +104,7 @@ view.renderer.setAnimationLoop((now: number) => {
     frames++; fpsTime += dt;
     if (fpsTime >= 0.5) {
       const info = view.renderer.info.render;
-      hud.debug(`${Math.round(frames / fpsTime)} fps · ${info.calls} draws · ${info.triangles} tris · ${world.speed.toFixed(1)} m/s`);
+      hud.debug(`${Math.round(frames / fpsTime)} fps · ${info.calls} draws · ${info.triangles} tris · ${world.speed.toFixed(1)} m/s · ${dayLabel(view.phase)} ${view.phase.toFixed(2)}`);
       frames = 0; fpsTime = 0;
     }
   }
@@ -113,6 +115,10 @@ if (debug) {
   (window as unknown as { rr: unknown }).rr = {
     world,
     honk: (kind?: string) => audio.honk(kind),
+    /** Jump the sunset-to-night cycle: 0 sunset, 0.3 dusk, 0.6 night. */
+    timeOfDay: (phase: number) => { world.dayOffset = offsetFor(world, phase); },
+    /** Lay a Bat Swarm at the next chunk slot (~6 s ahead), any time of day. */
+    swarm: () => { world.dayOffset = offsetFor(world, 0.3); queueSwarm(world); },
     give: (k: 'ludicrous' | 'autopilot' | 'hover') => { world.power = k; world.powerTime = POWER_TIME[k]; world.lastPower = k; hud.powerToast(k); },
   };
 }
