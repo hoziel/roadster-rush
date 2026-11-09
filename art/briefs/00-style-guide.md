@@ -1,5 +1,7 @@
 # Roadster Rush: art style guide (for Codex)
 
+> **Draft:** the overall direction is pending Ofir's pick from brief `00a-look-and-feel.md`. Until then, the Look and Palette sections below describe direction A.
+
 Read this before every mockup brief. Mockups go in `art/mockups/<brief-number>-<name>/`, as PNGs plus a short `notes.md`.
 
 ## Who it's for
