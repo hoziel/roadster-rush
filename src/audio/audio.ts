@@ -1,3 +1,5 @@
+import { HORN_IDS, type HornId } from '../sim/shop';
+import { playHorn } from './horns';
 import { MUSIC, SAMPLES, audioUrl, findOnset, loopPoints, type MusicId, type SampleId } from './tracks';
 
 export { HORN_KINDS, type HornKind, type MusicId } from './tracks';
@@ -187,13 +189,14 @@ export class GameAudio {
     this.motor.gain.gain.setTargetAtTime(on ? 0.05 : 0, t, on ? 0.2 : 0.08);
   }
 
-  /**
-   * Horn by kind (see HORN_KINDS): 'classic' is the synthesized two-tone (default), 'bike' the
-   * bicycle-horn sample. Unknown kinds, or a sample that hasn't loaded, play classic.
-   */
-  honk(kind: string = 'classic'): void {
-    if (kind === 'bike' && this.playSample('bike-horn', 0.6)) return;
-    this.tone([392, 494], 'square', 0.28, 0.12);
+  /** The equipped horn (set from the garage). */
+  horn: HornId = 'classic';
+
+  /** 'bike' uses the CC0 bike-horn sample (synth fallback until it loads); the rest are synthesized. */
+  honk(id: string = this.horn): void {
+    const horn = (HORN_IDS as readonly string[]).includes(id) ? (id as HornId) : 'classic';
+    if (horn === 'bike' && this.playSample('bike-horn', 0.6)) return;
+    if (this.ctx && this.master) playHorn(horn, this.ctx, this.master);
   }
 
   coin(): void {

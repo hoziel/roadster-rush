@@ -3,6 +3,7 @@ import { LANE_COUNT, LANE_WIDTH } from '../sim/config';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
+import { CarStyle } from './carStyle';
 import { Scenery } from './scenery';
 import { createSky } from './sky';
 
@@ -13,6 +14,7 @@ const ROAD_LENGTH = 220;
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 3.7; // just behind the player, in view
+const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',
@@ -28,6 +30,10 @@ export class GameView {
   private camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
   private baseFov = 62;
   private car: CarParts;
+  /** Paint, driver, hat and plate on the player car. */
+  readonly style: CarStyle;
+  /** Garage open: orbit the camera around the parked car. */
+  showcase = false;
   private police: ReturnType<typeof buildPolice>;
   private policeZ = POLICE_FAR;
   private policeX = 0;
@@ -72,6 +78,7 @@ export class GameView {
 
     this.car = buildCar('#e8344e');
     this.scene.add(this.car.group);
+    this.style = new CarStyle(this.car);
     this.police = buildPolice();
     this.police.group.position.z = POLICE_FAR;
     this.scene.add(this.police.group);
@@ -127,8 +134,9 @@ export class GameView {
     // Blink during the post-crash grace period.
     car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
     // Glow in the power-up's color.
-    this.car.paint.emissive.set(w.power ? POWER_COLORS[w.power] : '#000000');
-    this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : 0;
+    const rest = this.car.paint.userData as { glow?: string; glowIntensity?: number };
+    this.car.paint.emissive.set(w.power ? POWER_COLORS[w.power] : rest.glow ?? '#000000');
+    this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : rest.glowIntensity ?? 0;
     this.hoverPad.visible = w.power === 'hover';
     this.hoverPad.position.y = -w.y + 0.08 + Math.sin(time * 6) * 0.05;
 
@@ -147,6 +155,9 @@ export class GameView {
     const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
     this.camera.position.set(w.x * 0.6 + sx, 5 + sy + (w.power === 'hover' ? 0.6 : 0), 9.5);
     this.camera.lookAt(w.x * 0.4, 1, -12);
+    if (this.showcase) this.turntable(w.x, time);
+    else if (this.camera.view) this.camera.clearViewOffset();
+    for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
     const fov = this.baseFov + (w.power === 'ludicrous' ? 10 : 0);
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
@@ -181,6 +192,15 @@ export class GameView {
     }
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Orbit the car; shift the view so it sits in the top part of the screen above the garage panel. */
+  private turntable(x: number, time: number): void {
+    const a = time * TURNTABLE.spin;
+    this.camera.position.set(x + Math.sin(a) * TURNTABLE.radius, TURNTABLE.height, Math.cos(a) * TURNTABLE.radius);
+    this.camera.lookAt(x, TURNTABLE.lookY, 0);
+    const w = window.innerWidth, h = window.innerHeight;
+    this.camera.setViewOffset(w, h, 0, h * TURNTABLE.lift, w, h);
   }
 
   private place(x: number, y: number, z: number, rotY: number): void {

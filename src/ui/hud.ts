@@ -97,10 +97,11 @@ export class Hud {
 
   powerToast(kind: PowerKind): void { this.toast(POWER_LABEL[kind], POWER_COLOR[kind]); }
 
-  showReady(best: number): void {
+  /** `extra`: wallet + Garage button from the garage module. */
+  showReady(best: number, extra = ''): void {
     this.creditsBtn.classList.add('show');
     this.el.card.className = 'card show';
-    this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to jump</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}`;
+    this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to jump</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}${extra}`;
   }
 
   hideCard(): void {
@@ -111,16 +112,17 @@ export class Hud {
   }
 
   /** "Great drive!" with a coin count-up, and confetti on a new best. */
-  showFinish(score: number, coins: number, best: number, newBest: boolean, caught: boolean): void {
+  showFinish(score: number, coins: number, best: number, newBest: boolean, caught: boolean, driver = '', extra = ''): void {
     this.creditsBtn.classList.add('show');
     this.el.card.className = 'card show finish';
     this.el.card.innerHTML = `
       <h1>Great drive!</h1>
+      ${driver}
       ${caught ? '<p class="sub">The police caught up. Nice chase!</p>' : ''}
       <p class="big" id="final">0</p>
       <p class="coinline">● <span id="finalCoins">0</span> coins</p>
       ${newBest ? '<p class="best newbest">New best! ★</p>' : `<p class="best">Best ${best}</p>`}
-      <p class="go">Tap to drive again</p>`;
+      <p class="go">Tap to drive again</p>${extra}`;
     const finalEl = this.el.card.querySelector<HTMLElement>('#final')!;
     const coinsEl = this.el.card.querySelector<HTMLElement>('#finalCoins')!;
     const t0 = performance.now();

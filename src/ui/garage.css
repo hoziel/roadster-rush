@@ -1,0 +1,59 @@
+/* Garage screen. Grey-box colors: retune with the art direction. */
+#ui {
+  --g-bg: rgba(30, 14, 50, .88);
+  --g-tile: rgba(255, 255, 255, .1);
+  --g-on: #ffd23f;
+  --g-coin: #ffd23f;
+  --g-buy: #4cff6a;
+  --g-ink: #1e0e32;
+}
+#ui.garage-open .top, #ui.garage-open .card, #ui.garage-open .credits-btn, #ui.garage-open .power { display: none; }
+
+.avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--g-ink);
+  font-weight: 700; box-shadow: inset 0 -4px 0 rgba(0,0,0,.18); flex: none; }
+.g-coin { color: var(--g-coin); }
+
+/* On the start / finish cards */
+.g-cardrow { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 12px 0 4px; }
+.g-wallet { font-size: 22px; font-weight: 700; background: rgba(0,0,0,.25); border-radius: 999px; padding: 8px 14px; }
+.g-open { pointer-events: auto; cursor: pointer; font: 700 22px 'Fredoka', ui-rounded, system-ui, sans-serif; color: var(--g-ink);
+  background: var(--g-on); border: 0; border-radius: 18px; min-height: 56px; padding: 0 20px; box-shadow: 0 4px 0 #b8901a; }
+.g-open:active { transform: translateY(3px); box-shadow: 0 1px 0 #b8901a; }
+.g-driver { display: flex; gap: 10px; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; margin: 6px 0; }
+
+/* The garage overlay: top part is see-through for the turntable car. */
+.garage { position: absolute; inset: 0; display: none; pointer-events: auto; flex-direction: column; justify-content: space-between; }
+.garage.show { display: flex; }
+.g-top { display: flex; justify-content: space-between; align-items: center; padding: calc(env(safe-area-inset-top) + 10px) 12px 0; }
+.g-top .g-wallet { background: var(--g-bg); }
+.g-done { font: 700 22px 'Fredoka', ui-rounded, system-ui, sans-serif; color: var(--g-ink); background: var(--g-buy); border: 0;
+  border-radius: 18px; min-height: 56px; padding: 0 20px; cursor: pointer; box-shadow: 0 4px 0 #23a83c; }
+.g-panel { background: var(--g-bg); border-radius: 26px 26px 0 0; padding: 12px 12px calc(env(safe-area-inset-bottom) + 12px);
+  height: 52%; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+.g-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.g-tab { font: 600 15px 'Fredoka', ui-rounded, system-ui, sans-serif; color: #fff; background: var(--g-tile); border: 3px solid transparent;
+  border-radius: 16px; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+.g-tab.on { border-color: var(--g-on); background: rgba(255, 210, 63, .18); }
+.g-icon { font-size: 26px; line-height: 1; }
+.g-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; align-content: start;
+  touch-action: pan-y; }
+.g-tile { position: relative; font: 600 15px 'Fredoka', ui-rounded, system-ui, sans-serif; color: #fff; background: var(--g-tile);
+  border: 3px solid transparent; border-radius: 18px; min-height: 96px; padding: 8px 4px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; cursor: pointer; }
+.g-tile.on { border-color: var(--g-on); }
+.g-tile.peek { border-color: #fff; border-style: dashed; }
+.g-swatch { width: 52px; height: 36px; border-radius: 10px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+.g-swatch.neon { box-shadow: 0 0 12px 2px var(--glow); }
+.g-big { font-size: 34px; line-height: 1; }
+.g-nohat { opacity: .7; }
+.g-label { line-height: 1.1; }
+.g-price { font-size: 15px; font-weight: 700; }
+.g-check { position: absolute; top: 4px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: var(--g-on); color: var(--g-ink);
+  font-size: 15px; font-weight: 700; line-height: 24px; }
+.g-buybar { min-height: 60px; display: flex; justify-content: center; }
+.g-buy { font: 700 24px 'Fredoka', ui-rounded, system-ui, sans-serif; color: var(--g-ink); background: var(--g-buy); border: 0; border-radius: 18px;
+  min-height: 60px; min-width: 180px; cursor: pointer; box-shadow: 0 4px 0 #23a83c; }
+.g-buy.poor { background: #8d84a0; box-shadow: 0 4px 0 #5d5570; }
+.g-buy.poor .g-coin { color: var(--g-ink); }
+.g-buy.nope { animation: g-nope .4s; }
+@keyframes g-nope { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
