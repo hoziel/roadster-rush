@@ -3,7 +3,7 @@
 A casual, Subway Surfers–style endless runner for kids. You drive an electric roadster through a stylized Austin.
 
 - **Platform:** browser, mobile-first (portrait, touch); desktop works too
-- **Hosting:** free static hosting (GitHub Pages; Cloudflare Pages as a fallback)
+- **Hosting:** the repo stays private until Ofir decides to publish. Until then, play it on the phone from the Vite dev server over home Wi-Fi. At publish time: make the repo public and deploy to GitHub Pages (Cloudflare Pages as a fallback)
 - **Audience:** a young kid. No ads, accounts, tracking or network calls.
 - **Mockup:** https://claude.ai/artifact/E2gHYnsEDPFJBdmLTRTt8s
 
@@ -52,7 +52,7 @@ There's no real geography. The scene is built from a palette, landmark silhouett
 | Offline / install | vite-plugin-pwa (Workbox precache, manifest) |
 | Assets | glTF/GLB, compressed with gltf-transform (Meshopt + KTX2) |
 | Tests | Vitest on the sim layer |
-| Deploy | GitHub Actions → GitHub Pages |
+| Deploy | Until publish: Vite dev server on the home network. At publish: GitHub Actions → GitHub Pages |
 
 **Why not Godot or Unity?** Their web builds are about 40 MB or more before any game content. That's too heavy for "tap a link and play" on a phone.
 
@@ -89,7 +89,7 @@ Every CC-BY asset gets credited on an in-game Credits screen and in `CREDITS.md`
 
 | Phase | Scope | Effort |
 |---|---|---|
-| 0: Skeleton | Vite + TS + Three.js, Pages deploy, loads on a phone | 1 evening |
+| 0: Skeleton | Vite + TS + Three.js, loads on a phone over home Wi-Fi | 1 evening |
 | 1: MVP | Road, lanes, swipe, car, coins, cones, speed ramp, best score, motor whine | 1 weekend |
 | 2: Austin v1 | Chunks, skyline and landmarks, power-ups, kid mode, audio, PWA, credits | 2–4 weekends |
 | 3: More scenes | Theme packs (Gigafactory interior, space, other cities), car customizer, daily seed | Ongoing |
@@ -105,7 +105,7 @@ roadster-rush/
 │  ├─ icons/              # PWA icons
 │  ├─ basis/              # KTX2 transcoder
 │  └─ themes/austin/      # models, audio, chunks.json
-├─ assets-src/            # raw source assets (CC0/CC-BY only, since the repo is public)
+├─ assets-src/            # raw source assets (CC0/CC-BY only, since the repo goes public at publish)
 ├─ scripts/optimize-assets.mjs
 ├─ src/
 │  ├─ sim/                # rules, no three.js
@@ -122,5 +122,5 @@ roadster-rush/
 ## Risks and notes
 
 - **Trademarks:** Tesla, Roadster styling, Autopilot, Ludicrous and Supercharger are Tesla brand terms. That's fine for a private game. If the game ever goes public, rename them (for example Volt Roadster, Turbo Boost, Auto-Steer, Charge Station), drop the logos and don't monetize.
-- **Public repo:** a free GitHub Pages site needs a public repo, so commit only CC0/CC-BY assets. Royalty-free and Pixabay files stay out.
+- **Private now, public later:** the repo is private until publish. A free GitHub Pages site needs a public repo, and the whole git history becomes visible then, so commit only CC0/CC-BY assets from day one. Royalty-free and Pixabay files stay out.
 - **iOS Safari:** older iPhones have no WebGPU and limited memory, the silent switch can mute audio, and there's no true fullscreen. To handle this: use WebGL 2, keep textures small, add a visible mute toggle, and test on the oldest device you have.
