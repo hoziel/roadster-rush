@@ -52,7 +52,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   else if (action === 'jump') jump(world);
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
-});
+}, () => audio.unlock()); // raw pointerdown/up/keydown: real gestures, so iOS lets audio start
 
 let last = performance.now();
 let acc = 0;

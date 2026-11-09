@@ -25,6 +25,7 @@ export const EDGE_GAP = 6;
 
 /** Problems with a chunk, or [] if it's fair. Run over every chunk in tests. */
 export function validateChunk(c: Chunk): string[] {
+  const chunkId = c.id;
   const errs: string[] = [];
   const rows = [...c.rows].sort((a, b) => a.at - b.at);
   for (const r of rows) {
@@ -36,6 +37,16 @@ export function validateChunk(c: Chunk): string[] {
     if (r.power !== undefined && cones.includes(r.power)) errs.push(`${c.id}: power on a cone lane at ${r.at}`);
   }
   const coneRows = rows.filter((r) => r.cones?.length);
+  // A coin line must not run into a later cone in its lane (it would lure kids into cones).
+  for (const r of rows) {
+    if (!r.coins) continue;
+    const end = r.at + (r.coins.count - 1) * COIN_SPACING;
+    for (const c of coneRows) {
+      if (c !== r && (c.cones ?? []).includes(r.coins.lane) && c.at >= r.at - HIT_DEPTH && c.at <= end + HIT_DEPTH) {
+        errs.push(`${chunkId}: coin line from ${r.at} runs into a cone at ${c.at}`);
+      }
+    }
+  }
   if (!coneRows.length) return errs;
   // Edges: the gap to the neighbouring chunk is at least 2 * EDGE_GAP, enough to reach any lane.
   if (lanesReachable(2 * EDGE_GAP) < LANE_COUNT - 1) errs.push('EDGE_GAP too small for a full lane sweep');

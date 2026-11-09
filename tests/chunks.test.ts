@@ -37,3 +37,10 @@ describe('chunk library', () => {
     }
   });
 });
+
+describe('validator: coin lines', () => {
+  it('flags a coin line that runs into a later cone in its lane', () => {
+    const errs = validateChunk({ id: 'lure', difficulty: 0, rows: [{ at: 6, coins: { lane: 1, count: 6 } }, { at: 14, cones: [1] }] });
+    expect(errs.some((e) => e.includes('coin line'))).toBe(true);
+  });
+});
