@@ -3,6 +3,7 @@ import { LANE_COUNT, LANE_WIDTH } from '../sim/config';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
+import { Scenery } from './scenery';
 import { createSky } from './sky';
 
 const MAX_COINS = 160;
@@ -39,6 +40,7 @@ export class GameView {
   private dummy = new THREE.Object3D();
   private color = new THREE.Color();
   private raycaster = new THREE.Raycaster();
+  private scenery = new Scenery();
   private honkBounce = 0;
   private shake = 0;
 
@@ -89,6 +91,9 @@ export class GameView {
     // Create the per-instance color buffer up front so the shader compiles with it.
     for (let i = 0; i < MAX_POWERS; i++) this.powers.setColorAt(i, this.color.set('#ffffff'));
     this.scene.add(this.coins, this.cones, this.powers);
+
+    this.scene.add(this.scenery.group);
+    void this.scenery.load();
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -148,6 +153,7 @@ export class GameView {
       this.camera.updateProjectionMatrix();
     }
 
+    this.scenery.update(w.distance);
     this.laneTex.offset.y = (w.distance / 8) % 1;
     this.sideTex.offset.y = (w.distance / 10) % 1;
 
