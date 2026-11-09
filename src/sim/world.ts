@@ -102,8 +102,12 @@ export function jump(w: World): boolean {
   return true;
 }
 
+const EVENTS: SimEvent[] = [];
+const SCORES: number[] = new Array(LANE_COUNT).fill(0);
+
 export function step(w: World, dt: number): SimEvent[] {
-  const events: SimEvent[] = [];
+  const events = EVENTS;
+  events.length = 0; // reused every step (120 Hz): callers must consume before the next step
   if (w.phase !== 'running') return events;
 
   w.time += dt;
@@ -195,7 +199,8 @@ function activate(w: World, kind: PowerKind): void {
 /** Steer toward the lane with the most coins and no cones ahead. */
 function autopilot(w: World): void {
   if (Math.abs(w.x - laneX(w.lane)) > 0.15) return; // finish the current lane change first
-  const scores = Array.from({ length: LANE_COUNT }, (_, l) => (l === w.lane ? 0.5 : 0));
+  const scores = SCORES;
+  for (let l = 0; l < LANE_COUNT; l++) scores[l] = l === w.lane ? 0.5 : 0;
   for (const e of w.entities) {
     if (!e.alive) continue;
     const rel = e.s - w.distance;

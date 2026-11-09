@@ -20,7 +20,7 @@ function note(ctx: AudioContext, out: AudioNode, freqs: number[], type: Oscillat
     o.type = type;
     o.frequency.value = f;
     o.connect(g);
-    o.start(t); o.stop(t + dur);
+    o.start(t); o.stop(t + dur); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 }
 
@@ -42,7 +42,7 @@ const HORNS: Record<HornId, Play> = {
         g.gain.setValueAtTime(v, t + at);
         g.gain.exponentialRampToValueAtTime(0.0008, t + at + 0.5);
         o.connect(g).connect(out);
-        o.start(t + at); o.stop(t + at + 0.52);
+        o.start(t + at); o.stop(t + at + 0.52); o.onended = () => { o.disconnect(); g.disconnect(); };
       }
     }
   },
@@ -70,7 +70,7 @@ const HORNS: Record<HornId, Play> = {
       g.gain.linearRampToValueAtTime(0.35, t + at + 0.02);
       g.gain.linearRampToValueAtTime(0, t + at + 0.2);
       o.connect(f).connect(g).connect(out);
-      o.start(t + at); o.stop(t + at + 0.21);
+      o.start(t + at); o.stop(t + at + 0.21); o.onended = () => { o.disconnect(); f.disconnect(); g.disconnect(); };
     }
   },
 };

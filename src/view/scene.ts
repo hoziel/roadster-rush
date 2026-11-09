@@ -21,6 +21,10 @@ const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 3.7; // just behind the player, in view
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
+const C_BLACK = new THREE.Color('#000000');
+const C_RED_ON = new THREE.Color('#ff2a3a'), C_RED_OFF = new THREE.Color('#4a0c12');
+const C_BLUE_ON = new THREE.Color('#2a6bff'), C_BLUE_OFF = new THREE.Color('#0e1f4a');
+
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',
   autopilot: '#35e0ff',
@@ -124,6 +128,9 @@ export class GameView {
     this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group);
 
     window.addEventListener('resize', () => this.resize());
+    // iOS can fire resize before the new size is known after rotating; visualViewport catches up.
+    window.visualViewport?.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 250));
     this.resize();
   }
 
@@ -156,7 +163,9 @@ export class GameView {
     car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
     // Glow in the power-up's color.
     const rest = this.car.paint.userData as { glow?: string; glowIntensity?: number };
-    this.car.paint.emissive.set(w.power ? POWER_COLORS[w.power] : rest.glow ?? '#000000');
+    if (w.power) this.car.paint.emissive.copy(this.powerColor(w.power));
+    else if (rest.glow) this.car.paint.emissive.set(rest.glow);
+    else this.car.paint.emissive.copy(C_BLACK);
     this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : rest.glowIntensity ?? 0;
     this.hoverPad.visible = w.power === 'hover';
     this.hoverPad.position.y = -w.y + 0.08 + Math.sin(time * 6) * 0.05;
@@ -168,8 +177,8 @@ export class GameView {
     this.police.group.position.set(this.policeX, 0, this.policeZ);
     this.police.group.visible = this.policeZ < POLICE_FAR - 1;
     const flash = Math.floor(time * 6) % 2 === 0;
-    this.police.red.color.set(flash ? '#ff2a3a' : '#4a0c12');
-    this.police.blue.color.set(flash ? '#0e1f4a' : '#2a6bff');
+    this.police.red.color.copy(flash ? C_RED_ON : C_RED_OFF);
+    this.police.blue.color.copy(flash ? C_BLUE_OFF : C_BLUE_ON);
 
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);
@@ -209,14 +218,16 @@ export class GameView {
       } else if (isPower(e.kind) && np < MAX_POWERS) {
         this.place(x, 1.1 + Math.sin(time * 3) * 0.15, z, time * 2);
         this.powers.setMatrixAt(np, this.dummy.matrix);
-        this.powers.setColorAt(np++, this.color.set(POWER_COLORS[e.kind]));
+        this.powers.setColorAt(np++, this.powerColor(e.kind));
       }
     }
-    for (const [mesh, n] of [[this.coins, nc], [this.cones, nk], [this.powers, np]] as const) {
-      mesh.count = n;
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    }
+    this.coins.count = nc;
+    this.cones.count = nk;
+    this.powers.count = np;
+    this.coins.instanceMatrix.needsUpdate = true;
+    this.cones.instanceMatrix.needsUpdate = true;
+    this.powers.instanceMatrix.needsUpdate = true;
+    if (this.powers.instanceColor) this.powers.instanceColor.needsUpdate = true;
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -228,6 +239,13 @@ export class GameView {
     this.camera.lookAt(x, TURNTABLE.lookY, 0);
     const w = window.innerWidth, h = window.innerHeight;
     this.camera.setViewOffset(w, h, 0, h * TURNTABLE.lift, w, h);
+  }
+
+  private powerColors = new Map<PowerKind, THREE.Color>();
+  private powerColor(k: PowerKind): THREE.Color {
+    let c = this.powerColors.get(k);
+    if (!c) { c = new THREE.Color(POWER_COLORS[k]); this.powerColors.set(k, c); }
+    return c;
   }
 
   private place(x: number, y: number, z: number, rotY: number): void {

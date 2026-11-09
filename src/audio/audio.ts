@@ -211,7 +211,7 @@ export class GameAudio {
     g.gain.setValueAtTime(0.15, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
     o.connect(g).connect(this.master);
-    o.start(t); o.stop(t + 0.2);
+    o.start(t); o.stop(t + 0.2); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
   crash(): void {
@@ -228,6 +228,7 @@ export class GameAudio {
     g.gain.value = 0.3;
     src.connect(g).connect(this.master);
     src.start(t);
+    src.onended = () => { src.disconnect(); g.disconnect(); };
     this.tone([330, 262], 'triangle', 0.4, 0.1, t + 0.1);
   }
 
@@ -267,7 +268,7 @@ export class GameAudio {
     g.gain.setValueAtTime(0.35, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     o.connect(g).connect(this.master);
-    o.start(t); o.stop(t + 0.32);
+    o.start(t); o.stop(t + 0.32); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
   smash(): void {
@@ -298,7 +299,7 @@ export class GameAudio {
       o.type = type;
       o.frequency.value = f;
       o.connect(g);
-      o.start(t); o.stop(t + dur);
+      o.start(t); o.stop(t + dur); o.onended = () => { o.disconnect(); g.disconnect(); };
     }
   }
 }

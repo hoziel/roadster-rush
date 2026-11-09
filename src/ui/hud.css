@@ -1,6 +1,6 @@
 @font-face { font-family: 'Fredoka'; src: url('./fonts/Fredoka-Variable.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
 #ui { position: fixed; inset: 0; pointer-events: none; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; color: #fff; }
-.top { position: absolute; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 10px); display: flex; gap: 8px; align-items: center; }
+.top { position: absolute; left: calc(env(safe-area-inset-left) + 12px); right: calc(env(safe-area-inset-right) + 12px); top: calc(env(safe-area-inset-top) + 10px); display: flex; gap: 8px; align-items: center; }
 .pill { background: rgba(30, 14, 50, .55); border-radius: 999px; padding: 6px 14px; font-size: 20px; font-weight: 600; border: 0; color: #fff; font-family: inherit; }
 .coins { color: #ffd23f; }
 .batteries { display: flex; gap: 4px; padding: 9px 12px; }
@@ -13,7 +13,7 @@
 .power { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 62px); transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .2s; font-weight: 700; font-size: 18px; letter-spacing: 1px; }
 .power.show { opacity: 1; }
 .power .bar { width: 140px; height: 8px; border-radius: 4px; background: rgba(30,14,50,.55); margin-top: 4px; overflow: hidden; }
-.power .bar div { height: 100%; width: 100%; border-radius: 4px; }
+.power .bar div { height: 100%; width: 100%; border-radius: 4px; transform-origin: left center; }
 .toast { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: 40px; font-weight: 700; opacity: 0; text-shadow: 0 3px 0 rgba(30,14,50,.6); }
 .toast.show { animation: toast 1.1s ease-out; }
 @keyframes toast { 0% { opacity: 0; transform: scale(.6); } 20% { opacity: 1; transform: scale(1.1); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: translateY(-30px); } }
@@ -33,7 +33,7 @@
 .confetti { position: absolute; inset: 0; overflow: hidden; }
 .confetti i { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 2px; animation: fall linear forwards; }
 @keyframes fall { to { top: 110%; transform: rotate(720deg) translateX(40px); } }
-.debug { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom) + 8px); font: 11px ui-monospace, monospace; opacity: .8; }
+.debug { position: absolute; left: calc(env(safe-area-inset-left) + 12px); bottom: calc(env(safe-area-inset-bottom) + 8px); font: 11px ui-monospace, monospace; opacity: .8; }
 .credits-btn { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 28px); transform: translateX(-50%); font-size: 16px; pointer-events: auto; cursor: pointer; display: none; }
 .credits-btn.show { display: block; }
 .credits { position: absolute; inset: 0; background: rgba(30, 14, 50, .92); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; pointer-events: auto; }

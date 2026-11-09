@@ -66,9 +66,12 @@ export class Hud {
 
   setMuted(muted: boolean): void { this.muteBtn.textContent = muted ? '🔇' : '🔊'; }
 
+  private last = { score: -1, coins: -1, power: '' as string, bar: -1 };
+
   update(w: World, score: number, powerTotal: number): void {
-    this.el.score.textContent = String(score);
-    this.el.coins.textContent = `● ${w.coins}`;
+    // Only touch the DOM when something changed (mobile Safari restyles on every write).
+    if (score !== this.last.score) { this.last.score = score; this.el.score.textContent = String(score); }
+    if (w.coins !== this.last.coins) { this.last.coins = w.coins; this.el.coins.textContent = `● ${w.coins}`; }
     if (w.batteries !== this.lastBatteries) {
       const lost = w.batteries < this.lastBatteries;
       this.lastBatteries = w.batteries;
@@ -76,13 +79,19 @@ export class Hud {
         `<span class="cell ${i < w.batteries ? 'full' : 'empty'}"></span>`).join('');
       if (lost) this.flash(this.el.batteries);
     }
-    const p = w.power;
-    this.el.power.classList.toggle('show', !!p);
+    const p = w.power ?? '';
+    if (p !== this.last.power) {
+      this.last.power = p;
+      this.el.power.classList.toggle('show', !!p);
+      if (p) {
+        this.el.powerLabel.textContent = POWER_LABEL[p];
+        this.el.powerBar.style.background = POWER_COLOR[p];
+        this.el.power.style.color = POWER_COLOR[p];
+      }
+    }
     if (p) {
-      this.el.powerLabel.textContent = POWER_LABEL[p];
-      this.el.powerBar.style.width = `${(w.powerTime / powerTotal) * 100}%`;
-      this.el.powerBar.style.background = POWER_COLOR[p];
-      this.el.power.style.color = POWER_COLOR[p];
+      const k = Math.round((w.powerTime / powerTotal) * 100) / 100;
+      if (k !== this.last.bar) { this.last.bar = k; this.el.powerBar.style.transform = `scaleX(${k})`; }
     }
   }
 
@@ -106,6 +115,7 @@ export class Hud {
 
   hideCard(): void {
     this.creditsBtn.classList.remove('show');
+    this.root.querySelector('#credits')?.classList.remove('show');
     this.el.card.className = 'card';
     this.el.confetti.innerHTML = '';
     cancelAnimationFrame(this.countUp);
@@ -154,6 +164,11 @@ export class Hud {
     el.classList.remove('flash');
     void el.offsetWidth;
     el.classList.add('flash');
+  }
+
+  showPaused(): void {
+    this.el.card.className = 'card show';
+    this.el.card.innerHTML = '<h1>Paused</h1><p class="go">Tap to continue</p>';
   }
 
   debug(text: string): void { this.el.debug.textContent = text; }

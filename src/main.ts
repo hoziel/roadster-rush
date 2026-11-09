@@ -37,6 +37,15 @@ hud.showReady(storage.best, garage.cardHtml());
 
 const debug = new URLSearchParams(location.search).has('debug');
 let finishedAt = 0;
+let paused = false;
+
+// Pause when the app goes to the background, so a kid doesn't come back mid-crash.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && world.phase === 'running' && !paused) {
+    paused = true;
+    hud.showPaused();
+  }
+});
 
 function honk(): void {
   audio.honk();
@@ -56,6 +65,10 @@ function finish(): void {
 bindInput(view.renderer.domElement, (action, x, y) => {
   audio.unlock();
   if (garage.isOpen) return; // keys and stray taps never start a run from the garage
+  if (paused) {
+    if (action === 'tap' || action === 'jump') { paused = false; hud.hideCard(); }
+    return;
+  }
   if (world.phase !== 'running') {
     if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
       start(world);
@@ -77,7 +90,7 @@ let frames = 0, fpsTime = 0;
 view.renderer.setAnimationLoop((now: number) => {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
-  acc += dt;
+  acc = paused ? 0 : acc + dt;
   while (acc >= SIM_DT) {
     for (const ev of step(world, SIM_DT)) {
       switch (ev) {
@@ -93,7 +106,7 @@ view.renderer.setAnimationLoop((now: number) => {
     acc -= SIM_DT;
   }
 
-  const running = world.phase === 'running';
+  const running = world.phase === 'running' && !paused;
   audio.motorUpdate(world.speed, running);
   audio.siren(running && world.chase > 0, now / 1000);
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
