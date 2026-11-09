@@ -1,6 +1,8 @@
 import { GameAudio } from './audio/audio';
 import { bindInput } from './input/input';
 import { storage } from './storage';
+import { addCoins } from './sim/shop';
+import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
 import './ui/hud.css';
 import { GameView } from './view/scene';
@@ -19,7 +21,18 @@ const hud = new Hud(() => {
   hud.setMuted(storage.muted);
 });
 hud.setMuted(storage.muted);
-hud.showReady(storage.best);
+
+const garage = new Garage(document.getElementById('ui')!, {
+  getShop: () => storage.shop,
+  saveShop: (shop) => { storage.set({ shop }); audio.horn = shop.horn; },
+  showLook: (look) => view.style.set(look),
+  playHorn: (id) => { audio.unlock(); audio.honk(id); },
+  setOpen: (open) => { view.showcase = open; },
+});
+view.style.set(lookOf(storage.shop));
+audio.horn = storage.shop.horn;
+void document.fonts?.ready.then(() => view.style.refreshPlate());
+hud.showReady(storage.best, garage.cardHtml());
 
 const debug = new URLSearchParams(location.search).has('debug');
 let finishedAt = 0;
@@ -33,13 +46,15 @@ function finish(): void {
   const s = score(world);
   const newBest = s > storage.best;
   if (newBest) storage.set({ best: s });
+  storage.set({ shop: addCoins(storage.shop, world.coins) });
   finishedAt = performance.now();
-  hud.showFinish(s, world.coins, storage.best, newBest, world.caught);
+  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.cardHtml());
   if (newBest) setTimeout(() => audio.fanfare(), 500);
 }
 
 bindInput(view.renderer.domElement, (action, x, y) => {
   audio.unlock();
+  if (garage.isOpen) return; // keys and stray taps never start a run from the garage
   if (world.phase !== 'running') {
     if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
       start(world);
