@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LANE_COUNT, SPEED_MAX, SPEED_START } from '../src/sim/config';
-import { createRng } from '../src/sim/rng';
-import { makeRow } from '../src/sim/spawner';
+import { SPEED_MAX, SPEED_START } from '../src/sim/config';
 import { speedAt } from '../src/sim/speed';
 import { createWorld, jump, laneX, start, steer, step, type World } from '../src/sim/world';
 
@@ -26,24 +24,6 @@ describe('speed', () => {
   it('never exceeds the cap', () => {
     expect(speedAt(100000)).toBeLessThanOrEqual(SPEED_MAX);
     expect(speedAt(100000)).toBeCloseTo(SPEED_MAX, 3);
-  });
-});
-
-describe('spawner', () => {
-  it('always leaves at least one lane free of cones', () => {
-    const rng = createRng(42);
-    for (let i = 0; i < 5000; i++) {
-      const cones = new Set(makeRow(rng, 1).filter((it) => it.kind === 'cone').map((it) => it.lane));
-      expect(cones.size).toBeLessThan(LANE_COUNT);
-    }
-  });
-  it('never puts coins on a cone lane', () => {
-    const rng = createRng(7);
-    for (let i = 0; i < 2000; i++) {
-      const row = makeRow(rng, 1);
-      const coneLanes = row.filter((it) => it.kind === 'cone').map((it) => it.lane);
-      for (const c of row.filter((it) => it.kind === 'coin')) expect(coneLanes).not.toContain(c.lane);
-    }
   });
 });
 

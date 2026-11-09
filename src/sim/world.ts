@@ -2,11 +2,11 @@ import {
   AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CHASE_TIME, COIN_VALUE, CONE_HEIGHT,
   DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
-  LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, ROW_SPACING_MAX, ROW_SPACING_MIN,
-  SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
+  LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
 } from './config';
 import { createRng, type Rng } from './rng';
-import { isPower, makeRow, type EntityKind, type PowerKind } from './spawner';
+import { CHUNK_LENGTH, placeChunk } from './chunks';
+import { isPower, type EntityKind, type PowerKind } from './spawner';
 import { speedAt } from './speed';
 
 export type { PowerKind } from './spawner';
@@ -206,14 +206,22 @@ function pickPower(w: World): PowerKind {
 function spawn(w: World): void {
   while (w.nextRowAt < w.distance + SPAWN_AHEAD) {
     const difficulty = (speedAt(w.time) - SPEED_START) / (SPEED_MAX - SPEED_START);
-    const chance = w.time > POWER_START_AFTER && !w.power ? POWER_CHANCE : 0;
-    for (const item of makeRow(w.rng, difficulty, chance)) {
-      const kind: EntityKind = item.kind === 'power' ? pickPower(w) : item.kind;
-      const s = w.nextRowAt + item.offset;
-      const slot = w.entities.find((e) => !e.alive);
-      if (slot) Object.assign(slot, { kind, lane: item.lane, s, alive: true });
-      else w.entities.push({ kind, lane: item.lane, s, alive: true });
+    const powersOk = w.time > POWER_START_AFTER && !w.power;
+    for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
+      let kind: EntityKind;
+      if (item.kind === 'power') {
+        // Power slots only sometimes hold a power-up; otherwise a short coin line.
+        if (powersOk && w.rng() < POWER_CHANCE * 4) kind = pickPower(w);
+        else { for (let i = 0; i < 3; i++) add(w, 'coin', item.lane, item.s + i * 2.2); continue; }
+      } else kind = item.kind;
+      add(w, kind, item.lane, item.s);
     }
-    w.nextRowAt += ROW_SPACING_MIN + w.rng() * (ROW_SPACING_MAX - ROW_SPACING_MIN);
+    w.nextRowAt += CHUNK_LENGTH;
   }
+}
+
+function add(w: World, kind: EntityKind, lane: number, s: number): void {
+  const slot = w.entities.find((e) => !e.alive);
+  if (slot) Object.assign(slot, { kind, lane, s, alive: true });
+  else w.entities.push({ kind, lane, s, alive: true });
 }

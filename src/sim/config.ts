@@ -10,8 +10,8 @@ export const SPEED_TAU = 90; // s; ~95% of the way to the cap after 3 * TAU
 export const JUMP_VELOCITY = 9; // m/s
 export const GRAVITY = 22; // m/s²
 
-export const ROW_SPACING_MIN = 14; // m between obstacle rows
-export const ROW_SPACING_MAX = 22;
+
+
 export const SPAWN_AHEAD = 120; // m ahead of the car we keep filled
 export const DESPAWN_BEHIND = 10; // m behind the car we recycle
 
@@ -28,7 +28,7 @@ export const STUMBLE_SLOWDOWN = 0.4; // fraction of speed lost right after a cra
 export const CHASE_TIME = 6; // s the police stays close after a crash
 
 // Power-ups
-export const POWER_CHANCE = 0.08; // per row, in a free lane
+export const POWER_CHANCE = 0.08; // base rate; chunk power slots fill at 4x this
 export const POWER_START_AFTER = 12; // s into a run before power-ups appear
 export const LUDICROUS_TIME = 5;
 export const LUDICROUS_BOOST = 1.5;
