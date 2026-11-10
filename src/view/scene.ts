@@ -23,6 +23,7 @@ import { BustScene } from './bust';
 import { FanBoards } from './fanBoards';
 import { themeFor } from './fanThemes';
 import { Sideline } from './sideline';
+import { ScreenHits, type ScreenHitKind } from './screenHits';
 import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
@@ -214,6 +215,8 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
+    this.screenHits = new ScreenHits(this.camera);
+    this.scene.add(this.screenHits.group);
     this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.sideline.group);
     void document.fonts?.ready.then(() => this.fanBoards.refresh());
     this.scene.add(this.traffic.group);
@@ -246,6 +249,8 @@ export class GameView {
 
   honk(): void { this.honkBounce = 1; }
   bump(): void { this.shake = 0.35; }
+  /** A cone or longhorn was hit: it flies up and smacks into the screen (from the car's lane, just ahead). */
+  toScreen(kind: ScreenHitKind, x: number): void { this.screenHits.hit(kind, x, -1.8); }
   /** A run starts: lay a fresh random roadside (buildings and props). */
   newRun(): void { this.buildings.newRun(); this.scenery.newRun(); this.bust.end(); this.tumbleT = -1; }
   /**
@@ -520,6 +525,7 @@ export class GameView {
     this.powers.instanceMatrix.needsUpdate = true;
     if (this.powers.instanceColor) this.powers.instanceColor.needsUpdate = true;
 
+    this.screenHits.update(dt);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -539,6 +545,7 @@ export class GameView {
   private startLine = new StartLine();
   private fanBoards = new FanBoards();
   private sideline = new Sideline();
+  private screenHits!: ScreenHits;
   private driverFocus = false;
   private camBlend = 0;
   private focusBlend = 0;

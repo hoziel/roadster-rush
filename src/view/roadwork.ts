@@ -248,14 +248,14 @@ function spikeStripGeometry(): THREE.BufferGeometry {
   return g;
 }
 
-const LEG_TOP = 0.75; // m: where the legs meet the body
+export const LEG_TOP = 0.75; // m: where the legs meet the body
 
 /**
  * A stylized low-poly Texas longhorn, body along +x (head at +x): boxy tan/brown body, white face, very wide
  * curved horns. Split in two so one pair of legs can swing: `body` (with the other pair) and `legs`
  * (hanging from y = 0, placed at LEG_TOP).
  */
-function longhornGeometry(): { body: THREE.BufferGeometry; legs: THREE.BufferGeometry } {
+export function longhornGeometry(): { body: THREE.BufferGeometry; legs: THREE.BufferGeometry } {
   const TAN = '#c98a4b', BROWN = '#7a4a26', WHITE = '#f4ede0', HORN = '#efe2c0', TIP = '#3a2a1e', HOOF = '#2b2018';
   const b: THREE.BufferGeometry[] = [];
   b.push(part(new THREE.BoxGeometry(1.75, 0.72, 0.82), TAN, 0, 1.08, 0)); // barrel

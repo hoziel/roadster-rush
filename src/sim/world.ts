@@ -48,6 +48,7 @@ export type SimEvent =
   | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
   | 'police-stop' | 'roadwork' | 'longhorns' | 'highroad' // one coming up, ZONE_WARN ahead
   | 'moo' // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
+  | 'cone' // a cone was hit or smashed (comes with 'hit'/'smash'): the view throws it at the screen
   | 'sky' // reached the sky lanes
   | 'sky-hit' // flew into a sky obstacle: the hover ends and the car drops back (no battery lost)
   | 'bird-near' | 'drone-near' | 'heli-near'; // a sky obstacle SKY_NEAR ahead (for its sound)
@@ -358,10 +359,12 @@ export function step(w: World, dt: number): SimEvent[] {
     } else if (isShielded(w)) {
       knockAside(w, e);
       events.push(isTraffic(e.kind) || isProp(e.kind) ? 'boing' : 'smash');
+      if (e.kind === 'cone') events.push('cone');
       if (e.kind === 'longhorn') events.push('moo');
     } else {
       knockAside(w, e);
       if (e.kind === 'longhorn') events.push('moo');
+      if (e.kind === 'cone') events.push('cone');
       if (crash(w)) { events.push(w.caught ? 'caught' : 'crash'); break; }
       events.push('hit');
     }

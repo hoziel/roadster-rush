@@ -156,6 +156,7 @@ view.renderer.setAnimationLoop((now: number) => {
       switch (ev) {
         case 'coin': audio.coin(); break;
         case 'smash': audio.smash(); break;
+        case 'cone': view.toScreen('cone', world.x); setTimeout(() => audio.bonk(), 320); break;
         case 'boing': audio.boing(); break;
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
         case 'power': if (world.lastPower === 'ludicrous') audio.ludicrous(); else audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
@@ -171,7 +172,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'jump': audio.kickflip(); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'puncture': audio.puncture(); view.bump(); view.puncture(); hud.toast('Flat tyre!', '#ffb8d0'); break;
-        case 'moo': audio.moo(); break;
+        case 'moo': audio.moo(); view.toScreen('longhorn', world.x); setTimeout(() => audio.bonk(), 320); break;
         case 'police-stop': hud.toast('Police stop!', '#54bdeb'); break;
         case 'roadwork': hud.toast('Road work!', '#ff8a1a'); break;
         case 'longhorns': hud.toast('Longhorns crossing!', '#ffd23f'); break;
