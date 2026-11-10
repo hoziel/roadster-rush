@@ -8,6 +8,7 @@ import { Scenery } from './scenery';
 import { createSky } from './sky';
 import { dayPhase } from '../sim/daycycle';
 import { BatSwarm, coinRainLift } from './bats';
+import { Puffs } from './puffs';
 import { Buildings } from './buildings';
 import { DayNight } from './daynight';
 import { Landmarks } from './landmarks';
@@ -34,8 +35,12 @@ export const POWER_COLORS: Record<PowerKind, string> = {
 };
 
 /** Grey-box renderer: draws the sim state, owns nothing about the rules. */
-const FLIP_TIME = (2 * JUMP_VELOCITY) / GRAVITY * 0.92; // land the flip just before touchdown
-const FLIP_PIVOT = 0.5; // body centre height (m)
+// Kickflip (swipe up), after the real Roadster's thruster stunt: the car pops up level on a puff of gas,
+// rolls once along its length mid-air, and lands flat in another puff.
+const AIR_TIME = (2 * JUMP_VELOCITY) / GRAVITY;
+const ROLL_START = 0.12; // fraction of the airtime spent rising level before the roll
+const ROLL_END = 0.82; // roll finished, wheels down, before touchdown
+const FLIP_PIVOT = 0.5; // body centre height (m): roll around the middle so the roof never hits the road
 
 export class GameView {
   readonly renderer: THREE.WebGLRenderer;
@@ -61,7 +66,11 @@ export class GameView {
   private raycaster = new THREE.Raycaster();
   private scenery = new Scenery();
   private honkBounce = 0;
-  private flipT = -1; // seconds into a jump's front flip; -1 = not flipping
+  private flipT = -1; // seconds into a kickflip; -1 = not flipping
+  private flipDir = 1; // roll direction: toward the last lane change
+  private rollPuffed = false;
+  private prevX = 0; // car's sim x last frame (lean and roll direction)
+  private puffs = new Puffs();
   private shake = 0;
   private dayNight: DayNight;
   private nightLights = new NightLights();
@@ -131,7 +140,7 @@ export class GameView {
       coneMat: this.cones.material as THREE.MeshToonMaterial,
     });
     this.landmarks = new Landmarks(this.dayNight.silhouette);
-    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group);
+    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffs.mesh);
 
     window.addEventListener('resize', () => this.resize());
     // iOS can fire resize before the new size is known after rotating; visualViewport catches up.
@@ -160,19 +169,32 @@ export class GameView {
 
   render(w: World, dt: number, time: number): void {
     const car = this.car.group;
-    const lean = THREE.MathUtils.clamp((car.position.x - w.x) * 0.5, -0.25, 0.25);
-    // A normal jump (swipe up) does one front flip over the arc; hovering and landing from a hover don't.
-    if (w.y <= 0) this.flipT = -1;
-    else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) this.flipT = 0;
-    let flip = 0;
+    const lean = THREE.MathUtils.clamp((this.prevX - w.x) * 0.5, -0.25, 0.25);
+    if (Math.abs(this.prevX - w.x) > 0.001) this.flipDir = this.prevX > w.x ? 1 : -1;
+    this.prevX = w.x;
+    // A normal jump (swipe up) is a kickflip; hovering and landing from a hover aren't.
+    if (w.y <= 0) {
+      if (this.flipT >= 0) this.puffs.corners(w.x, 0, 0.5); // touchdown
+      this.flipT = -1;
+    } else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) {
+      this.flipT = 0;
+      this.rollPuffed = false;
+      this.puffs.corners(w.x, 0, 0.45); // lift-off blast
+    }
+    let roll = 0;
     if (this.flipT >= 0) {
       this.flipT += dt;
-      const p = Math.min(1, this.flipT / FLIP_TIME);
-      flip = -Math.PI * 2 * p * p * (3 - 2 * p); // smoothstep: wind up, spin, settle
+      const p = THREE.MathUtils.clamp((this.flipT / AIR_TIME - ROLL_START) / (ROLL_END - ROLL_START), 0, 1);
+      roll = this.flipDir * Math.PI * 2 * p * p * (3 - 2 * p);
+      if (p > 0 && !this.rollPuffed) {
+        // Side thrusters kick the roll off: puffs from the side that pushes up.
+        this.rollPuffed = true;
+        for (const cz of [-1, 0, 1]) this.puffs.emit(w.x + this.flipDir * 0.85, w.y + 0.3, cz, this.flipDir * 3, -2, 0, 0.3, 0.4);
+      }
     }
-    // Spin around the body's middle, not the wheels, so the roof never dips into the road.
-    car.position.set(w.x, w.y + FLIP_PIVOT * (1 - Math.cos(flip)), -FLIP_PIVOT * Math.sin(flip));
-    car.rotation.set(flip !== 0 ? flip : w.y > 0 ? -0.08 : 0, 0, lean);
+    car.position.set(w.x + FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
+    car.rotation.set(w.y > 0 && roll === 0 ? -0.06 : 0, 0, lean + roll);
+    this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     this.car.body.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
     // Blink during the post-crash grace period.
