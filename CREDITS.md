@@ -20,8 +20,8 @@ Every third-party asset, with source URL and license. CC-BY assets are also cred
 | **Texas State Capitol** | `assets-src/sketchfab-ccby/texas-state-capitol/` → `capitol.glb` (shape only, simplified) | **85 edgecroft** (bartdenny) | https://sketchfab.com/3d-models/texas-state-capitol-aa83cc3a4cdb439a91f5dbf22361b8ad | **CC-BY 4.0** (credit required). "This work is based on "Texas State Capitol" by 85 edgecroft licensed under CC-BY-4.0" |
 | City Kit Commercial: building-c, -e, -i, -l, -n, skyscraper-a, -e | `assets-src/kenney/city-kit-commercial/` | Kenney | https://kenney.nl/assets/city-kit-commercial | CC0 |
 | City Kit Suburban: building-type-d, -h (→ house-d, house-h) | `assets-src/kenney/city-kit-suburban/` | Kenney | https://kenney.nl/assets/city-kit-suburban | CC0 |
-| City Kit Roads: light-curved (→ street-light) | `assets-src/kenney/city-kit-roads/` | Kenney | https://kenney.nl/assets/city-kit-roads | CC0 |
-| Car Kit: traffic cars | `assets-src/kenney/car-kit/` | Kenney | https://kenney.nl/assets/car-kit | CC0 |
+| City Kit Roads: light-curved (→ street-light), construction-barrier, -fence, -cone, -light (construction zones) | `assets-src/kenney/city-kit-roads/` | Kenney | https://kenney.nl/assets/city-kit-roads | CC0 |
+| Car Kit: traffic cars, tractor-shovel (→ digger) | `assets-src/kenney/car-kit/` | Kenney | https://kenney.nl/assets/car-kit | CC0 |
 | Nature Kit: tree_oak, tree_palmTall, rock_tallA | `assets-src/kenney/nature-kit/` | Kenney | https://kenney.nl/assets/nature-kit | CC0 |
 
 ## Audio

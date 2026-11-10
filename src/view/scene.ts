@@ -17,6 +17,7 @@ import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
+import { HazardView } from './roadwork';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
@@ -30,6 +31,7 @@ const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 
 const C_BLACK = new THREE.Color('#000000');
 const CAR_SCALE = 0.9; // both roadsters: ~1.7 m wide in 2.5 m lanes
 const SIREN_HZ = 2.5; // police light-bar alternation
+const FLAT_TIME = 1.0; // s of flat-tyre wobble after a puncture
 
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',
@@ -85,6 +87,8 @@ export class GameView {
   private prevX = 0; // car's sideways position last frame (lean and roll direction); follows the ring in a tube
   private puffs = new Puffs();
   private shake = 0;
+  private flatT = 0; // s left of the flat-tyre wobble after a puncture
+  private hazards = new HazardView();
   private dayNight: DayNight;
   private nightLights = new NightLights();
   private landmarks: Landmarks;
@@ -162,6 +166,8 @@ export class GameView {
     this.puffFrame.position.y = TUBE_CY;
     this.scene.add(this.traffic.group);
     void this.traffic.load();
+    this.scene.add(this.hazards.group);
+    void this.hazards.load();
     this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffFrame, this.tunnel.group);
 
     window.addEventListener('resize', () => this.resize());
@@ -188,6 +194,13 @@ export class GameView {
 
   honk(): void { this.honkBounce = 1; }
   bump(): void { this.shake = 0.35; }
+  /** Drove over a spike strip: the car wobbles and sags on a flat tyre for a second, air hissing from the wheels. */
+  puncture(): void {
+    this.flatT = FLAT_TIME;
+    for (const cx of [-0.7, 0.7]) for (const cz of [-1.15, 1.15]) {
+      for (let n = 0; n < 6; n++) this.puffs.emit(this.prevX + cx, 0.25, cz, cx * 5, 1.2 + Math.random(), (Math.random() - 0.5) * 2, 0.3, 0.6);
+    }
+  }
 
   render(w: World, dt: number, time: number): void {
     const car = this.car.group;
@@ -238,6 +251,15 @@ export class GameView {
     this.puffFrame.rotation.z = ang;
     car.position.set(FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
     car.rotation.set(w.y > w.floor && roll === 0 ? -0.06 : 0, 0, lean + roll);
+    if (this.flatT > 0) {
+      // Flat tyre: sag onto the front-left wheel and wobble, easing off; a thin hiss of air keeps leaking.
+      this.flatT = Math.max(0, this.flatT - dt);
+      const k = this.flatT / FLAT_TIME;
+      car.position.y -= 0.12 * Math.min(1, k * 3);
+      car.rotation.z += (0.07 + Math.sin(this.flatT * 38) * 0.06) * k;
+      car.rotation.x += 0.05 * k;
+      if (Math.random() < k * 0.6) this.puffs.emit(px - 0.7, 0.2, -1.15, -2.5, 0.8, 0, 0.18, 0.4);
+    }
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     car.scale.set(CAR_SCALE, CAR_SCALE * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), CAR_SCALE);
@@ -311,6 +333,7 @@ export class GameView {
     this.batSwarm.update(w, dt, time);
     this.tunnel.update(w, this.dayNight.lights, time);
     this.traffic.update(w, this.dayNight.lights, time, !this.showcase);
+    this.hazards.update(w, this.dayNight.lights, time, !this.showcase);
 
     let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {

@@ -7,7 +7,10 @@ import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, slam, start, steer, step } from './sim/world';
+import {
+  POWER_TIME, createWorld, hover, jump, policeClose, queueConstruction, queueLonghorns, queuePoliceStop, queueSwarm, queueTunnel, score,
+  slam, start, steer, step,
+} from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
 import { HOVER_CHARGES_MAX } from './sim/config';
 
@@ -104,6 +107,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
 let last = performance.now();
 let acc = 0;
 let frames = 0, fpsTime = 0;
+let stampDraws = false; // debug go mode (headless shots): show draw calls every frame
 let airborne = false; // for the kickflip touchdown sound
 
 view.renderer.setAnimationLoop((now: number) => {
@@ -124,6 +128,11 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
         case 'jump': audio.kickflip(); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
+        case 'puncture': audio.puncture(); view.bump(); view.puncture(); hud.toast('Flat tyre!', '#ffb8d0'); break;
+        case 'moo': audio.moo(); break;
+        case 'police-stop': hud.toast('Police stop!', '#54bdeb'); break;
+        case 'roadwork': hud.toast('Road work!', '#ff8a1a'); break;
+        case 'longhorns': hud.toast('Longhorns crossing!', '#ffd23f'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
     }
@@ -139,6 +148,7 @@ view.renderer.setAnimationLoop((now: number) => {
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   view.render(world, dt, now / 1000);
+  if (stampDraws) { const r = view.renderer.info.render; hud.debug(`${r.calls} draws · ${r.triangles} tris`); }
 
   if (debug) {
     frames++; fpsTime += dt;
@@ -161,6 +171,32 @@ if (debug) {
     swarm: () => { world.dayOffset = offsetFor(world, 0.3); queueSwarm(world); },
     /** Lay a tube tunnel at the next chunk slot (~6 s ahead). */
     tunnel: () => queueTunnel(world),
+    /** Lay a police stop (parked police car + spike strip) at the next free chunk slot. */
+    policeStop: () => queuePoliceStop(world),
+    /** Lay a construction zone at the next free chunk slot. */
+    construction: () => queueConstruction(world),
+    /** Lay a longhorns crossing at the next free chunk slot. */
+    longhorns: () => queueLonghorns(world),
     give: (k: 'ludicrous' | 'autopilot' | 'hover') => { world.power = k; world.powerTime = POWER_TIME[k]; world.lastPower = k; hud.powerToast(k); },
   };
+  // Headless screenshots: ?debug&go=police|construction|longhorns[&wait=ms][&tod=0.6][&drive=m] starts a run after `wait`
+  // with that piece laid in the first chunk slot (40 m ahead).
+  const q = new URLSearchParams(location.search);
+  const go = q.get('go');
+  if (go) setTimeout(() => {
+    start(world);
+    hud.hideCard();
+    document.getElementById('card')?.style.setProperty('transition', 'none');
+    if (q.has('tod')) world.dayOffset = offsetFor(world, Number(q.get('tod')));
+    if (go === 'police') queuePoliceStop(world);
+    else if (go === 'construction') queueConstruction(world);
+    else if (go === 'longhorns') queueLonghorns(world);
+    // &drive=m: drive that far straight away (sim only) and freeze there, for a still shot.
+    const drive = Number(q.get('drive') ?? 0);
+    if (drive > 0) {
+      for (let i = 0; i < 100000 && world.distance < drive && world.phase === 'running'; i++) if (step(world, SIM_DT).includes('puncture')) view.puncture();
+      paused = true;
+    }
+    stampDraws = true; // the fps overlay needs real frame time; stamp the draw calls every frame for headless shots
+  }, Number(q.get('wait') ?? 2500));
 }

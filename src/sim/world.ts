@@ -552,7 +552,8 @@ export function queueConstruction(w: World): void { w.workQueued = true; }
  */
 function layZone(w: World, difficulty: number): boolean {
   const s0 = w.nextRowAt;
-  if (s0 < Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD) + ZONE_AFTER_BLOCK) return false;
+  const blockEnd = Math.max(w.tunnelAt >= 0 ? w.tunnelEnd : -Infinity, w.swarmAt >= 0 ? w.swarmEnd + SWARM_PAD : -Infinity);
+  if (s0 < blockEnd + ZONE_AFTER_BLOCK) return false;
   let pool: 'police' | 'construction' | 'longhorns';
   if (w.workRun > 0 && s0 !== w.workEnd) w.workRun = 0; // a tunnel or swarm came in between: that zone is over
   if (w.workRun > 0) { pool = 'construction'; w.workRun--; }

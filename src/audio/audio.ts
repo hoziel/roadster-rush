@@ -334,6 +334,60 @@ export class GameAudio {
     o.onended = () => { o.disconnect(); wob.disconnect(); depth.disconnect(); g.disconnect(); };
   }
 
+  /** Spike strip: a sharp pop, then air hissing out of the tyre (high-passed noise fading over ~0.9 s). */
+  puncture(): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    this.duck(0.4);
+    const len = Math.floor(ctx.sampleRate * 1.0);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    const pop = Math.floor(ctx.sampleRate * 0.025);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (i < pop ? 1 : 0.5);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(2500, t);
+    hp.frequency.exponentialRampToValueAtTime(5500, t + 0.9);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.04);
+    g.gain.setValueAtTime(0.12, t + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    src.connect(hp).connect(g).connect(this.sfxBus!);
+    src.start(t);
+    src.onended = () => { src.disconnect(); hp.disconnect(); g.disconnect(); };
+    this.tone([220, 147], 'triangle', 0.25, 0.08, t + 0.05); // a soft "uh-oh" under it
+  }
+
+  /** A longhorn hit or bumped: a short synthesized "moo" (a low sawtooth sliding up then down, through a vowel filter). */
+  moo(): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(105, t);
+    o.frequency.linearRampToValueAtTime(135, t + 0.18);
+    o.frequency.linearRampToValueAtTime(95, t + 0.75);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.Q.value = 6;
+    lp.frequency.setValueAtTime(350, t);
+    lp.frequency.linearRampToValueAtTime(900, t + 0.25);
+    lp.frequency.linearRampToValueAtTime(450, t + 0.75);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.3, t + 0.08);
+    g.gain.setValueAtTime(0.3, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+    o.connect(lp).connect(g).connect(this.sfxBus!);
+    o.start(t); o.stop(t + 0.82);
+    o.onended = () => { o.disconnect(); lp.disconnect(); g.disconnect(); };
+  }
+
   /** Supercharger battery picked up. */
   battery(): void {
     if (!this.playSample('battery', 0.5)) this.powerUp();

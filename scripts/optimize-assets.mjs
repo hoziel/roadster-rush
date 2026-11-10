@@ -55,6 +55,12 @@ const MANIFEST = {
   'truck-garbage': { src: 'assets-src/kenney/car-kit/garbage-truck.glb' },
   // Kenney City Kit Roads + Nature Kit (CC0): roadside props (src/view/scenery.ts).
   'street-light': { src: 'assets-src/kenney/city-kit-roads/light-curved.glb' },
+  // Construction zones (src/view/roadwork.ts): one textured mesh each, one instanced draw call per model.
+  'construction-barrier': { src: 'assets-src/kenney/city-kit-roads/construction-barrier.glb' },
+  'construction-fence': { src: 'assets-src/kenney/city-kit-roads/construction-fence.glb' },
+  'construction-cone': { src: 'assets-src/kenney/city-kit-roads/construction-cone.glb' },
+  'construction-light': { src: 'assets-src/kenney/city-kit-roads/construction-light.glb' },
+  digger: { src: 'assets-src/kenney/car-kit/tractor-shovel.glb' },
   'tree-oak': { src: 'assets-src/kenney/nature-kit/tree_oak.glb', bakeColors: true },
   'tree-palm': { src: 'assets-src/kenney/nature-kit/tree_palmTall.glb', bakeColors: true },
   'rock-tall': { src: 'assets-src/kenney/nature-kit/rock_tallA.glb', bakeColors: true },
