@@ -9,8 +9,9 @@
 }
 #ui.garage-open .top, #ui.garage-open .card, #ui.garage-open .credits-btn, #ui.garage-open .power { display: none; }
 
-.avatar { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--g-ink);
+.avatar { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--g-ink);
   font-weight: 700; box-shadow: inset 0 -4px 0 rgba(0,0,0,.18); flex: none; }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .g-coin { color: var(--g-coin); }
 
 /* On the start / finish cards */

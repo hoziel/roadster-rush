@@ -11,6 +11,7 @@ export interface PaintLook {
 }
 
 export const PAINTS: Record<PaintId, PaintLook> = {
+  white: { name: 'White', finish: 'solid', color: '#f3f1ec' },
   cherry: { name: 'Cherry', finish: 'solid', color: '#e8344e' },
   sky: { name: 'Sky', finish: 'solid', color: '#3f8cff' },
   sunny: { name: 'Sunny', finish: 'solid', color: '#ffc21f' },

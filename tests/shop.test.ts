@@ -58,7 +58,7 @@ describe('shop', () => {
     const s = normalizeShop({ wallet: -5, owned: ['paint:gold', 'bogus', 'paint:gold'], paint: 'silver', horn: 'nope', hat: true });
     expect(s.wallet).toBe(0);
     expect(s.owned).toEqual(['paint:gold']);
-    expect(s.paint).toBe('cherry'); // silver isn't owned
+    expect(s.paint).toBe('white'); // silver isn't owned
     expect(s.horn).toBe('classic');
     expect(s.hat).toBe(false); // hat isn't owned
     const ok = normalizeShop({ wallet: 42.7, owned: ['paint:gold', HAT_ID], paint: 'gold', hat: true, driver: 'b' });

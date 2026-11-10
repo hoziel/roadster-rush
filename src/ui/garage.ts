@@ -114,7 +114,11 @@ export class Garage {
     const act = t.dataset.act!, id = t.dataset.id ?? '';
     if (act === 'close') { this.close(); return; }
     if (act === 'tab') { this.tab = id as Tab; this.preview = null; }
-    else if (act === 'driver') this.save(setDriver(s, id));
+    else if (act === 'driver') {
+      // Each driver has their own car colour; picking them paints the car.
+      const paint = driverById(id).paint;
+      this.save(paint ? equip(setDriver(s, id), `paint:${paint}`) : setDriver(s, id));
+    }
     else if (act === 'nohat') { this.save(removeHat(s)); this.preview = null; }
     else if (act === 'item') {
       const item = id as ItemId;
