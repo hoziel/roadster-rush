@@ -67,6 +67,7 @@ export const HOVER_CHARGES_START = 1; // every run starts with one, so kids find
 export const AUTOPILOT_LOOKAHEAD = 22;
 
 // Sky lanes: hovering lifts the car above the rooftops onto three aerial lanes (src/sim/sky.ts).
+export const HOVER_BOOST = 1.25; // hovering flies a quarter faster than driving (noticeable, not Ludicrous)
 export const SKY_HEIGHT = 34; // m: higher than the tallest buildings
 export const SKY_RISE = 20; // m/s climbing up to the sky lanes (~1.7 s)
 export const SKY_DESCEND = 16; // m/s dropping back down when the hover ends (~2 s)

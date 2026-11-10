@@ -11,7 +11,7 @@ import {
   PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
   ZONE_WARN, LONGHORN_FIRST_AT, LONGHORN_GAP, LONGHORN_HIT_X,
   DECK_CLIMB, DECK_STEP, DECK_HEIGHT, DUCK_TIME, HIGHROAD_FIRST_AT, HIGHROAD_GAP, OVERHEAD_TOP, RAMP_LENGTH,
-  SKY_COIN_Y, SKY_DESCEND, SKY_GLIDE_FROM, SKY_END_TIME, SKY_HEIGHT, SKY_LAND_GRACE, SKY_NEAR, SKY_RISE, SKY_ROW_TIME, SKY_START_TIME,
+  HOVER_BOOST, SKY_COIN_Y, SKY_DESCEND, SKY_GLIDE_FROM, SKY_END_TIME, SKY_HEIGHT, SKY_LAND_GRACE, SKY_NEAR, SKY_RISE, SKY_ROW_TIME, SKY_START_TIME,
 } from './config';
 import { SKY_DEPTH, isSky, skyRow } from './sky';
 import { deckLength, deckOffset, deckSurface, isDeck, underOverhead, type DeckKind } from './highroad';
@@ -202,7 +202,7 @@ const skyClear = (w: World): boolean =>
 
 /** Lay the sky course for a hover starting now: rows of sky obstacles with coins, above the road. */
 function laySky(w: World): void {
-  const v = w.speed;
+  const v = w.speed * HOVER_BOOST; // the speed the sky lanes are flown at
   const gap = Math.max(16, v * SKY_ROW_TIME);
   const end = w.distance + v * (HOVER_TIME - SKY_END_TIME);
   for (let s = w.distance + v * SKY_START_TIME; s < end; s += gap) {
@@ -264,6 +264,7 @@ export function step(w: World, dt: number): SimEvent[] {
   let speed = speedAt(w.time);
   if (w.stumble > 0) speed *= 1 - STUMBLE_SLOWDOWN * (w.stumble / STUMBLE_TIME);
   if (w.power === 'ludicrous') speed *= LUDICROUS_BOOST;
+  if (w.power === 'hover') speed *= HOVER_BOOST;
   w.speed = speed;
   w.distance += speed * dt;
   if (!w.swarmSeen && w.swarmAt >= 0 && w.distance >= w.swarmAt) { w.swarmSeen = true; events.push('swarm'); }

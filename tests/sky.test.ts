@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BATTERIES, HOVER_TIME, SKY_HEIGHT } from '../src/sim/config';
+import { BATTERIES, HOVER_BOOST, HOVER_TIME, SKY_HEIGHT } from '../src/sim/config';
 import { isSky } from '../src/sim/sky';
 import { createWorld, hover, start, step, type Entity, type World } from '../src/sim/world';
 
@@ -69,6 +69,18 @@ describe('sky lanes', () => {
     expect(ev).toContain('coin');
     expect(w.y).toBe(0);
     expect(w.invuln).toBeGreaterThan(0); // still in the landing grace
+  });
+
+  it('hovering flies faster than driving, and back to normal after', () => {
+    const w = emptyRunning();
+    run(w, 0.1);
+    const base = w.speed;
+    hover(w);
+    for (const e of w.entities) e.alive = false; // nothing to fly into
+    run(w, 0.5);
+    expect(w.speed).toBeCloseTo(base * HOVER_BOOST, 1);
+    run(w, HOVER_TIME);
+    expect(w.speed).toBeCloseTo(base, 1);
   });
 
   it('ground coins are not collected from up in the sky', () => {
