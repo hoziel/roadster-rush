@@ -1,5 +1,7 @@
 # Player roadster — procedural object study
 
+**Current version: Revision 2 below. Revision 1 details are historical.**
+
 ## Revision 1 — November 9, 2026
 
 Ofir rejected the earlier #42 mockups, requested Roadster photo and thruster-stunt references, then explicitly requested a 3D object in the project's format. This study follows that direct instruction. It is not an approval of #42 or completion of the full #14 paint-variant brief (currently on hold pending style selection).
@@ -48,3 +50,20 @@ TypeScript strict check passed for both TS files using the installed compiler. B
 - https://www.youtube.com/watch?v=r5vsHHPVhJg
 
 References informed low nose/open-cockpit sports-car cues and the thruster animation concept; the model is an original stylized car per AGENTS.md, not an exact Tesla model.
+
+
+## Revision 2 — approved photo silhouette
+
+Ofir confirmed the specific front three-quarter photo shown in chat as the reference for the rebuild:
+https://images.autoexpress.co.uk/autoexpress/2026/10/New%20Tesla%20Roadster.jpg?w=1260&h=710&fit=crop&q=75&auto=format%2Ccompress&dpr=1
+Source gallery: https://www.autoexpress.co.uk/tesla/roadster/370689/new-tesla-roadster-revealed-2026-pictures
+
+The photo was opened and visually inspected before this revision. Revision 1 had used general descriptive cues without matching a specific photo; Ofir rejected its likeness. The previous broad reference claim should not be interpreted as a photo-matched model.
+
+Rebuilt the silhouette around a low wedge nose, continuous dark canopy, angular shoulder panels and enclosed wheels. Removed the separate fender rings, exposed seats and roll hoops. Added longitudinally tapered side skins with wheel cutouts, shoulder surfaces joining the canopy, broad aero wheel spokes, and slim paired lamps. This remains a simplified original interpretation without logos or exact reproduction. The closed canopy follows Ofir's confirmed reference and departs from the older open-top brief; Claude should reconcile that direction with driver visibility before integration.
+
+Current geometry: **3,264 triangles / 18 meshes / 6 shared materials**. Native Three.js/TypeScript, same CarParts-compatible API, four separate wheel groups, four downward thruster sockets. Default builder paint remains #e8344e; preview starts in silver #d7dbe2 for comparison with the photo. Canopy is now #202737. Removed the upholstery material; other trim, lamp and wheel colors are unchanged.
+
+Replaced front/side/back/three-quarter/gameplay PNGs with actual renders of Revision 2. `detail.png` is a tighter screenshot of the silver model; `red.png` shows the project's red paint. Gameplay image is 450×975. All images remain under 2 MB.
+
+Preview has a lower front three-quarter camera, updated paint cycle, and vapor that spreads along the ground. Strict TypeScript check passed. Visually inspected front, side, rear, three-quarter and gameplay views; exercised paint change and jump. Full-game integration/performance are still untested. CarStyle overlays/plate and honk transform concerns from Revision 1 still apply. The opaque canopy means an interior driver head will no longer be visible: resolve this in the asset review rather than silently cutting a hole into the chosen silhouette.

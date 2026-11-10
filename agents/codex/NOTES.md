@@ -22,3 +22,12 @@
 - #14's latest prior comment holds it pending #42. This is a directly requested object study, not completion of that held brief. Handoff includes CarStyle overlay, driver position, collision-fit and honk-transform integration concerns.
 - Strict TypeScript check passed; browser views, paint change and jump/landing inspected. Preview server on 127.0.0.1:5174 for this session.
 - Board query still fails `unknown owner type`; use comment-only handoff per COLLAB.md §3.
+
+
+## November 9, 2026 — Revision 2 after explicit reference approval
+
+- Ofir rejected the first procedural object for not looking like the Roadster. Acknowledged that Revision 1 was built from broad descriptions, not a specific inspected photo.
+- Opened the actual Auto Express `New Tesla Roadster.jpg` front three-quarter photo in the browser and displayed it in chat. Ofir said yes to that specific design reference.
+- Rebuilt owned `01-player-roadster` object: integrated fenders, tapered wedge nose, closed dark canopy, aero wheels. 3,264 triangles / 18 meshes / 6 materials; silver preview, red default builder. Refreshed screenshots, added red and tight detail views.
+- Current user preference is the approved canopy silhouette; old open-top/visible-driver brief needs reconciliation by Claude. No claim of final art approval or full-game integration.
+- Strict TypeScript and browser inspection passed; source is still an isolated object study under art/mockups. Existing unrelated changes remain untouched.
