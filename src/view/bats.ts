@@ -13,7 +13,7 @@ const BRIDGE_COLOR = '#8a7484';
 const BRIDGE_VISIBLE_AHEAD = 230; // m; show it from beyond the fog
 
 const BAT_COUNT = 70;
-const BAT_COLOR = '#7a4fc4';
+export const BAT_COLOR = '#7a4fc4';
 const BAT_OUTLINE = '#1c0f33'; // dark contour drawn behind each bat (Ofir: needs a stroke)
 const OUTLINE_WIDTH = 0.09; // m (bat units) the contour sticks out all round // friendly violet: the old near-black read as holes in the sky (Ofir: too dark)
 const BAT_TRIGGER = 85; // m from the bridge when the bats burst out
@@ -171,7 +171,7 @@ function inflate(g: THREE.BufferGeometry, w: number): THREE.BufferGeometry {
 }
 
 /** Low-poly bat: a small body and two wings in the XZ plane; the shader flaps |x| > 0. */
-function buildBat(): THREE.BufferGeometry {
+export function buildBat(): THREE.BufferGeometry {
   const wing = [
     // inner front, tip, scallop / inner front, scallop, inner back
     0.06, 0, 0.2, 0.78, 0, 0.06, 0.42, 0, -0.12,

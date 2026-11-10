@@ -5,6 +5,7 @@ import { driverById, fullUrl } from './ui/drivers';
 import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
 import { InstallNudge } from './ui/install';
+import { Splash } from './ui/splash';
 import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
@@ -25,6 +26,8 @@ const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn
 const world = createWorld();
 const view = new GameView(document.getElementById('game')!);
 view.patrol.onFlyby = (dir) => audio.patrolFlyby(dir);
+const splash = new Splash(document.getElementById('game')!);
+view.onSplash = (kind) => { splash.hit(kind); audio.splash(kind === 'mud'); };
 const audio = new GameAudio(storage.muted);
 const hud = new Hud(() => {
   storage.set({ muted: !storage.muted });
@@ -163,9 +166,16 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'battery': audio.battery(); hud.powerToast('supercharger'); break;
         case 'faster': audio.faster(); hud.toast('Faster!', '#ffd23f'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
-        case 'swarm': audio.bats(); hud.toast('Bat swarm!', '#ffd23f'); break;
+        case 'swarm':
+          audio.bats(); hud.toast('Bat swarm!', '#ffd23f');
+          // A bat or two splats on the screen, shakes itself off and flaps away.
+          for (const [ms, dx] of [[1400, -1.5], [2700, 1.5]]) setTimeout(() => { if (world.phase === 'running') { view.toScreen('bat', world.x + dx, 3); audio.bonk(); } }, ms);
+          break;
         case 'sky': audio.skyArrive(); hud.toast('Sky lanes!', '#8ff3ff'); break;
-        case 'sky-hit': audio.bonk(); hud.toast('Bonk! Back down', '#ffd23f'); break;
+        case 'sky-hit':
+          audio.bonk(); hud.toast('Bonk! Back down', '#ffd23f');
+          if (world.skyHitKind === 'bird' || world.skyHitKind === 'drone') view.toScreen(world.skyHitKind, world.x, world.y);
+          break;
         case 'bird-near': audio.birds(); break;
         case 'drone-near': audio.droneBuzz(); break;
         case 'heli-near': audio.heliChop(); break;

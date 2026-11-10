@@ -664,6 +664,12 @@ export class GameAudio {
     src.onended = () => { src.disconnect(); lp.disconnect(); chop.disconnect(); g.disconnect(); };
   }
 
+  /** Drove through a puddle: a wet whoosh (lower and thicker for mud). */
+  splash(mud = false): void {
+    this.whoosh(0.5, mud ? 500 : 1200, mud ? 180 : 3500, mud ? 0.3 : 0.24, 0, 0.6);
+    this.whoosh(0.35, mud ? 260 : 700, mud ? 120 : 400, 0.18, 0.06, 1.5);
+  }
+
   /** Kickflip: thruster ignition (low rumble + jet hiss), a rising zing, and a side-thruster puff as the roll starts. */
   kickflip(): void {
     this.whoosh(0.4, 110, 700, 0.55, 0, 0.8); // ignition rumble

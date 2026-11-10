@@ -34,7 +34,7 @@ function colored(parts: Colored[]): THREE.BufferGeometry {
 const box = (w: number, h: number, d: number, x: number, y: number, z: number) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
 
 /** A friendly quadcopter: dark body, four arms with grey rotor discs, red/green lights, a camera pod. ~1.7 m across. */
-function droneGeometry(): THREE.BufferGeometry {
+export function droneGeometry(): THREE.BufferGeometry {
   const parts: Colored[] = [[box(0.62, 0.2, 0.62, 0, 0, 0), '#2d3140'], [box(0.28, 0.16, 0.22, 0, -0.17, -0.18), '#1b1d26']];
   for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
     parts.push([box(0.09, 0.07, 0.95, 0, 0, 0).rotateY(Math.atan2(x, z)).translate(x * 0.3, 0.02, z * 0.3), '#3a3f52']);
@@ -42,6 +42,32 @@ function droneGeometry(): THREE.BufferGeometry {
     parts.push([box(0.08, 0.06, 0.08, x * 0.62, 0.05, z * 0.62), z < 0 ? '#ff3b4e' : '#3bff8a']);
   }
   return colored(parts);
+}
+
+/** Gull body (facing -z): white, orange beak, grey tail. */
+function birdBody(): THREE.BufferGeometry {
+  return colored([
+    [new THREE.SphereGeometry(0.22, 10, 8).scale(1, 0.85, 2.1), '#f7f5f0'],
+    [new THREE.SphereGeometry(0.15, 10, 8).translate(0, 0.08, -0.45), '#f7f5f0'],
+    [new THREE.ConeGeometry(0.06, 0.2, 6).rotateX(-Math.PI / 2).translate(0, 0.06, -0.66), '#ffb020'],
+    [box(0.36, 0.04, 0.22, 0, 0, 0.5), '#c8ccd4'],
+  ]);
+}
+
+/** One gull wing out to the side (-1 left, 1 right), dark tip. */
+function birdWing(side: number): THREE.BufferGeometry {
+  return colored([
+    [box(0.85, 0.04, 0.38, side * 0.43, 0, 0), '#eef0f3'],
+    [box(0.3, 0.045, 0.3, side * 0.95, 0, 0.04), '#3a3f52'],
+  ]);
+}
+
+/** A whole gull with its wings spread (for the screen hits). */
+export function birdGeometry(): THREE.BufferGeometry {
+  const parts = [birdBody(), birdWing(-1), birdWing(1)];
+  const g = mergeGeometries(parts)!;
+  parts.forEach((p) => p.dispose());
+  return g;
 }
 
 /** A cheerful news helicopter (facing -z): orange and cream cabin, dark glass, tail boom and fin, skids. ~6 m long. */
@@ -114,20 +140,10 @@ export class SkyLanes {
     for (let i = 0; i < CLOUDS; i++) { this.cloudPos.push(new THREE.Vector3()); this.cloudScale.push(1); this.placeCloud(i, -Math.random() * CLOUD_SPAN + 20); }
 
     // Birds: a white gull body, wings that flap (separate left/right meshes).
-    const body = colored([
-      [new THREE.SphereGeometry(0.22, 10, 8).scale(1, 0.85, 2.1), '#f7f5f0'],
-      [new THREE.SphereGeometry(0.15, 10, 8).translate(0, 0.08, -0.45), '#f7f5f0'],
-      [new THREE.ConeGeometry(0.06, 0.2, 6).rotateX(-Math.PI / 2).translate(0, 0.06, -0.66), '#ffb020'],
-      [box(0.36, 0.04, 0.22, 0, 0, 0.5), '#c8ccd4'],
-    ]);
     const vc = new THREE.MeshLambertMaterial({ vertexColors: true });
-    this.birdBody = inst(body, vc, MAX_BIRDS);
-    const wing = (side: number) => colored([
-      [box(0.85, 0.04, 0.38, side * 0.43, 0, 0), '#eef0f3'],
-      [box(0.3, 0.045, 0.3, side * 0.95, 0, 0.04), '#3a3f52'], // dark wingtips
-    ]);
-    this.wingL = inst(wing(-1), vc, MAX_BIRDS);
-    this.wingR = inst(wing(1), vc, MAX_BIRDS);
+    this.birdBody = inst(birdBody(), vc, MAX_BIRDS);
+    this.wingL = inst(birdWing(-1), vc, MAX_BIRDS);
+    this.wingR = inst(birdWing(1), vc, MAX_BIRDS);
     this.drones = inst(droneGeometry(), vc, MAX_DRONES);
     this.helis = inst(heliGeometry(), vc, MAX_HELIS);
     this.rotors = inst(

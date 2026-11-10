@@ -117,6 +117,7 @@ export interface World {
   overheadQueued: boolean; // make the next cone chunk one with an overhead beam (debug)
   skyEnd: number; // s where the current/last sky course ends (-Infinity: none yet)
   skyReached: boolean; // 'sky' event already sent for this hover
+  skyHitKind: string; // what the last 'sky-hit' flew into (bird, drone, heli), for the view
   zoneEnd: number; // s where the latest police stop, construction zone, crossing or high road ends (-Infinity: none yet)
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
@@ -136,7 +137,7 @@ const runState = () => ({
   policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
   workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
   herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false,
-  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity, skyEnd: -Infinity, skyReached: false,
+  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity, skyEnd: -Infinity, skyReached: false, skyHitKind: '',
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -325,6 +326,7 @@ export function step(w: World, dt: number): SimEvent[] {
       }
       if (!inSky(w) || Math.abs(rel) > SKY_DEPTH[e.kind] || !sideOverlap(w, e)) continue;
       e.alive = false;
+      w.skyHitKind = e.kind;
       events.push('sky-hit');
       leaveSky(w);
       w.power = null; w.powerTime = 0;
