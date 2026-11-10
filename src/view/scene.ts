@@ -60,6 +60,7 @@ export const POWER_COLORS: Record<PowerKind, string> = {
 // rolls once along its length mid-air, and lands flat in another puff.
 const AIR_TIME = (2 * JUMP_VELOCITY) / GRAVITY;
 const ROLL_START = 0.12; // fraction of the airtime spent rising level before the roll
+const FLIP_THRUST = 0.5; // fraction of the airtime the thrusters blast under the car
 const ROLL_END = 0.82; // roll finished, wheels down, before touchdown
 const FLIP_PIVOT = 0.5; // body centre height (m): roll around the middle so the roof never hits the road
 // Inside a tube tunnel the camera rides closer and lower, and rolls with the car around the ring.
@@ -105,6 +106,7 @@ export class GameView {
   readonly patrol = new PolicePatrol(this.puffs);
   private hoverJets = new HoverJets(this.puffs, CAR_SCALE);
   private policeJets = new HoverJets(this.puffs, CAR_SCALE);
+  private flipJets = new HoverJets(this.puffs, CAR_SCALE);
   private shake = 0;
   private flatT = 0; // s left of the flat-tyre wobble after a puncture
   private hazards = new HazardView();
@@ -252,11 +254,15 @@ export class GameView {
     } else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) {
       this.flipT = 0;
       this.rollPuffed = false;
-      this.puffs.corners(px, w.y, 0.45); // lift-off blast
+      this.puffs.corners(px, w.y, 0.7); // lift-off blast
+      this.puffs.corners(px, w.floor, 0.6);
     }
     let roll = 0;
     if (this.flipT >= 0) {
       this.flipT += dt;
+      // Thrust: the hover jets fire hard under the car while it climbs, fading out near the top.
+      const thrust = 1 - this.flipT / (AIR_TIME * FLIP_THRUST);
+      if (thrust > 0 && w.phase === 'running') this.flipJets.update(px, w.y, 0, w.speed, dt, time, 1.8 * thrust);
       const p = THREE.MathUtils.clamp((this.flipT / AIR_TIME - ROLL_START) / (ROLL_END - ROLL_START), 0, 1);
       roll = this.flipDir * Math.PI * 2 * p * p * (3 - 2 * p);
       if (p > 0 && !this.rollPuffed) {
