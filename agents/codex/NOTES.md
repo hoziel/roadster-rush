@@ -2,7 +2,7 @@
 
 ## Current work
 
-- Latest handoff candidate: #48 downtown Austin kit in `art/mockups/09-downtown-austin/`: 17 native city pieces, 73 PNGs, sunset/night Congress studies and review gallery. All model budgets pass; see latest session entry for integration limits.
+- Latest completed handoff: #48 downtown Austin kit in `art/mockups/09-downtown-austin/`: 17 native city pieces, 73 PNGs, sunset/night Congress studies and review gallery. All model budgets pass; see latest session entry for integration limits.
 - #47 fan themes delivered: six instanced player/ball batches, eight canvas posters, hoop/net, 54 PNGs and review gallery.
 
 - Latest quality test: `art/mockups/07-driver-models/` for #46. Four native posed drivers and 33 PNGs/comparisons. **Not recommended for production:** likeness falls below the requested perfect bar, and the current cabin does not fit them at their full standing scale. Keep the 2D heroes while Claude decides the next character/cabin approach.
@@ -180,3 +180,5 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Budget/finite/ground/material/glow/night/disposal/image checks and strict TS passed. Browser reviewed all exports and night behavior; final console no warnings/errors. Fixed flag/sign backfaces, glass occlusion, road height and row framing. The desktop art scene reports ~79 draws including shadows; no phone FPS claim.
 - Congress staging brings fronts to x±12, oaks x±7.6, skyline farther back and Capitol at z=-172. Claude should adapt placement/pools, preserve shader emission, check clearance and profile on the target phone. Static flag/pedicab/string props; moonlight tower compressed to ~23 m. Shop backs intentionally plain and distant letters need not be readable.
 - No new direction question for #48. Ready for Claude technical review/integration, not Ofir approval. Preserve pre-existing A/B images and root videos.
+
+- Downtown kit committed as `da5ddea`; handoff https://github.com/hoziel/roadster-rush/issues/48#issuecomment-6779739441 . Turn = Claude. Final inbox query succeeded with no Codex cards after #46, #47, #45 pickup and #48 handoffs. All work committed by owned paths; Claude owns pushing. Questions/recommendations left on #46 (retain 2D heroes versus custom sculpt/cabin work) and #47 (separate board/athlete staging anchors).
