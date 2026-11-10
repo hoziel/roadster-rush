@@ -5,6 +5,7 @@ import {
 } from '../sim/shop';
 import { DRIVERS, avatarHtml, driverById, type Driver } from './drivers';
 import './garage.css';
+import { ICON } from './icons';
 import { PAINTS, swatchCss, type PaintLook } from './paints';
 
 type Tab = 'driver' | 'paint' | 'horn' | 'hat';
@@ -35,7 +36,7 @@ export function lookOf(s: ShopState, preview: ItemId | null = null): GarageLook 
   return { paint: PAINTS[paint], driver: driverById(s.driver), hat };
 }
 
-const coin = (n: number) => `<span class="g-coin">●</span> ${n}`;
+const coin = (n: number) => `<i class="coin-ico"></i><span>${n.toLocaleString('en-US')}</span>`;
 // Keep garage taps away from the game canvas (a tap there starts a run).
 const swallow = (el: HTMLElement) => {
   for (const t of ['pointerdown', 'pointerup', 'touchstart'] as const) el.addEventListener(t, (e) => e.stopPropagation());
@@ -54,7 +55,7 @@ export class Garage {
     root.appendChild(this.el);
     swallow(this.el);
     this.el.addEventListener('click', (e) => this.onClick(e));
-    // Open buttons live on the start/finish cards (see cardHtml), so delegate from the UI root.
+    // Open buttons live on the start/finish cards (see buttonsHtml), so delegate from the UI root.
     root.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-garage-open]');
       if (btn) this.open((btn.dataset.garageOpen || undefined) as Tab | undefined);
@@ -64,16 +65,24 @@ export class Garage {
     });
   }
 
-  /** Wallet + big Garage button for the start and finish cards. */
-  cardHtml(): string {
-    return `<div class="g-cardrow">
-      <span class="g-wallet" data-wallet>${coin(this.deps.getShop().wallet)}</span>
-      <button class="g-open" data-garage-open>🚗 Garage</button>
-    </div>
-    <div class="g-cardrow">
-      <button class="g-quick" data-garage-open="driver">👤 Driver</button>
-      <button class="g-quick" data-sound-open>🔊 Sound</button>
+  /** Coin wallet chip for the start and finish cards (refreshed when the garage closes). */
+  walletHtml(): string {
+    return `<span class="m-chip g-wallet" data-wallet>${coin(this.deps.getShop().wallet)}</span>`;
+  }
+
+  /** Cream Garage / Drivers / Sound buttons for the start and finish cards. */
+  buttonsHtml(): string {
+    return `<div class="m-buttons">
+      <button class="m-btn" data-garage-open>${ICON.garage}<span>Garage</span></button>
+      <button class="m-btn m-driver" data-garage-open="driver"><span data-driver-avatar>${this.driverAvatar()}</span><span>Drivers</span></button>
+      <button class="m-btn" data-sound-open>${ICON.soundOn}<span>Sound</span></button>
     </div>`;
+  }
+
+  /** The chosen driver's picture for the start card's Drivers button (the helmet icon if there's no driver). */
+  private driverAvatar(): string {
+    const d = driverById(this.deps.getShop().driver);
+    return d ? avatarHtml(d, 44) : ICON.driver;
   }
 
   /** The chosen driver for the "Great drive!" card. */
@@ -101,6 +110,7 @@ export class Garage {
     this.deps.showLook(lookOf(this.deps.getShop()));
     this.deps.setOpen(false);
     for (const w of this.root.querySelectorAll<HTMLElement>('[data-wallet]')) w.innerHTML = coin(this.deps.getShop().wallet);
+    for (const a of this.root.querySelectorAll<HTMLElement>('[data-driver-avatar]')) a.innerHTML = this.driverAvatar();
   }
 
   private save(s: ShopState): void {
@@ -153,7 +163,7 @@ export class Garage {
       </div>
       <div class="g-panel">
         <div class="g-tabs">${tabs}</div>
-        <div class="g-grid">${this.tiles(s)}</div>
+        <div class="g-grid ${this.tab === 'driver' ? 'drivers' : ''}">${this.tiles(s)}</div>
         ${this.buyBar(s)}
       </div>`;
     this.el.querySelector('.g-grid')!.scrollTop = scroll;
@@ -161,7 +171,12 @@ export class Garage {
 
   private tiles(s: ShopState): string {
     if (this.tab === 'driver') {
-      return DRIVERS.map((d) => tile('driver', d.id, avatarHtml(d, 52), d.name, d.id === driverById(s.driver).id, '')).join('');
+      // Big side-by-side cards: a large picture, the name, a gold ring and check on the chosen one.
+      return DRIVERS.map((d) => {
+        const on = d.id === driverById(s.driver).id;
+        return `<button class="g-dcard ${on ? 'on' : ''}" data-act="driver" data-id="${d.id}">
+          ${avatarHtml(d, 132)}<span class="g-dname">${d.name}</span>${on ? '<span class="g-check">✓</span>' : ''}</button>`;
+      }).join('');
     }
     if (this.tab === 'paint') {
       return PAINT_IDS.map((p) => {

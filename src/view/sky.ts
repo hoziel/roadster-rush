@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
 // Gradient sky with stars, generated in code (nothing to download).
-// The colors are animated by daynight.ts; these are the sunset defaults.
+// The colors are animated by daynight.ts; these are the sunset defaults. Uniform colors are linear
+// (three's color management), so the shader converts to the output space to show the hex values as written.
 export function createSky(): THREE.Mesh {
   const material = new THREE.ShaderMaterial({
     side: THREE.BackSide,
@@ -35,6 +36,7 @@ export function createSky(): THREE.Mesh {
           c += step(0.992, r) * dot2 * smoothstep(0.08, 0.35, h) * stars;
         }
         gl_FragColor = vec4(c, 1.0);
+        #include <colorspace_fragment>
       }`,
   });
   return new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), material);
