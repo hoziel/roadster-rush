@@ -118,7 +118,8 @@ export class Hud {
     if (run !== this.lastRun) {
       this.lastRun = run;
       this.hornBtn.classList.toggle('show', w.phase === 'running');
-      this.el.kid.classList.toggle('show', w.phase === 'running' && w.kidMode);
+      // Kid mode is always on (forgiving rules); Ofir asked not to label it (Nov 10).
+      this.el.kid.classList.remove('show');
     }
     // Hover button: shown during a run, pips = banked charges, dim when empty, glowing while hovering.
     const hv = `${w.phase === 'running'}|${w.hoverCharges}|${w.power === 'hover'}`;
@@ -162,7 +163,7 @@ export class Hud {
    * Title screen. The big "Let's drive" button lets taps fall through to the game canvas, so it starts
    * the run exactly like tapping anywhere does. `wallet` and `buttons` come from the garage module.
    */
-  showReady(best: number, wallet = '', buttons = '', kidMode = true): void {
+  showReady(best: number, wallet = '', buttons = '', _kidMode = true): void {
     this.creditsBtn.classList.add('show');
     this.root.classList.add('menu');
     this.el.card.className = 'card show ready';
@@ -172,10 +173,9 @@ export class Hud {
         <div class="m-chips">${wallet}${best ? `<span class="m-chip best">${ICON.star}<span>Best ${fmt(best)}</span></span>` : ''}</div>
       </div>
       <div class="m-bottom">
-        <p class="m-hint">Swipe ← → to steer · ↑ to flip · 🛸 to hover</p>
+        <p class="m-hint">Swipe ← → to steer · ↑ to flip · ↓ to drop · 🛸 to hover</p>
         <div class="m-drive" aria-hidden="true">Let's drive ${ICON.play}</div>
         ${buttons}
-        ${kidMode ? '<div class="m-kid">Kid mode <i class="m-on"></i></div>' : ''}
       </div>`;
   }
 

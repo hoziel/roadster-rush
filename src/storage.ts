@@ -3,7 +3,7 @@ import { defaultShop, normalizeShop, type ShopState } from './sim/shop';
 // localStorage can throw (private mode, blocked storage): never let that break the game.
 const KEY = 'roadster-rush:v1';
 
-interface Saved { best: number; muted: boolean; music: boolean; sfx: boolean; shop: ShopState; musicReset?: boolean }
+interface Saved { best: number; muted: boolean; music: boolean; sfx: boolean; shop: ShopState; musicReset?: boolean; bestScaled?: boolean }
 
 function load(): Saved {
   try {
@@ -11,6 +11,8 @@ function load(): Saved {
     const s: Saved = { best: 0, muted: false, music: false, sfx: true, ...raw, shop: normalizeShop(raw.shop) };
     // Nov 10: music is off by default (Ofir found it annoying); turn it off once on existing saves too.
     if (!s.musicReset) { s.music = false; s.musicReset = true; }
+    // Scores were briefly 100x bigger (Nov 10, reverted): bring a best saved then back down.
+    if (s.bestScaled) { s.best = Math.round(s.best / 100); delete s.bestScaled; }
     return s;
   } catch {
     return { best: 0, muted: false, music: false, sfx: true, shop: defaultShop() };

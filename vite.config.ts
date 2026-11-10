@@ -9,8 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       // Offline after the first visit: precache the whole (small) build.
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,ttf,woff2,glb,ogg,mp3,m4a,json}'] },
-      pwaAssets: { config: true },
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,jpg,ttf,woff2,glb,ogg,mp3,m4a,json}'] },
       manifest: {
         name: 'Roadster Rush',
         short_name: 'Roadster',
@@ -21,6 +20,12 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: './',
         scope: './',
+        // Codex's hovering-roadster icon (art/mockups/05-app-icon).
+        icons: [
+          { src: 'icons/app-icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/app-icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/maskable-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
     }),
   ],
