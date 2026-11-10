@@ -106,3 +106,4 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Replaced all nine exports under the same filenames in `05-app-icon`; refreshed review HTML/screenshot, appended prompts and Revision 2 notes. All PNGs opaque, correctly sized and under 2 MB (largest 1.90 MB).
 - Browser-reviewed 64/48/32 px on light/dark and circular/rounded/strict-safe-circle crops. No installed-PWA test or game/public/config changes. #43 remains open with no comments at task start; hand off this revision to supersede grounded `f5d4114`.
 - Board inbox still fails `unknown owner type`; use issue comments per COLLAB.md §3. Pre-existing A/B image changes and root demo files untouched. No new questions.
+- Hover revision committed as `3e5ed0a` (not pushed); superseding handoff posted on #43: https://github.com/hoziel/roadster-rush/issues/43#issuecomment-6766342684 . Final inbox check failed again; cannot verify empty. Owned icon paths are clean after commit.
