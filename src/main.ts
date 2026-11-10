@@ -37,7 +37,7 @@ const garage = new Garage(document.getElementById('ui')!, {
   showLook: (look) => view.style.set(look),
   playHorn: (id) => { audio.unlock(); audio.honk(id); },
   setOpen: (open) => { view.showcase = open; },
-  pickDriver: (url) => view.setDriver(url),
+  pickDriver: (url, name) => view.setDriver(url, name),
   focusDriver: (on) => view.focusDriver(on),
 });
 const sound = new SoundPanel(document.getElementById('ui')!, {
@@ -48,7 +48,7 @@ const sound = new SoundPanel(document.getElementById('ui')!, {
 });
 audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
-view.setDriver(fullUrl(driverById(storage.shop.driver)));
+view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name);
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
@@ -172,6 +172,7 @@ view.renderer.setAnimationLoop((now: number) => {
   if (airborne && !inAir && running) audio.land();
   airborne = inAir;
   audio.motorUpdate(world.speed, running);
+  audio.hoverLoop(running && world.power === 'hover');
   audio.siren(running && policeClose(world), now / 1000);
   audio.ambientPolice(running && !policeClose(world));
   // One steady run track (no jarring switch to the climax track during Ludicrous).

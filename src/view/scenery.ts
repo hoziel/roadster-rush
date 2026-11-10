@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 const SPAN = 220; // m of roadside kept laid out ahead of the camera
+const BEHIND = 80; // m kept behind the car too, so the parked-car orbit looks down an endless road
 const NEAR_Z = 20; // where props leave the screen behind the camera
 const POOL_MARGIN = 2; // spare instances per prop on top of the most that can be live at once
 
@@ -83,7 +84,7 @@ export class Scenery {
     const unit = spec.height / Math.max(0.001, box.max.y - box.min.y);
     const lift = -box.min.y * unit;
     // Live props span SPAN plus up to one cell of jitter: at most count + 1 at once.
-    const capacity = spec.count + 1 + POOL_MARGIN;
+    const capacity = Math.ceil(spec.count * (SPAN + BEHIND) / SPAN) + 1 + POOL_MARGIN;
 
     const meshes: THREE.InstancedMesh[] = [];
     const baseMats: THREE.Matrix4[] = [];
@@ -111,7 +112,7 @@ export class Scenery {
   private reset(distance: number): void {
     for (const p of this.placed) {
       p.n = 0;
-      p.next = distance - Math.random() * p.cell;
+      p.next = distance - BEHIND - Math.random() * p.cell;
       p.side = Math.random() < 0.5 ? -1 : 1;
     }
   }
@@ -141,9 +142,9 @@ export class Scenery {
     this.lastDistance = distance;
 
     for (const p of this.placed) {
-      // Recycle props behind the camera (z beyond NEAR_Z), keeping the live ones packed.
+      // Recycle props well behind the camera (z beyond NEAR_Z + BEHIND), keeping the live ones packed.
       for (let i = p.n - 1; i >= 0; i--) {
-        if (p.a[i] >= distance) continue;
+        if (p.a[i] >= distance - BEHIND) continue;
         const last = --p.n;
         if (i !== last) { p.a[i] = p.a[last]; p.x[i] = p.x[last]; p.rotY[i] = p.rotY[last]; p.scale[i] = p.scale[last]; }
       }

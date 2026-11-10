@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { laneX, type World } from '../sim/world';
 import { loadModel, modelGeometry } from './models';
+import { buildCybercab, buildWaymo } from './robotaxis';
 
 // Traffic: Kenney Car Kit models (CC0), one InstancedMesh per model (one draw call each), plus one more for
 // all the tail lights, which glow at night. A car knocked aside by a crash or a shield gets a "boing":
@@ -58,21 +59,28 @@ export class TrafficView {
       const { geometry, material } = modelGeometry(r.value);
       geometry.rotateY(Math.PI); // the kit's cars face +z; traffic drives away from the camera, toward -z
       geometry.scale(spec.scale * (spec.widthScale ?? 1), spec.scale, spec.scale);
-      geometry.computeBoundingBox();
-      const box = geometry.boundingBox!;
       const map = (material as THREE.MeshStandardMaterial).map ?? null;
       material.dispose();
-      const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshLambertMaterial({ map }), POOL);
-      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      mesh.frustumCulled = false;
-      mesh.count = 0;
-      const h = box.max.y - box.min.y;
-      const loaded = { mesh, spec, rear: box.max.z + 0.02, lightY: h * (spec.kind === 'car' ? 0.42 : 0.3), lightX: box.max.x * 0.72 };
-      this.models.push(loaded);
-      this.byKind[spec.kind].push(loaded);
-      this.group.add(mesh);
+      this.add(geometry, new THREE.MeshLambertMaterial({ map }), spec);
     });
+    // Austin's robotaxis, built in code (vertex colours): they join the car rotation.
+    this.add(buildCybercab(), new THREE.MeshLambertMaterial({ vertexColors: true }), { file: '', kind: 'car', scale: 1 });
+    this.add(buildWaymo(), new THREE.MeshLambertMaterial({ vertexColors: true }), { file: '', kind: 'car', scale: 1 });
     this.counts = this.models.map(() => 0);
+  }
+
+  private add(geometry: THREE.BufferGeometry, material: THREE.Material, spec: ModelSpec): void {
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox!;
+    const mesh = new THREE.InstancedMesh(geometry, material, POOL);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    mesh.count = 0;
+    const h = box.max.y - box.min.y;
+    const loaded = { mesh, spec, rear: box.max.z + 0.02, lightY: h * (spec.kind === 'car' ? 0.42 : 0.3), lightX: box.max.x * 0.72 };
+    this.models.push(loaded);
+    this.byKind[spec.kind].push(loaded);
+    this.group.add(mesh);
   }
 
   /** Draw every live car and truck; `lights` 0..1 is how dark it is (tail lights glow). */

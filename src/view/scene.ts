@@ -17,19 +17,18 @@ import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
-import { DriverBillboard } from './billboard';
+import { StartLine } from './startline';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
 const MAX_POWERS = 8;
-const ROAD_LENGTH = 220;
+const HOVER_PUFFS = 150; // jet + spray pairs per second while hovering
+const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from the start-screen orbit)
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
-// The chosen driver's billboard stands at the start line, right of the road, a few metres ahead of the parked car.
-const BILLBOARD = { x: 5.8, z: -14, rotY: -0.3, scale: 2.1, hideZ: 26 };
 // Garage Driver tab: behind-left of the car, looking past its open driver's door at the billboard.
 const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.3, lookY: 0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
 const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
@@ -84,6 +83,8 @@ export class GameView {
   private policeZ = POLICE_FAR;
   private policeX = 0;
   private hoverPad: THREE.Mesh;
+  private hoverRings: THREE.Mesh[] = [];
+  private hoverAcc = 0; // hover puffs owed (emitted at HOVER_PUFFS per second)
   private coins: THREE.InstancedMesh;
   private cones: THREE.InstancedMesh;
   private powers: THREE.InstancedMesh;
@@ -134,14 +135,14 @@ export class GameView {
     this.laneTex.repeat.set(1, ROAD_LENGTH / 8);
     const road = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, ROAD_LENGTH), new THREE.MeshLambertMaterial({ map: this.laneTex }));
     road.rotation.x = -Math.PI / 2;
-    road.position.z = -ROAD_LENGTH / 2 + 25;
+    road.position.z = -ROAD_LENGTH / 2 + 125;
     this.scene.add(road);
 
     this.sideTex = makeSideTexture();
     this.sideTex.repeat.set(20, ROAD_LENGTH / 10);
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, ROAD_LENGTH), new THREE.MeshLambertMaterial({ map: this.sideTex }));
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 25);
+    ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 125);
     this.scene.add(ground);
 
     this.car = buildRoadster('#e8344e', { liveDoors: true });
@@ -156,9 +157,15 @@ export class GameView {
 
     this.hoverPad = new THREE.Mesh(
       new THREE.CylinderGeometry(1.1, 1.3, 0.12, 24),
-      new THREE.MeshBasicMaterial({ color: POWER_COLORS.hover, transparent: true, opacity: 0.75 }),
+      new THREE.MeshBasicMaterial({ color: POWER_COLORS.hover, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
     this.hoverPad.visible = false;
+    const ringGeo = new THREE.RingGeometry(0.9, 1.1, 40).rotateX(-Math.PI / 2).translate(0, 0.07, 0);
+    for (let i = 0; i < 2; i++) {
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#e6dcff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      this.hoverRings.push(ring);
+      this.hoverPad.add(ring);
+    }
     this.car.group.add(this.hoverPad);
 
     const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 20).rotateX(Math.PI / 2);
@@ -181,9 +188,7 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
-    this.billboard.group.rotation.y = BILLBOARD.rotY;
-    this.billboard.group.scale.setScalar(BILLBOARD.scale);
-    this.scene.add(this.billboard.group);
+    this.scene.add(this.startLine.group);
     this.scene.add(this.traffic.group);
     void this.traffic.load();
     this.scene.add(this.hazards.group, this.highroad.group);
@@ -285,6 +290,18 @@ export class GameView {
       car.rotation.x += 0.05 * k;
       if (Math.random() < k * 0.6) this.puffs.emit(px - 0.7, 0.2, -1.15, -2.5, 0.8, 0, 0.18, 0.4);
     }
+    if (w.power === 'hover' && w.phase === 'running') {
+      // Hover: four air jets blast down from under the car and a skirt of spray rolls out over the road.
+      car.rotation.z += Math.sin(time * 3.1) * 0.035;
+      car.rotation.x += Math.sin(time * 2.3) * 0.025;
+      this.hoverAcc += dt * HOVER_PUFFS;
+      for (; this.hoverAcc >= 1; this.hoverAcc--) {
+        const cx = Math.random() < 0.5 ? -0.55 : 0.55, cz = Math.random() < 0.5 ? -1.1 : 1.1;
+        this.puffs.emit(px + cx, w.y - 0.05, cz, cx * 2, -9, 0, 0.22, 0.25); // jet
+        const a = Math.random() * Math.PI * 2, sp = 5 + Math.random() * 4;
+        this.puffs.emit(px + cx, 0.15, cz, Math.cos(a) * sp, 0.6, Math.sin(a) * sp * 0.6, 0.6, 0.75); // spray
+      }
+    } else this.hoverAcc = 0;
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     // Ducking (swipe down): squash flat and a little wider, then pop back up.
@@ -300,7 +317,14 @@ export class GameView {
     else this.car.paint.emissive.copy(C_BLACK);
     this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : rest.glowIntensity ?? 0;
     this.hoverPad.visible = w.power === 'hover';
-    this.hoverPad.position.y = -w.y + 0.08 + Math.sin(time * 6) * 0.05;
+    this.hoverPad.position.y = -w.y + 0.08;
+    // Glow on the road under the car, with two shock rings rolling outward.
+    (this.hoverPad.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(time * 9) * 0.1;
+    this.hoverRings.forEach((r, i) => {
+      const t = (time * 1.6 + i * 0.5) % 1;
+      r.scale.setScalar(0.8 + t * 2.6);
+      (r.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - t);
+    });
 
     // Police: slides in close after a crash, drops back out of view otherwise.
     const targetZ = policeClose(w) && w.phase === 'running' ? POLICE_CLOSE : POLICE_FAR;
@@ -371,10 +395,8 @@ export class GameView {
     this.doorR += (wantR - this.doorR) * Math.min(1, dt * 2.5);
     if (!parked) this.doorsOpen = false;
     this.car.setDoorOpen(smooth(this.doorL), smooth(this.doorR));
-    // The billboard is part of the road: it stays at the start line and the car drives past it.
-    const bz = BILLBOARD.z + w.distance;
-    this.billboard.group.position.set(BILLBOARD.x, 0, bz);
-    this.billboard.group.visible = this.hasDriver && bz < BILLBOARD.hideZ;
+    // The start line (billboards, crowd, parked police) is part of the road: the car drives past it.
+    this.startLine.update(w.distance, time);
     for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
     // Widen the view as speed builds (more road rushing past the edges reads as faster), plus a kick for Ludicrous.
     const speedK = w.phase === 'running' ? THREE.MathUtils.clamp((w.speed - SPEED_START) / (SPEED_MAX - SPEED_START), 0, 1.5) : 0;
@@ -438,12 +460,11 @@ export class GameView {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /** The chosen driver's picture on the start-line billboard ('' hides it). */
-  setDriver(url: string): void { this.hasDriver = !!url; this.billboard.show(url || null); }
+  /** The chosen driver: picture on the start-line billboards, name on the fans' signs ('' hides the billboards). */
+  setDriver(url: string, name = ''): void { this.startLine.setDriver(url, name); }
   /** Garage Driver tab: frame the car (driver's door open) in front of the billboard. */
   focusDriver(on: boolean): void { this.driverFocus = on; }
-  private billboard = new DriverBillboard();
-  private hasDriver = false;
+  private startLine = new StartLine();
   private driverFocus = false;
   private camBlend = 0;
   private focusBlend = 0;

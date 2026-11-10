@@ -27,7 +27,7 @@ export interface GarageDeps {
   /** Garage opened/closed: turntable camera on/off. */
   setOpen(open: boolean): void;
   /** The chosen driver's full picture for the start-line billboard. */
-  pickDriver(url: string): void;
+  pickDriver(url: string, name: string): void;
   /** Driver tab shown (true) or not: the 3D view frames the car and billboard. */
   focusDriver(on: boolean): void;
 }
@@ -140,7 +140,7 @@ export class Garage {
         c.querySelector('.g-check')?.remove();
         if (on) c.insertAdjacentHTML('beforeend', '<span class="g-check">✓</span>');
       }
-      this.deps.pickDriver(fullUrl(driverById(id)));
+      this.deps.pickDriver(fullUrl(driverById(id)), driverById(id).name);
       this.deps.showLook(lookOf(this.deps.getShop(), this.preview));
       return;
     }

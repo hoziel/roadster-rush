@@ -7,6 +7,7 @@ import { loadModel, modelGeometry } from './models';
 // Their white walls take a per-building color from the warm Austin palette, and the blue window
 // panes light up at night.
 const SPAN = 220; // m of roadside kept laid out ahead of the camera
+const BEHIND = 80; // m kept behind the car too, so the parked-car orbit looks down an endless road
 const NEAR_Z = 20; // where a building leaves the screen behind the camera
 const FRONT_X = 18; // m from the road centre to the shop fronts (behind cacti, poles, signs)
 const RISE_FROM_Z = -165; // far end: buildings grow out of the haze here...
@@ -104,7 +105,7 @@ export class Buildings {
 
     this.totalWeight = models.reduce((s, m) => s + m.variant.weight, 0);
     const maxWidth = Math.max(...models.map((m) => m.width)) * JITTER[1];
-    const live = SPAN + 2 * maxWidth; // road one side's live buildings can cover at once
+    const live = SPAN + BEHIND + 2 * maxWidth; // road one side's live buildings can cover at once
     for (const model of models) {
       // Twins never stand side by side, so a model is at most every other building on a side.
       const others = models.filter((o) => o !== model);
@@ -166,7 +167,7 @@ export class Buildings {
   private reset(distance: number): void {
     for (const pool of this.pools) pool.n = 0;
     for (const side of this.sides) {
-      side.frontier = distance + (side.dir < 0 ? 3 : 9); // stagger the two sides
+      side.frontier = distance - BEHIND + (side.dir < 0 ? 3 : 9); // stagger the two sides
       side.prev = -1;
     }
   }
@@ -229,7 +230,7 @@ export class Buildings {
     // Recycle buildings that have passed behind the camera (z beyond NEAR_Z).
     for (const pool of this.pools) {
       for (let i = pool.n - 1; i >= 0; i--) {
-        if (pool.a[i] < distance) {
+        if (pool.a[i] < distance - BEHIND) {
           pool.n--;
           if (i !== pool.n) this.move(pool, pool.n, i);
         }

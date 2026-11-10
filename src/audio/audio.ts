@@ -520,6 +520,58 @@ export class GameAudio {
     o.start(t); o.stop(t + 0.36); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
+  /**
+   * While hovering: a steady cushion of air. Two noise bands (a deep rumble and a breathy hiss) whose
+   * filters drift on slow LFOs so the jets "breathe", plus a soft low hum. Fades in/out; quiet under the music.
+   */
+  hoverLoop(on: boolean): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx, now = ctx.currentTime;
+    if (on && !this.hoverNodes) {
+      if (!this.noise) this.whoosh(0.01, 500, 600, 0.0001); // builds the noise buffer
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(0.0001, now);
+      out.gain.exponentialRampToValueAtTime(1, now + 0.35);
+      out.connect(this.sfxBus!);
+      const nodes: AudioNode[] = [out];
+      const stops: AudioScheduledSourceNode[] = [];
+      const band = (freq: number, q: number, vol: number, lfoHz: number, lfoDepth: number) => {
+        const src = ctx.createBufferSource();
+        src.buffer = this.noise!; src.loop = true;
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+        const lfo = ctx.createOscillator(), depth = ctx.createGain();
+        lfo.frequency.value = lfoHz; depth.gain.value = lfoDepth;
+        lfo.connect(depth).connect(bp.frequency);
+        const g = ctx.createGain(); g.gain.value = vol;
+        src.connect(bp).connect(g).connect(out);
+        src.start(now, Math.random()); lfo.start(now);
+        nodes.push(bp, depth, g); stops.push(src, lfo);
+      };
+      band(220, 0.9, 0.5, 0.7, 60); // rumble of air on the road
+      band(1800, 0.6, 0.16, 1.3, 500); // hiss of the jets
+      const hum = ctx.createOscillator(), hg = ctx.createGain();
+      hum.type = 'sine'; hum.frequency.value = 82; hg.gain.value = 0.05;
+      const trem = ctx.createOscillator(), tg = ctx.createGain();
+      trem.frequency.value = 5; tg.gain.value = 3; // gentle warble
+      trem.connect(tg).connect(hum.frequency);
+      hum.connect(hg).connect(out);
+      hum.start(now); trem.start(now);
+      nodes.push(hg, tg); stops.push(hum, trem);
+      this.hoverNodes = { out, nodes, stops };
+    } else if (!on && this.hoverNodes) {
+      const { out, nodes, stops } = this.hoverNodes;
+      this.hoverNodes = undefined;
+      out.gain.cancelScheduledValues(now);
+      out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now);
+      out.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      for (const n of stops) n.stop(now + 0.55);
+      stops[0].onended = () => { for (const n of [...stops, ...nodes]) n.disconnect(); };
+      this.whoosh(0.5, 1400, 300, 0.2); // air lets go as the car settles
+    }
+  }
+  private hoverNodes?: { out: GainNode; nodes: AudioNode[]; stops: AudioScheduledSourceNode[] };
+
   /** Kickflip: thruster ignition (low rumble + jet hiss), a rising zing, and a side-thruster puff as the roll starts. */
   kickflip(): void {
     this.whoosh(0.4, 110, 700, 0.55, 0, 0.8); // ignition rumble

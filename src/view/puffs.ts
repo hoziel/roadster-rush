@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX = 240;
+const MAX = 400; // enough for the hover's steady jets plus a kickflip blast
 
 /**
  * Thruster vapor for the kickflip and landings: a pooled, single-draw-call cloud of soft round billboards
