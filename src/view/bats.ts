@@ -13,7 +13,9 @@ const BRIDGE_COLOR = '#8a7484';
 const BRIDGE_VISIBLE_AHEAD = 230; // m; show it from beyond the fog
 
 const BAT_COUNT = 70;
-const BAT_COLOR = '#7a4fc4'; // friendly violet: the old near-black read as holes in the sky (Ofir: too dark)
+const BAT_COLOR = '#7a4fc4';
+const BAT_OUTLINE = '#1c0f33'; // dark contour drawn behind each bat (Ofir: needs a stroke)
+const OUTLINE_WIDTH = 0.09; // m (bat units) the contour sticks out all round // friendly violet: the old near-black read as holes in the sky (Ofir: too dark)
 const BAT_TRIGGER = 85; // m from the bridge when the bats burst out
 const BAT_TIME = 7; // s the swarm lasts
 const BAT_STAGGER = 1.6; // s spread of take-off times
@@ -40,6 +42,7 @@ export class BatSwarm {
   readonly group = new THREE.Group();
   private bridge: THREE.Mesh;
   private bats: THREE.InstancedMesh;
+  private outline: THREE.InstancedMesh;
   private time = { value: 0 };
   private dummy = new THREE.Object3D();
   private burstFor = -1; // swarmAt the current burst belongs to
@@ -58,8 +61,9 @@ export class BatSwarm {
     this.bridge.visible = false;
     this.group.add(this.bridge);
 
-    const mat = new THREE.MeshBasicMaterial({ color: BAT_COLOR, side: THREE.DoubleSide, fog: false });
-    mat.onBeforeCompile = (shader) => {
+    const flapMat = (color: string, outline: boolean): THREE.MeshBasicMaterial => {
+      const m = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, fog: false, depthWrite: !outline });
+      m.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = this.time;
       shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
         '#include <begin_vertex>',
@@ -70,12 +74,22 @@ export class BatSwarm {
         transformed.x = sign(position.x) * wingR * cos(flap);
         transformed.y = position.y + wingR * sin(flap);`,
       );
+      };
+      m.customProgramCacheKey = () => (outline ? 'bat-outline' : 'bat');
+      return m;
     };
-    this.bats = new THREE.InstancedMesh(buildBat(), mat, BAT_COUNT);
+    this.bats = new THREE.InstancedMesh(buildBat(), flapMat(BAT_COLOR, false), BAT_COUNT);
     this.bats.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.bats.frustumCulled = false;
     this.bats.count = 0;
-    this.group.add(this.bats);
+    this.bats.renderOrder = 2;
+    // Contour: the same bats, a bit bigger and dark, drawn first without depth so each bat sits on its outline.
+    this.outline = new THREE.InstancedMesh(inflate(buildBat(), OUTLINE_WIDTH), flapMat(BAT_OUTLINE, true), BAT_COUNT);
+    this.outline.instanceMatrix = this.bats.instanceMatrix; // shares the matrices: no extra per-frame work
+    this.outline.frustumCulled = false;
+    this.outline.count = 0;
+    this.outline.renderOrder = 1;
+    this.group.add(this.outline, this.bats);
 
     for (let i = 0; i < BAT_COUNT; i++) {
       this.x0[i] = (Math.random() * 2 - 1) * (ROAD_HALF + 1);
@@ -101,9 +115,9 @@ export class BatSwarm {
       this.burstT = 0;
     }
     if (w.distance < 1) { this.burstT = -1; this.burstFor = -1; } // new run
-    if (this.burstT < 0) { this.bats.count = 0; return; }
+    if (this.burstT < 0) { this.bats.count = this.outline.count = 0; return; }
     if (w.phase === 'running') this.burstT += dt;
-    if (this.burstT > BAT_TIME + BAT_STAGGER) { this.burstT = -1; this.bats.count = 0; return; }
+    if (this.burstT > BAT_TIME + BAT_STAGGER) { this.burstT = -1; this.bats.count = this.outline.count = 0; return; }
 
     let n = 0;
     for (let i = 0; i < BAT_COUNT; i++) {
@@ -120,7 +134,7 @@ export class BatSwarm {
       this.dummy.updateMatrix();
       this.bats.setMatrixAt(n++, this.dummy.matrix);
     }
-    this.bats.count = n;
+    this.bats.count = this.outline.count = n;
     this.bats.instanceMatrix.needsUpdate = true;
   }
 }
@@ -142,6 +156,17 @@ function buildBridge(): THREE.BufferGeometry {
   }
   const g = mergeGeometries(parts);
   for (const p of parts) p.dispose();
+  return g;
+}
+
+/** Push every vertex outward (in the wing plane, away from the body centre) by a fixed width: an even contour. */
+function inflate(g: THREE.BufferGeometry, w: number): THREE.BufferGeometry {
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), len = Math.hypot(x, z) || 1;
+    p.setXYZ(i, x + (x / len) * w, p.getY(i), z + (z / len) * w);
+  }
+  p.needsUpdate = true;
   return g;
 }
 
