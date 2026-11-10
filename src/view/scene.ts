@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, TUNNEL_RADIUS } from '../sim/config';
+import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SPEED_START, TUNNEL_RADIUS } from '../sim/config';
 import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, policeClose, type World } from '../sim/world';
@@ -281,7 +281,9 @@ export class GameView {
     if (this.showcase) { this.camera.up.set(0, 1, 0); this.turntable(w.x, time); }
     else if (this.camera.view) this.camera.clearViewOffset();
     for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
-    const fov = this.baseFov + (w.power === 'ludicrous' ? 10 : 0);
+    // Widen the view as speed builds (more road rushing past the edges reads as faster), plus a kick for Ludicrous.
+    const speedK = w.phase === 'running' ? THREE.MathUtils.clamp((w.speed - SPEED_START) / (SPEED_MAX - SPEED_START), 0, 1.5) : 0;
+    const fov = this.baseFov + speedK * 7 + (w.power === 'ludicrous' ? 6 : 0);
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov += (fov - this.camera.fov) * Math.min(1, dt * 4);
       this.camera.updateProjectionMatrix();

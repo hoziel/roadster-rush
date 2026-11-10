@@ -1,14 +1,14 @@
 // All tunable numbers for the rules live here.
 export const LANE_COUNT = 3;
 export const LANE_WIDTH = 2.5; // m between lane centres
-export const LANE_CHANGE_SPEED = 16; // m/s sideways
+export const LANE_CHANGE_SPEED = 22; // m/s sideways (one lane in ~0.11 s: snappy like Subway Surfers)
 
-export const SPEED_START = 12; // m/s
-export const SPEED_MAX = 28; // m/s, the kid-playable cap (tune after playtest)
-export const SPEED_TAU = 90; // s; ~95% of the way to the cap after 3 * TAU
+export const SPEED_START = 18; // m/s (was 12: felt slow next to Subway Surfers, which starts at ~half its top speed)
+export const SPEED_MAX = 36; // m/s (~130 km/h), the cap; Subway Surfers' top is estimated ~150 km/h
+export const SPEED_TAU = 55; // s; ~95% of the way to the cap after 3 * TAU (~2.75 min)
 
-export const JUMP_VELOCITY = 9; // m/s
-export const GRAVITY = 22; // m/s²
+export const JUMP_VELOCITY = 10; // m/s (snappier arc: 0.71 s airtime, 1.8 m peak)
+export const GRAVITY = 28; // m/s²
 
 
 
