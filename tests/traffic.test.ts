@@ -147,8 +147,17 @@ describe('traffic', () => {
     expect(run(w, 1.5)).not.toContain('hit');
   });
 
-  it('shields (grace, Ludicrous, Autopilot, Hover) knock traffic aside harmlessly', () => {
-    for (const power of ['ludicrous', 'autopilot', 'hover', null] as const) {
+  it('hover flies up over traffic', () => {
+    const w = empty();
+    w.power = 'hover'; w.powerTime = POWER_TIME.hover;
+    for (const lane of [0, 1, 2]) putTraffic(w, 'truck', 25, lane);
+    const events = run(w, 3);
+    expect(events).not.toContain('hit');
+    expect(w.batteries).toBe(3);
+  });
+
+  it('shields (grace, Ludicrous, Autopilot) knock traffic aside harmlessly', () => {
+    for (const power of ['ludicrous', 'autopilot', null] as const) {
       const w = empty();
       if (power) { w.power = power; w.powerTime = POWER_TIME[power]; } else w.invuln = 10;
       const truck = putTraffic(w, 'truck', 25, 1);

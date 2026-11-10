@@ -154,6 +154,11 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'faster': audio.faster(); hud.toast('Faster!', '#ffd23f'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.bats(); hud.toast('Bat swarm!', '#ffd23f'); break;
+        case 'sky': audio.skyArrive(); hud.toast('Sky lanes!', '#8ff3ff'); break;
+        case 'sky-hit': audio.bonk(); hud.toast('Bonk! Back down', '#ffd23f'); break;
+        case 'bird-near': audio.birds(); break;
+        case 'drone-near': audio.droneBuzz(); break;
+        case 'heli-near': audio.heliChop(); break;
         case 'jump': audio.kickflip(); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'puncture': audio.puncture(); view.bump(); view.puncture(); hud.toast('Flat tyre!', '#ffb8d0'); break;

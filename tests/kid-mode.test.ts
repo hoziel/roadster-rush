@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BATTERIES, CHASE_TIME, HOVER_HEIGHT, HOVER_TIME } from '../src/sim/config';
+import { BATTERIES, CHASE_TIME, HOVER_TIME, SKY_HEIGHT } from '../src/sim/config';
 import { createWorld, hover, jump, start, step, steer, type Entity, type World } from '../src/sim/world';
 
 const DT = 1 / 60;
@@ -90,24 +90,24 @@ describe('power-ups', () => {
     expect(w.batteries).toBe(BATTERIES);
   });
 
-  it('hover floats over cones and still grabs coins', () => {
+  it('hover lifts the car up to the sky lanes, over the cones', () => {
     const w = emptyRunning();
     hover(w);
     run(w, 0.6);
     expect(w.power).toBe('hover');
-    expect(w.y).toBeCloseTo(HOVER_HEIGHT);
+    expect(w.y).toBeGreaterThan(5);
     expect(jump(w)).toBe(false);
     put(w, 'cone', 8);
-    put(w, 'coin', 10);
-    const ev = run(w, 1);
+    const ev = run(w, 1.5);
     expect(ev).not.toContain('hit');
-    expect(ev).toContain('coin');
+    expect(ev).toContain('sky');
+    expect(w.y).toBeCloseTo(SKY_HEIGHT);
   });
 
   it('hover lands when it runs out', () => {
     const w = emptyRunning();
     hover(w);
-    const ev = run(w, HOVER_TIME + 1);
+    const ev = run(w, HOVER_TIME + 3); // ~2 s to drop back down from the sky lanes
     expect(ev).toContain('power-end');
     expect(w.y).toBe(0);
   });

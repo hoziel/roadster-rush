@@ -17,6 +17,7 @@ describe('hover button', () => {
     const w = emptyRunning();
     expect(w.hoverCharges).toBe(HOVER_CHARGES_START);
     expect(hover(w)).toBe(true);
+    for (const e of w.entities) e.alive = false; // an empty sky course: nothing to fly into
     expect(w.power).toBe('hover');
     expect(w.hoverCharges).toBe(HOVER_CHARGES_START - 1);
     run(w, HOVER_TIME - 0.2);

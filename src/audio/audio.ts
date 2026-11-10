@@ -597,6 +597,73 @@ export class GameAudio {
     setTimeout(() => pan.disconnect(), 4500);
   }
 
+  /** Arrived up on the sky lanes: an airy rising sweep and a soft two-note chime. */
+  skyArrive(): void {
+    this.whoosh(1.1, 400, 3000, 0.22, 0, 0.8);
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime + 0.25;
+    [784, 1175].forEach((f, i) => this.tone([f], 'sine', 0.5, 0.05, t + i * 0.14));
+  }
+
+  /** A little flock of gulls ahead: three quick chirps. */
+  birds(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 3; i++) {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain(), at = t + i * 0.13 + Math.random() * 0.04;
+      const f = 2300 + Math.random() * 500;
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f, at);
+      o.frequency.exponentialRampToValueAtTime(f * 1.45, at + 0.05);
+      o.frequency.exponentialRampToValueAtTime(f * 0.9, at + 0.09);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(0.045, at + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 0.1);
+      o.connect(g).connect(this.sfxBus!);
+      o.start(at); o.stop(at + 0.11);
+      o.onended = () => { o.disconnect(); g.disconnect(); };
+    }
+  }
+
+  /** A drone ahead: a short rising buzz of its propellers. */
+  droneBuzz(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator(), bp = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(170, t);
+    o.frequency.linearRampToValueAtTime(230, t + 0.9);
+    bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 1.5;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.04, t + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1);
+    o.connect(bp).connect(g).connect(this.sfxBus!);
+    o.start(t); o.stop(t + 1.05);
+    o.onended = () => { o.disconnect(); bp.disconnect(); g.disconnect(); };
+  }
+
+  /** A helicopter ahead: the chop-chop of its rotor swelling and fading. */
+  heliChop(): void {
+    if (!this.ctx || !this.master) return;
+    if (!this.noise) this.whoosh(0.01, 500, 600, 0.0001);
+    const t = this.ctx.currentTime, dur = 1.6;
+    const src = this.ctx.createBufferSource(), lp = this.ctx.createBiquadFilter(), chop = this.ctx.createGain(), g = this.ctx.createGain();
+    src.buffer = this.noise!; src.loop = true;
+    lp.type = 'lowpass'; lp.frequency.value = 500;
+    chop.gain.value = 0;
+    for (let k = 0; k * 0.085 < dur; k++) { // ~12 thumps a second
+      const at = t + k * 0.085;
+      chop.gain.setValueAtTime(1, at);
+      chop.gain.exponentialRampToValueAtTime(0.05, at + 0.06);
+    }
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.5, t + dur * 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(lp).connect(chop).connect(g).connect(this.sfxBus!);
+    src.start(t); src.stop(t + dur + 0.05);
+    src.onended = () => { src.disconnect(); lp.disconnect(); chop.disconnect(); g.disconnect(); };
+  }
+
   /** Kickflip: thruster ignition (low rumble + jet hiss), a rising zing, and a side-thruster puff as the roll starts. */
   kickflip(): void {
     this.whoosh(0.4, 110, 700, 0.55, 0, 0.8); // ignition rumble

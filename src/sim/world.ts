@@ -1,6 +1,6 @@
 import {
   AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CAR_CLEAR, CHASE_TIME, COIN_VALUE,
-  DESPAWN_BEHIND, GRAVITY, JUMP_BUFFER, SLAM_VELOCITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
+  DESPAWN_BEHIND, GRAVITY, JUMP_BUFFER, SLAM_VELOCITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_TIME,
   INTRO_CHASE_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
@@ -11,7 +11,9 @@ import {
   PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
   ZONE_WARN, LONGHORN_FIRST_AT, LONGHORN_GAP, LONGHORN_HIT_X,
   DECK_CLIMB, DECK_STEP, DECK_HEIGHT, DUCK_TIME, HIGHROAD_FIRST_AT, HIGHROAD_GAP, OVERHEAD_TOP, RAMP_LENGTH,
+  SKY_COIN_Y, SKY_DESCEND, SKY_GLIDE_FROM, SKY_END_TIME, SKY_HEIGHT, SKY_LAND_GRACE, SKY_NEAR, SKY_RISE, SKY_ROW_TIME, SKY_START_TIME,
 } from './config';
+import { SKY_DEPTH, isSky, skyRow } from './sky';
 import { deckLength, deckOffset, deckSurface, isDeck, underOverhead, type DeckKind } from './highroad';
 import { herdLane } from './longhorns';
 import {
@@ -45,7 +47,10 @@ export type SimEvent =
   | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel' | 'jump'
   | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
   | 'police-stop' | 'roadwork' | 'longhorns' | 'highroad' // one coming up, ZONE_WARN ahead
-  | 'moo'; // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
+  | 'moo' // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
+  | 'sky' // reached the sky lanes
+  | 'sky-hit' // flew into a sky obstacle: the hover ends and the car drops back (no battery lost)
+  | 'bird-near' | 'drone-near' | 'heli-near'; // a sky obstacle SKY_NEAR ahead (for its sound)
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -109,6 +114,8 @@ export interface World {
   nextHighAt: number; // no new high road laid before this s
   highQueued: boolean; // lay one at the next free chunk slot (debug)
   overheadQueued: boolean; // make the next cone chunk one with an overhead beam (debug)
+  skyEnd: number; // s where the current/last sky course ends (-Infinity: none yet)
+  skyReached: boolean; // 'sky' event already sent for this hover
   zoneEnd: number; // s where the latest police stop, construction zone, crossing or high road ends (-Infinity: none yet)
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
@@ -128,7 +135,7 @@ const runState = () => ({
   policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
   workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
   herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false,
-  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity,
+  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity, skyEnd: -Infinity, skyReached: false,
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -174,11 +181,43 @@ export const isDucking = (w: World): boolean => w.duck > 0;
 
 /** Hover button: spend a banked charge to hover for HOVER_TIME. */
 export function hover(w: World): boolean {
-  if (w.phase !== 'running' || w.hoverCharges <= 0 || w.power === 'hover') return false;
+  if (w.phase !== 'running' || w.hoverCharges <= 0 || w.power === 'hover' || !skyClear(w)) return false;
   w.hoverCharges--;
   activate(w, 'hover');
+  laySky(w);
   return true;
 }
+
+/** m of road one hover covers at most (at top speed). */
+const SKY_REACH = SPEED_MAX * LUDICROUS_BOOST * HOVER_TIME + 60;
+
+/** No tube tunnel in or coming up within a hover's reach (the sky lanes can't pass through one). */
+const skyClear = (w: World): boolean =>
+  !w.tube && !(w.tunnelAt >= 0 && w.tunnelEnd > w.distance && w.tunnelAt < w.distance + SKY_REACH);
+
+/** Lay the sky course for a hover starting now: rows of sky obstacles with coins, above the road. */
+function laySky(w: World): void {
+  const v = w.speed;
+  const gap = Math.max(16, v * SKY_ROW_TIME);
+  const end = w.distance + v * (HOVER_TIME - SKY_END_TIME);
+  for (let s = w.distance + v * SKY_START_TIME; s < end; s += gap) {
+    for (const it of skyRow(w.rng, s, gap)) {
+      if (it.kind === 'coin') add(w, 'coin', it.lane, it.s, undefined, undefined, SKY_HEIGHT + SKY_COIN_Y);
+      else add(w, it.kind, it.lane, it.s, undefined, undefined, SKY_HEIGHT, Math.floor(w.rng() * 1000));
+    }
+  }
+  w.skyEnd = end + 40;
+  w.skyReached = false;
+}
+
+/** The hover is over: clear what's left up in the sky and give a grace period for the landing. */
+function leaveSky(w: World): void {
+  for (const e of w.entities) if (e.alive && e.y !== undefined && e.y >= SKY_HEIGHT - 1) e.alive = false;
+  w.invuln = Math.max(w.invuln, SKY_LAND_GRACE);
+}
+
+/** Up on the sky lanes (high enough to meet what flies there). */
+export const inSky = (w: World): boolean => w.y >= SKY_HEIGHT - 2;
 
 /** Police is shown right behind the car (after a crash, or the opening chase). */
 export const policeClose = (w: World): boolean => w.chase > 0 || w.intro > 0;
@@ -209,7 +248,10 @@ export function step(w: World, dt: number): SimEvent[] {
   w.intro = Math.max(0, w.intro - dt);
   if (w.power) {
     w.powerTime -= dt;
-    if (w.powerTime <= 0) { w.power = null; w.powerTime = 0; events.push('power-end'); }
+    if (w.powerTime <= 0) {
+      if (w.power === 'hover') leaveSky(w);
+      w.power = null; w.powerTime = 0; events.push('power-end');
+    }
   }
 
   const level = speedLevel(w.time);
@@ -242,8 +284,13 @@ export function step(w: World, dt: number): SimEvent[] {
   if (w.power === 'hover') {
     // Rise to hover height (or stay level with a deck you were riding), never down through it.
     w.vy = 0;
-    const to = Math.max(HOVER_HEIGHT, w.floor) - w.y;
-    w.y += Math.sign(to) * Math.min(Math.abs(to), HOVER_RISE * dt);
+    const to = Math.max(SKY_HEIGHT, w.floor) - w.y;
+    w.y += Math.sign(to) * Math.min(Math.abs(to), SKY_RISE * dt);
+    if (!w.skyReached && w.y >= SKY_HEIGHT - 0.5) { w.skyReached = true; events.push('sky'); }
+  } else if (w.y > SKY_GLIDE_FROM && w.vy <= 0) {
+    // Dropping back from the sky lanes: a steady glide down, then a normal fall for the last bit.
+    w.vy = -SKY_DESCEND;
+    w.y = Math.max(w.floor, w.y - SKY_DESCEND * dt);
   } else if (w.y > w.floor || w.vy > 0) {
     // Falls back down after a hover ends or off the front of a car; otherwise a normal jump arc.
     w.vy -= GRAVITY * dt;
@@ -264,10 +311,24 @@ export function step(w: World, dt: number): SimEvent[] {
     const rel = e.s - w.distance;
     if (rel < -DESPAWN_BEHIND) { e.alive = false; continue; }
     if (e.bumped !== undefined) continue;
+    if (isSky(e.kind)) {
+      if (e.variant !== undefined && e.variant < 1000 && rel < SKY_NEAR && inSky(w)) {
+        e.variant += 1000; // announced (the view takes variant % 1000)
+        events.push(`${e.kind}-near` as SimEvent);
+      }
+      if (!inSky(w) || Math.abs(rel) > SKY_DEPTH[e.kind] || !sideOverlap(w, e)) continue;
+      e.alive = false;
+      events.push('sky-hit');
+      leaveSky(w);
+      w.power = null; w.powerTime = 0;
+      events.push('power-end');
+      continue;
+    }
     if (Math.abs(rel) > (isObstacle(e.kind) ? hitDepth(e.kind) : HIT_DEPTH) || !sideOverlap(w, e)) continue;
 
     if (e.kind === 'coin') {
       if (e.y !== undefined && w.y < e.y - ROOF_COIN_REACH) continue; // floating over a roof: jump for it
+      if (e.y === undefined && w.y > SKY_GLIDE_FROM) continue; // road coins stay on the road below the sky lanes
       e.alive = false;
       w.coins++;
       events.push('coin');
@@ -703,6 +764,7 @@ function layTunnel(w: World): boolean {
   const s0 = w.nextRowAt;
   if (w.tunnelAt >= 0 && w.distance < w.tunnelEnd) return false; // one tunnel at a time
   if (s0 < w.swarmEnd + SWARM_PAD) return false; // never over a Bat Swarm
+  if (w.power === 'hover' || s0 < w.skyEnd + 60) return false; // never under the sky lanes
   if (!w.tunnelQueued && (s0 < w.nextTunnelAt || w.rng() >= TUNNEL_CHANCE)) return false;
   if (conesIn(w.entities, s0, s0 + TUNNEL_LENGTH)) return false;
   for (const it of tunnelItems(w.rng, s0)) add(w, it.kind, 1, it.s, it.slot);

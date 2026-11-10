@@ -61,12 +61,22 @@ export const POWER_START_AFTER = 12; // s into a run before power-ups appear
 export const LUDICROUS_TIME = 5;
 export const LUDICROUS_BOOST = 1.5;
 export const AUTOPILOT_TIME = 8;
-export const HOVER_TIME = 8; // s per hover-button press
+export const HOVER_TIME = 10; // s per hover-button press (climb to the sky lanes, fly them, drop back)
 export const HOVER_CHARGES_MAX = 3; // hover pickups bank charges for the button, up to this
 export const HOVER_CHARGES_START = 1; // every run starts with one, so kids find the button
-export const HOVER_HEIGHT = 1.6;
-export const HOVER_RISE = 6; // m/s up/down
 export const AUTOPILOT_LOOKAHEAD = 22;
+
+// Sky lanes: hovering lifts the car above the rooftops onto three aerial lanes (src/sim/sky.ts).
+export const SKY_HEIGHT = 34; // m: higher than the tallest buildings
+export const SKY_RISE = 20; // m/s climbing up to the sky lanes (~1.7 s)
+export const SKY_DESCEND = 16; // m/s dropping back down when the hover ends (~2 s)
+export const SKY_GLIDE_FROM = 4; // m: above this (higher than any jump or deck) a drop from the sky glides down
+export const SKY_LAND_GRACE = 3; // s of grace when the hover ends, so the landing is never into a crash
+export const SKY_ROW_TIME = 0.85; // s of driving between rows of sky obstacles
+export const SKY_START_TIME = 2.4; // s after the hover starts before the first row (time to climb)
+export const SKY_END_TIME = 1.2; // s before the hover ends that the last row is passed
+export const SKY_NEAR = 30; // m ahead: a sky obstacle announces itself (its sound) at this distance
+export const SKY_COIN_Y = 0.9; // m above the sky lane
 
 // Sunset-to-night cycle (phase 0..1 loops: 0 sunset, ~0.3 dusk, ~0.5-0.8 night, back to sunset)
 export const DAY_CYCLE = 210; // s of driving for one full loop

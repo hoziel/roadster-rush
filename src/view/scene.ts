@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SPEED_START, TUNNEL_RADIUS } from '../sim/config';
+import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SKY_HEIGHT, SPEED_START, TUNNEL_RADIUS } from '../sim/config';
 import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { isDucking, laneX, policeClose, rampSlope, type World } from '../sim/world';
@@ -18,6 +18,7 @@ import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { StartLine } from './startline';
+import { SkyLanes } from './skyLanes';
 import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
@@ -114,6 +115,9 @@ export class GameView {
   private duckK = 0; // 0..1 eased squash while ducking
   private pitch = 0; // nose up (rad) while climbing a ramp
   private camLift = 0; // eased camera rise with the floor
+  private skyLift = 0; // eased camera rise with the car up to the sky lanes
+  private skyK = 0; // 0..1 how far up into the sky lanes
+  private skyLanes = new SkyLanes();
   private dayNight: DayNight;
   private nightLights = new NightLights();
   private landmarks: Landmarks;
@@ -183,7 +187,7 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
-    this.scene.add(this.startLine.group);
+    this.scene.add(this.startLine.group, this.skyLanes.group);
     this.scene.add(this.traffic.group);
     void this.traffic.load();
     this.scene.add(this.hazards.group, this.highroad.group);
@@ -343,8 +347,12 @@ export class GameView {
     const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
     const hov = w.power === 'hover' ? 0.6 : 0;
     this.camLift += ((w.tube ? 0 : w.floor * CAM_DECK_LIFT) - this.camLift) * Math.min(1, dt * 4);
-    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + hov + this.camLift, 9.5);
-    this.camTarget.set(w.x * 0.4, 1 + this.camLift, -12);
+    // Sky lanes: the camera climbs with the car, looking a little down at the city below.
+    const skyY = w.tube ? 0 : Math.max(0, w.y - 2);
+    this.skyLift += (skyY - this.skyLift) * Math.min(1, dt * 5);
+    this.skyK = THREE.MathUtils.clamp((this.skyLift - 4) / (SKY_HEIGHT - 10), 0, 1);
+    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + hov + this.camLift + this.skyLift + this.skyK * 1.2, 9.5 + this.skyK * 1.5);
+    this.camTarget.set(w.x * 0.4, 1 + this.camLift + this.skyLift - this.skyK * 1.5, -12);
     this.camera.up.set(0, 1, 0);
     if (k > 0) {
       // Inside the tube: the camera sits behind the car in the car's rolled frame, so the car stays
@@ -412,6 +420,7 @@ export class GameView {
     this.landmarks.update(w.distance);
     this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
+    this.skyLanes.update(w, this.skyK, time);
     this.tunnel.update(w, this.dayNight.lights, time);
     this.traffic.update(w, this.dayNight.lights, time, !this.showcase);
     this.hazards.update(w, this.dayNight.lights, time, !this.showcase);
