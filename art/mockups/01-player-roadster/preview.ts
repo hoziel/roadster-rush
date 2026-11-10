@@ -6,19 +6,22 @@ const canvas=document.querySelector('canvas')!;
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-const scene=new THREE.Scene();scene.background=new THREE.Color('#e7e3de');
-scene.add(new THREE.HemisphereLight('#f3f6ff','#666476',1.8));
-const sun=new THREE.DirectionalLight('#ffffff',1.7);sun.position.set(-3,7,-5);sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.normalBias=.025;scene.add(sun);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#d8dbe0');scene.fog=new THREE.Fog('#d8dbe0',14,38);
+scene.add(new THREE.HemisphereLight('#f3f6ff','#666476',1.1));
+const sun=new THREE.DirectionalLight('#fff6eb',2.1);sun.position.set(-3,7,-5);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-5;sun.shadow.camera.right=5;sun.shadow.camera.top=5;sun.shadow.camera.bottom=-5;sun.shadow.camera.near=.5;sun.shadow.camera.far=20;sun.shadow.normalBias=.035;sun.shadow.bias=-.0002;scene.add(sun);
 const car=buildRoadster('#d7dbe2');scene.add(car.group);
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshToonMaterial({color:'#d8d3d0'}));floor.rotation.x=-Math.PI/2;floor.position.y=-.008;floor.receiveShadow=true;scene.add(floor);
+// Studio presentation: keep the ground shadow and clean toon panel shading.
+car.group.traverse(o=>{if(o instanceof THREE.Mesh)o.receiveShadow=false;});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshLambertMaterial({color:'#c8cbd2'}));floor.rotation.x=-Math.PI/2;floor.position.y=-.008;floor.receiveShadow=true;scene.add(floor);
 const camera=new THREE.PerspectiveCamera(32,1,.05,200);
 const controls=new OrbitControls(camera,canvas);controls.target.set(0,.5,0);controls.maxPolarAngle=Math.PI*.49;controls.minDistance=3;controls.maxDistance=18;controls.enableDamping=true;
 const road=new THREE.Group();road.visible=false;scene.add(road);
 const asphalt=new THREE.Mesh(new THREE.PlaneGeometry(6,90),new THREE.MeshToonMaterial({color:'#4a4458'}));asphalt.rotation.x=-Math.PI/2;asphalt.position.set(0,.002,-25);asphalt.receiveShadow=true;road.add(asphalt);
 for(const x of [-1,1])for(let z=-65;z<12;z+=3){const line=new THREE.Mesh(new THREE.PlaneGeometry(.05,1.3),new THREE.MeshBasicMaterial({color:'#f4e9d8'}));line.rotation.x=-Math.PI/2;line.position.set(x,.008,z);road.add(line);}
 const views:Record<string,number[]>={'three-quarter':[4.4,1.9,-5.6],front:[0,1.2,-6.5],side:[6.8,1.2,0],back:[0,1.4,6.5],gameplay:[0,4.6,7.6]};
-function view(name:string){const v=views[name]??views['three-quarter'];camera.position.set(v[0],v[1],v[2]);controls.target.set(0,name==='gameplay'?0:.50,name==='gameplay'?-2:0);road.visible=name==='gameplay';controls.update();}
+let currentView='three-quarter';
+function view(name:string){currentView=name;const v=views[name]??views['three-quarter'];camera.position.set(v[0],v[1],v[2]);controls.target.set(0,name==='gameplay'?0:.50,name==='gameplay'?-2:0);road.visible=name==='gameplay';controls.update();}
 view(new URLSearchParams(location.search).get('view')??'three-quarter');
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>view(b.dataset.view!));
 let paintIndex=0;document.querySelector<HTMLButtonElement>('#paint')!.onclick=()=>car.paint.color.set(['#e8344e','#4382b8','#b3ee48','#8056b8','#d7dbe2'][paintIndex++%5]);
@@ -33,6 +36,18 @@ document.querySelector<HTMLButtonElement>('#jump')!.onclick=()=>{if(jump<0){jump
 let triangles=0,meshes=0;car.group.traverse(o=>{if(o instanceof THREE.Mesh){triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;meshes++;}});
 document.querySelector('#stats')!.textContent=`${triangles.toLocaleString()} triangles · ${meshes} meshes`;
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.zoom=Math.min(1,camera.aspect/1.1);camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+// Render an actual model still at artifact resolution, restoring the live viewport afterwards.
+document.querySelector<HTMLButtonElement>('#save')!.onclick=()=>{
+ const portrait=currentView==='gameplay';
+ const width=portrait?540:1200,height=portrait?1170:800;
+ const pixelRatio=renderer.getPixelRatio(),aspect=camera.aspect,zoom=camera.zoom;
+ renderer.setPixelRatio(1);renderer.setSize(width,height,false);camera.aspect=width/height;camera.zoom=portrait?.52:1;camera.updateProjectionMatrix();
+ renderer.render(scene,camera);
+ document.querySelector('#render-download')?.remove();
+ const link=document.createElement('a');link.id='render-download';link.textContent='Download image';link.download=`roadster-${currentView}.png`;link.href=canvas.toDataURL('image/png');
+ document.querySelector('nav')!.append(link);
+ renderer.setPixelRatio(pixelRatio);resize();camera.aspect=aspect;camera.zoom=zoom;camera.updateProjectionMatrix();renderer.render(scene,camera);
+};
 function frame(now:number){
  const dt=Math.min((now-last)/1000,.05);last=now;
  doorAmount=THREE.MathUtils.damp(doorAmount,doorTarget,6,dt);car.setDoorOpen(doorAmount);

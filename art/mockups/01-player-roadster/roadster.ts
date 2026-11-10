@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { CarParts } from '../../../src/view/cars';
 
 export interface RoadsterParts extends CarParts {
@@ -22,8 +22,8 @@ export function buildRoadster(color = '#e8344e'): RoadsterParts {
   const group = new THREE.Group(); group.name = 'AustinRoadster';
   const paint = new THREE.MeshToonMaterial({ color });
   const dark = new THREE.MeshToonMaterial({ color: '#171a22' });
-  const glass = new THREE.MeshToonMaterial({ color: '#161d2c', side: THREE.DoubleSide });
-  const metal = new THREE.MeshToonMaterial({ color: '#98a2b2' });
+  const glass = new THREE.MeshPhongMaterial({ color: '#202b3d', specular: '#7d92aa', shininess: 85, side: THREE.DoubleSide });
+  const metal = new THREE.MeshPhongMaterial({ color: '#aeb9c8', specular: '#8b97a5', shininess: 45 });
   const upholstery = new THREE.MeshToonMaterial({ color: '#57545b' });
   const light = new THREE.MeshToonMaterial({ color: '#f4e9d8', emissive: '#f4e9d8', emissiveIntensity: .5 });
   const brake = new THREE.MeshToonMaterial({ color: '#ff4860', emissive: '#ff4860', emissiveIntensity: .6 });
@@ -74,11 +74,26 @@ export function buildRoadster(color = '#e8344e'): RoadsterParts {
   // Closed nose/tail, recessed lower surfaces and a thin horizontal running light.
   panel([[-.73,.475,-1.81],[.73,.475,-1.81],[.70,.31,-1.79],[-.70,.31,-1.79]],dark);
   panel([[-.77,.62,1.78],[-.73,.30,1.78],[.73,.30,1.78],[.77,.62,1.78]],paint);
-  box(1.35,.105,.055,dark,0,.295,-1.80);
+  // Lower bumper is faceted and tucked inward instead of a hanging rectangular bar.
+  panel([[-.70,.31,-1.79],[.70,.31,-1.79],[.61,.245,-1.77],[-.61,.245,-1.77]],dark);
+  for(const side of [-1,1]) {
+    panel([[side*.73,.475,-1.81],[side*.83,.51,-1.60],[side*.79,.28,-1.60],[side*.70,.265,-1.79]],paint,group,side>0);
+    box(.24,.023,.025,light,side*.48,.344,-1.818);
+    box(.27,.034,.035,dark,side*.48,.344,-1.804);
+  }
   box(1.49,.026,.09,dark,0,.225,-1.79);
+  // Inset bumper backing closes the small gaps beneath the tapered face panels.
+  box(1.40,.055,.08,dark,0,.267,-1.745);
   box(1.40,.021,.025,light,0,.463,-1.823);
-  box(1.38,.025,.025,brake,0,.565,1.797);
-  box(1.37,.16,.055,dark,0,.315,1.811);
+  box(1.42,.047,.025,dark,0,.565,1.798);
+  box(1.38,.021,.027,brake,0,.565,1.813);
+  panel([[-.73,.40,1.79],[-.62,.265,1.83],[.62,.265,1.83],[.73,.40,1.79]],dark);
+  box(1.44,.075,.10,dark,0,.29,1.72);
+  // A small integrated ducktail and tapered bumper returns frame the rear.
+  box(1.42,.025,.095,paint,0,.645,1.72);
+  for(const side of [-1,1]) {
+    panel([[side*.77,.62,1.78],[side*.73,.30,1.78],[side*.84,.32,1.53],[side*.86,.70,1.47]],paint,group,side>0);
+  }
   for(const x of [-.52,-.26,0,.26,.52])box(.026,.105,.20,dark,x,.25,1.73);
   box(1.19,.09,3.34,dark,0,.22,0);
 
@@ -106,12 +121,24 @@ export function buildRoadster(color = '#e8344e'): RoadsterParts {
     }
     // Door outer skin, inset inner trim, shoulder and window all move together.
     const xf=side*width(-.58),xr=side*width(.72);
-    panel([[xf,.69,-.58],[xr,.725,.72],[xr-side*.07,.27,.72],[xf-side*.07,.27,-.58]],paint,door,side<0);
+    // Gentle door crown, a shoulder crease and an inward lower sill.
+    const doorRows=[[-.58,.69],[-.27,.701],[.29,.713],[.72,.725]];
+    for(let i=0;i<doorRows.length-1;i++) {
+      const [z,y]=doorRows[i],[nz,ny]=doorRows[i+1];
+      const section=(at:number,top:number):Point[]=>[[side*width(at),top,at],[side*(width(at)+.008),.52,at],[side*(width(at)-.062),.29,at],[side*(width(at)-.07),.27,at]];
+      const a=section(z,y),b=section(nz,ny);
+      for(let j=0;j<3;j++)panel([a[j],b[j],b[j+1],a[j+1]],paint,door,side<0);
+    }
+    // Thin shut lines read on silver without decals or text.
+    for(const z of [-.585,.725])beam([side*(width(z)+.004),.30,z],[side*(width(z)+.004),z<0?.687:.722,z],.0045,dark);
+    beam([side*(width(-.58)-.062),.285,-.58],[side*(width(.72)-.062),.285,.72],.006,dark,door);
     panel([[xf-side*.055,.66,-.58],[xf-side*.09,.30,-.58],[xr-side*.09,.30,.72],[xr-side*.055,.69,.72]],dark,door,side<0);
     for(const z of [-.58,.72])beam([side*(width(z)-.045),.30,z],[side*(width(z)-.015),.70,z],.025,paint,door);
     box(.12,.06,1.34,dark,side*.77,.245,.07);
-    box(.035,.025,.16,metal,side*(width(.40)+.004),.64,.40,door);
-    box(.11,.034,.16,dark,side*.875,.735,-.49,door);
+    box(.012,.022,.13,dark,side*(width(.40)+.010),.64,.40,door);
+    box(.014,.009,.095,metal,side*(width(.40)+.017),.642,.40,door);
+    box(.10,.031,.14,paint,side*.875,.735,-.49,door);
+    box(.082,.021,.012,glass,side*.875,.735,-.415,door);
   }
   // Canopy is deliberately wider and longer than Revision 2, with a shallow curved roof.
   // z, sill width, roof width, crown height, sill height
@@ -149,7 +176,9 @@ export function buildRoadster(color = '#e8344e'): RoadsterParts {
   }
   let body!:THREE.Mesh;
   for(const [target,mats] of buckets)for(const [material,geos] of mats){
-    const merged=mergeGeometries(geos,false);geos.forEach(g=>g.dispose());
+    let merged=mergeGeometries(geos,false);geos.forEach(g=>g.dispose());
+    // Weld only the glazing: smooth highlights, crisp painted panel boundaries.
+    if(material===glass){merged.deleteAttribute('normal');const smooth=mergeVertices(merged,1e-5);merged.dispose();merged=smooth;merged.computeVertexNormals();}
     const mesh=new THREE.Mesh(merged,material);mesh.castShadow=true;mesh.receiveShadow=true;
     mesh.name=`${target===group?'fixed':target.name}_${material===paint?'paint':material.id}`;
     target.add(mesh);if(target===group&&material===paint)body=mesh;
@@ -157,11 +186,29 @@ export function buildRoadster(color = '#e8344e'): RoadsterParts {
   const wheels:THREE.Group[]=[];
   for(const x of [-.80,.80])for(const z of [-1.12,1.1]){
     const wheel=new THREE.Group();wheel.name=`wheel_${x<0?'L':'R'}_${z<0?'front':'rear'}`;wheel.position.set(x,.335,z);
-    const tire=new THREE.Mesh(new THREE.CylinderGeometry(.335,.335,.22,40).rotateZ(Math.PI/2),dark);
-    const rim=new THREE.Mesh(new THREE.CylinderGeometry(.267,.267,.014,32).rotateZ(Math.PI/2),metal);rim.position.x=Math.sign(x)*.115;
-    const spokes:THREE.BufferGeometry[]=[new THREE.CylinderGeometry(.07,.07,.018,20).rotateZ(Math.PI/2)];
-    for(let j=0;j<5;j++)spokes.push(new THREE.BoxGeometry(.018,.20,.07).translate(0,.145,0).rotateX(j*Math.PI*2/5+.26));
-    const hub=new THREE.Mesh(mergeGeometries(spokes),dark);spokes.forEach(g=>g.dispose());hub.position.x=Math.sign(x)*.129;
+    // Rounded sidewalls and a recessed wheel face replace the solid disc + bar spokes.
+    const profile=[new THREE.Vector2(.275,-.105),new THREE.Vector2(.315,-.105),new THREE.Vector2(.335,-.074),new THREE.Vector2(.335,.074),new THREE.Vector2(.315,.105),new THREE.Vector2(.275,.105)];
+    const tire=new THREE.Mesh(new THREE.LatheGeometry(profile,28).rotateZ(Math.PI/2),dark);
+    const sign=Math.sign(x),faceX=sign*.111;
+    const recess=new THREE.Mesh(new THREE.CylinderGeometry(.272,.272,.012,24).rotateZ(Math.PI/2),dark);
+    recess.position.x=faceX;
+    const alloy:THREE.BufferGeometry[]=[];
+    alloy.push(new THREE.TorusGeometry(.251,.012,4,28).rotateY(Math.PI/2).translate(sign*.125,0,0));
+    alloy.push(new THREE.CylinderGeometry(.064,.064,.018,16).rotateZ(Math.PI/2).translate(sign*.137,0,0));
+    for(let j=0;j<5;j++){
+      const angle=j*Math.PI*2/5;
+      // Each swept, tapering blade has two triangulated facets.
+      const vertices:number[]=[];
+      for(const [radius,offset] of [[.063,-.22],[.25,.01],[.25,.30],[.12,.29]]){
+        const a=angle+offset;vertices.push(sign*.135,Math.cos(a)*radius,Math.sin(a)*radius);
+      }
+      const blade=new THREE.BufferGeometry();blade.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+      blade.setIndex(sign>0?[0,1,2,0,2,3]:[0,2,1,0,3,2]);blade.computeVertexNormals();
+      alloy.push(blade);
+    }
+    const sources=alloy.map(g=>{const n=g.index?g.toNonIndexed():g;n.deleteAttribute('uv');if(n!==g)g.dispose();return n;});
+    const rim=new THREE.Mesh(mergeGeometries(sources),metal);sources.forEach(g=>g.dispose());
+    const hub=recess;
     tire.castShadow=true;wheel.add(tire,rim,hub);group.add(wheel);wheels.push(wheel);
   }
   return {group,body,paint,wheels,thrusters,doors,setDoorOpen(amount){

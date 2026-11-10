@@ -1,6 +1,6 @@
 # Player roadster — procedural object study
 
-**Current version: Revision 3 below. Earlier revision details are historical.**
+**Current version: Revision 4 below. Earlier revision details are historical.**
 
 ## Revision 1 — November 9, 2026
 
@@ -94,3 +94,31 @@ Ofir asked to improve resemblance, add opening doors, and make the thrusters emi
 Strict TypeScript check passed for model, preview and effect. Runtime geometry check confirmed finite vertex/normal buffers, 2 doors/4 wheels/4 sockets, and exact closed → open → closed rotations. Browser inspected front/side/rear/gameplay, door movement, paint change, airborne vapor and return to ground. Browser error log was empty. Replaced obsolete preview PCFSoftShadowMap with PCFShadowMap after observing the installed Three.js warning.
 
 Still an isolated object/effect study, not integrated into the live game. Existing CarStyle overlays, plate placement and honk transform need adaptation. Closed canopy continues to obscure an interior driver; doors reveal the cabin, but gameplay driver visibility remains an art/integration decision. Doors add draw calls; whole-game phone performance is unmeasured. Screenshots are rendered from the model and not image-generated.
+
+## Revision 4 — polished replacement
+
+Ofir asked to polish the car and override the old version. Replaced the existing source and render files in this folder; this revision supersedes Revision 3 (`69a194a`). The reference-inspired silhouette, butterfly doors and large vapor effect remain. No branding or reference image textures were added.
+
+### Design changes
+
+- Rounded tire shoulders, recessed dark wheel centers, slim alloy rims and five swept metal spokes replace the flat wheel discs.
+- Subtle crowned door surfaces, fine shut lines, inset lower sills, flush handles and painted mirror caps make the body read as separate finished panels.
+- Tapered bumper returns, small auxiliary front lights, a framed rear lamp, integrated ducktail and diffuser refine the ends. Inset backing closes gaps beneath the bumper faces.
+- Welded glazing normals give the canopy a smoother highlight. Glass and alloy now use Phong materials; the recolorable body and doors retain MeshToonMaterial.
+- Neutral studio lighting and a softer background clarify the shape. The preview disables self-shadow reception on the car while retaining the ground shadow to avoid jagged shadow-map edges; the exported builder retains its shadow flags for Claude to tune in the game.
+
+### Current specs, palette and views
+
+**5,460 triangles / 27 meshes / 7 shared materials** for the car, including cabin and doors. Closed bounding size approximately **1.892 × 1.084 × 3.666** (X/Y/Z). The `buildRoadster`, `setDoorOpen`, wheel, socket and disposal APIs are unchanged. `thruster-vapor.ts` is unchanged from Revision 3.
+
+Paint #e8344e (builder) / #d7dbe2 (silver preview); trim #171a22; glazing #202b3d with #7d92aa specular; alloy #aeb9c8 with #8b97a5 specular; cabin #57545b; headlights #f4e9d8; rear lamps #ff4860. Studio background #d8dbe0 and floor #c8cbd2. The original vapor palette remains.
+
+All nine PNGs are replaced with clean renders of the actual model, without interface overlays. Front/side/back show construction, `three-quarter.png` shows the complete silver design, `detail.png` retains that same clean render under the earlier filename, `red.png` shows the game paint, `doors-open.png` shows both hinges open, and `vapor.png` captures takeoff. Landscape images are 1200×800; `gameplay.png` is 540×1170 (9:19.5), viewed behind and above on a three-lane road. All are under 2 MB. **Save image** in the preview prepares a download link at those resolutions.
+
+The car remains within the 6k triangle target. If mobile budgets require simplification, reduce tire radial segments from 28 to 20 and omit the small handles/auxiliary lights before changing the silhouette. Preserve the separate doors and wheels for animation. Profile the unchanged transparent vapor pool in the game.
+
+### Validation and handoff
+
+Strict TypeScript check passed for the model, preview and imported effect with `vite/client` types. Runtime checks confirmed finite position/normal data, 4 wheels, 2 doors, 4 thruster sockets, and exact closed → open → closed door transforms. Visually checked front/side/rear/portrait views, red paint, open doors and airborne vapor; the car returned to the ground and the browser error log was empty. Diff whitespace check passed.
+
+The source is replaced in the art folder. At inspection, `src/view/cars.ts` still used the grey-box player builder; Claude owns the game swap. Use this revision for integration instead of `69a194a`. Existing overlay/plate/honk, collision-fit and driver-visibility concerns still apply. This polish request does not imply final visual approval or completion of the held paint-variant brief.
