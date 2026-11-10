@@ -1,6 +1,6 @@
 {
   "length": 40,
-  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard. Traffic chunks (traffic: true): cars = low cars (jump onto/over), trucks = tall trucks (change lanes), roof = car lanes with coins over the roof; everything in them drives at TRAFFIC_SPEED.",
+  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard. Traffic chunks (traffic: true): cars = low cars (jump onto/over), trucks = tall trucks (change lanes), roof = car lanes with coins over the roof; everything in them drives at TRAFFIC_SPEED. Police stops (kind: \"police\"): police = the parked police roadster (one per chunk), spikes = spike strips (jump or steer round). Construction zones (kind: \"construction\"): barriers = low barriers (jump), fences and diggers = tall (steer round); cones allowed.",
   "chunks": [
     {"id": "warmup-straight", "difficulty": 0, "rows": [{"at": 10, "coins": {"lane": 1, "count": 6}}, {"at": 30, "cones": [0]}]},
     {"id": "single-left", "difficulty": 0, "rows": [{"at": 8, "cones": [0], "coins": {"lane": 1, "count": 4}}, {"at": 28, "cones": [2], "coins": {"lane": 0, "count": 4}}]},
@@ -31,6 +31,15 @@
     {"id": "traffic-slalom", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [0, 1], "coins": {"lane": 2, "count": 3}}, {"at": 25, "trucks": [1, 2]}, {"at": 32, "cars": [1, 2], "roof": [1]}]},
     {"id": "traffic-rush", "difficulty": 2, "traffic": true, "rows": [{"at": 8, "cars": [0, 2], "roof": [0]}, {"at": 19, "cars": [1], "roof": [1]}, {"at": 30, "cars": [0, 2], "roof": [2]}]},
     {"id": "traffic-gauntlet", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [2], "cars": [0]}, {"at": 22, "trucks": [0], "cars": [1], "roof": [1]}, {"at": 32.5, "cars": [2]}]},
-    {"id": "traffic-truck-line", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [1], "cars": [0], "roof": [0]}, {"at": 24, "trucks": [0, 2], "coins": {"lane": 1, "count": 4}}]}
+    {"id": "traffic-truck-line", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [1], "cars": [0], "roof": [0]}, {"at": 24, "trucks": [0, 2], "coins": {"lane": 1, "count": 4}}]},
+    {"id": "police-side-strip", "difficulty": 0, "kind": "police", "rows": [{"at": 16, "police": [0], "spikes": [1]}, {"at": 12, "coins": {"lane": 2, "count": 5}}, {"at": 30, "coins": {"lane": 1, "count": 3}}]},
+    {"id": "police-mid", "difficulty": 1, "kind": "police", "rows": [{"at": 6, "coins": {"lane": 2, "count": 3}}, {"at": 14, "police": [1], "spikes": [0]}, {"at": 23, "coins": {"lane": 1, "count": 3}}, {"at": 28, "spikes": [2]}]},
+    {"id": "police-wide-strip", "difficulty": 1, "kind": "police", "rows": [{"at": 4, "coins": {"lane": 2, "count": 3}}, {"at": 12, "police": [0]}, {"at": 26, "spikes": [1, 2]}, {"at": 30, "coins": {"lane": 0, "count": 3}}]},
+    {"id": "police-jump-strip", "difficulty": 2, "kind": "police", "rows": [{"at": 3, "coins": {"lane": 1, "count": 3}}, {"at": 12, "police": [2], "spikes": [0]}, {"at": 26, "spikes": [1, 2]}, {"at": 30, "coins": {"lane": 0, "count": 3}}]},
+    {"id": "work-cone-taper", "difficulty": 0, "kind": "construction", "rows": [{"at": 8, "cones": [2]}, {"at": 10, "coins": {"lane": 1, "count": 6}}, {"at": 14, "barriers": [2]}, {"at": 26, "diggers": [2]}, {"at": 26, "coins": {"lane": 0, "count": 3}}]},
+    {"id": "work-barrier-hop", "difficulty": 0, "kind": "construction", "rows": [{"at": 4, "coins": {"lane": 2, "count": 4}}, {"at": 13, "barriers": [0, 1]}, {"at": 24, "coins": {"lane": 0, "count": 4}}, {"at": 30, "fences": [2]}]},
+    {"id": "work-digger", "difficulty": 1, "kind": "construction", "rows": [{"at": 6, "coins": {"lane": 2, "count": 5}}, {"at": 13, "diggers": [0], "barriers": [1]}, {"at": 21, "coins": {"lane": 0, "count": 3}}, {"at": 30, "fences": [1, 2]}]},
+    {"id": "work-fence-slalom", "difficulty": 2, "kind": "construction", "rows": [{"at": 3, "coins": {"lane": 2, "count": 2}}, {"at": 9, "fences": [0], "barriers": [1]}, {"at": 21, "fences": [2], "cones": [1]}, {"at": 33, "barriers": [0, 1]}]},
+    {"id": "work-dig-jump", "difficulty": 2, "kind": "construction", "rows": [{"at": 12, "diggers": [1], "fences": [2]}, {"at": 16, "coins": {"lane": 0, "count": 3}}, {"at": 26, "barriers": [0, 1]}, {"at": 30, "coins": {"lane": 2, "count": 3}}]}
   ]
 }

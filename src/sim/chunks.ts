@@ -1,6 +1,6 @@
 import { HIT_DEPTH, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, SPEED_MAX } from './config';
 import type { Rng } from './rng';
-import type { ObstacleKind } from './spawner';
+import { isTraffic, type ObstacleKind } from './spawner';
 import { hitDepth } from './traffic';
 import data from './chunks/austin.json';
 
@@ -10,14 +10,27 @@ export interface ChunkRow {
   cars?: number[]; // low traffic: jump onto/over it or change lanes
   trucks?: number[]; // tall traffic: change lanes
   roof?: number[]; // car lanes with coins floating over the roof (collected mid-jump or riding the roof)
+  spikes?: number[]; // police stops: spike strips (low: jump them or steer round)
+  police?: number[]; // police stops: the parked police roadster (steer round, or jump/land on it like a car)
+  barriers?: number[]; // construction: low striped barriers (jump them or steer round)
+  fences?: number[]; // construction: tall fences (steer round)
+  diggers?: number[]; // construction: a parked digger (steer round)
   coins?: { lane: number; count: number };
   power?: number;
 }
-/** traffic: a chunk of cars/trucks (and coins) that all drive at TRAFFIC_SPEED; never mixed with cones. */
-export interface Chunk { id: string; difficulty: number; traffic?: boolean; rows: ChunkRow[] }
+/** Which pool a chunk belongs to: plain cone chunks, moving traffic, a police stop or a construction zone. */
+export type ChunkPool = 'cones' | 'traffic' | 'police' | 'construction';
+/**
+ * traffic: a chunk of cars/trucks (and coins) that all drive at TRAFFIC_SPEED; never mixed with cones.
+ * kind: a police stop or construction zone chunk, laid now and then by the world (never picked as a cone chunk).
+ */
+export interface Chunk { id: string; difficulty: number; traffic?: boolean; kind?: 'police' | 'construction'; rows: ChunkRow[] }
+
+/** The pool a chunk is drawn from. */
+export const poolOf = (c: Chunk): ChunkPool => (c.traffic ? 'traffic' : c.kind ?? 'cones');
 
 export const CHUNK_LENGTH: number = data.length;
-export const CHUNKS: Chunk[] = data.chunks;
+export const CHUNKS: Chunk[] = data.chunks as Chunk[];
 export const COIN_SPACING = 2.2;
 const ROOF_COIN_STEP = 1.1; // m between the three coins over a car roof
 const TRAFFIC_LURE_GAP = 3; // m of clear road between a coin line's end and the back of a car or truck in its lane
@@ -45,6 +58,11 @@ function obstacleRow(r: ChunkRow): ObstacleRow {
   for (const l of r.cones ?? []) lanes.set(l, 'cone');
   for (const l of r.cars ?? []) lanes.set(l, 'car');
   for (const l of r.trucks ?? []) lanes.set(l, 'truck');
+  for (const l of r.spikes ?? []) lanes.set(l, 'spikes');
+  for (const l of r.police ?? []) lanes.set(l, 'police');
+  for (const l of r.barriers ?? []) lanes.set(l, 'barrier');
+  for (const l of r.fences ?? []) lanes.set(l, 'fence');
+  for (const l of r.diggers ?? []) lanes.set(l, 'digger');
   let depth = 0;
   for (const k of lanes.values()) depth = Math.max(depth, hitDepth(k));
   return { at: r.at, lanes, depth };
@@ -53,12 +71,24 @@ function obstacleRow(r: ChunkRow): ObstacleRow {
 /** Problems with a chunk, or [] if it's fair. Run over every chunk in tests. */
 export function validateChunk(c: Chunk): string[] {
   const errs: string[] = [];
+  const pool = poolOf(c);
+  if (c.traffic && c.kind) errs.push(`${c.id}: a traffic chunk can't also be a ${c.kind} chunk`);
+  if (pool === 'police') {
+    // One parked car per stop (each is ~10 draw calls), and its spike strip.
+    const cars = c.rows.reduce((n, r) => n + (r.police?.length ?? 0), 0);
+    if (cars !== 1) errs.push(`${c.id}: a police stop needs exactly one parked police car (has ${cars})`);
+    if (!c.rows.some((r) => r.spikes?.length)) errs.push(`${c.id}: a police stop needs a spike strip`);
+  }
+  if (pool === 'construction' && !c.rows.some((r) => r.barriers?.length || r.fences?.length || r.diggers?.length)) {
+    errs.push(`${c.id}: a construction chunk needs some road work`);
+  }
   const rows = [...c.rows].sort((a, b) => a.at - b.at);
   const obs = rows.map(obstacleRow);
   rows.forEach((r, i) => {
     const o = obs[i];
     if (r.at < 0 || r.at >= CHUNK_LENGTH) errs.push(`${c.id}: row at ${r.at} outside chunk`);
-    const n = (r.cones?.length ?? 0) + (r.cars?.length ?? 0) + (r.trucks?.length ?? 0);
+    const n = (r.cones?.length ?? 0) + (r.cars?.length ?? 0) + (r.trucks?.length ?? 0) + (r.spikes?.length ?? 0)
+      + (r.police?.length ?? 0) + (r.barriers?.length ?? 0) + (r.fences?.length ?? 0) + (r.diggers?.length ?? 0);
     if (n !== o.lanes.size) errs.push(`${c.id}: two obstacles in one lane at ${r.at}`);
     if (o.lanes.size >= LANE_COUNT) errs.push(`${c.id}: row at ${r.at} blocks every lane`);
     if ([...o.lanes.keys()].some((l) => l < 0 || l >= LANE_COUNT)) errs.push(`${c.id}: bad lane at ${r.at}`);
@@ -66,6 +96,9 @@ export function validateChunk(c: Chunk): string[] {
     if (r.power !== undefined && o.lanes.has(r.power)) errs.push(`${c.id}: power on an obstacle lane at ${r.at}`);
     if (c.traffic && (r.cones?.length || r.power !== undefined)) errs.push(`${c.id}: traffic chunk with a cone or power slot at ${r.at}`);
     if (!c.traffic && (r.cars?.length || r.trucks?.length || r.roof?.length)) errs.push(`${c.id}: traffic in a cone chunk at ${r.at}`);
+    if (pool !== 'police' && (r.spikes?.length || r.police?.length)) errs.push(`${c.id}: police stop pieces outside a police chunk at ${r.at}`);
+    if (pool !== 'construction' && (r.barriers?.length || r.fences?.length || r.diggers?.length)) errs.push(`${c.id}: road work outside a construction chunk at ${r.at}`);
+    if (pool === 'police' && r.cones?.length) errs.push(`${c.id}: cones in a police chunk at ${r.at}`);
     for (const l of r.roof ?? []) if (o.lanes.get(l) !== 'car') errs.push(`${c.id}: roof coins without a car at ${r.at}`);
   });
   const blocking = obs.filter((o) => o.lanes.size);
@@ -76,7 +109,7 @@ export function validateChunk(c: Chunk): string[] {
     const from = r.at - HIT_DEPTH, to = r.at + (r.coins.count - 1) * COIN_SPACING + HIT_DEPTH;
     for (const o of blocking) {
       const k = o.lanes.get(r.coins.lane);
-      if (k && o.at + hitDepth(k) >= from && o.at - hitDepth(k) <= to + (k === 'cone' ? 0 : TRAFFIC_LURE_GAP)) {
+      if (k && o.at + hitDepth(k) >= from && o.at - hitDepth(k) <= to + (isTraffic(k) ? TRAFFIC_LURE_GAP : 0)) {
         errs.push(`${c.id}: coin line from ${r.at} runs into a ${k} at ${o.at}`);
       }
     }
@@ -112,15 +145,16 @@ export interface PlacedItem {
 
 /**
  * Pick a chunk for this difficulty (0..1) and lay it out starting at `s0`. Randomly mirrored.
- * `traffic` picks from the traffic chunks instead of the cone chunks.
+ * `pool` picks the chunk type: cone chunks by default; `true` is short for the traffic chunks.
  */
-export function placeChunk(rng: Rng, difficulty: number, s0: number, traffic = false): { id: string; items: PlacedItem[] } {
+export function placeChunk(rng: Rng, difficulty: number, s0: number, pool: ChunkPool | boolean = 'cones'): { id: string; items: PlacedItem[] } {
+  const wanted: ChunkPool = pool === true ? 'traffic' : pool === false ? 'cones' : pool;
   const tier = difficulty < 0.25 ? 0 : difficulty < 0.6 ? 1 : 2;
   // Mostly the current tier, sometimes an easier one for breathing room.
   const want = rng() < 0.25 ? Math.max(0, tier - 1) : tier;
-  const kind = CHUNKS.filter((c) => !!c.traffic === traffic);
-  const pool = kind.filter((c) => c.difficulty === want);
-  const from = pool.length ? pool : kind;
+  const kind = CHUNKS.filter((c) => poolOf(c) === wanted);
+  const tierPool = kind.filter((c) => c.difficulty === want);
+  const from = tierPool.length ? tierPool : kind;
   const chunk = from[Math.floor(rng() * from.length)];
   const mirror = rng() < 0.5;
   const lane = (l: number) => (mirror ? LANE_COUNT - 1 - l : l);
@@ -129,6 +163,11 @@ export function placeChunk(rng: Rng, difficulty: number, s0: number, traffic = f
     for (const c of r.cones ?? []) items.push({ kind: 'cone', lane: lane(c), s: s0 + r.at });
     for (const c of r.cars ?? []) items.push({ kind: 'car', lane: lane(c), s: s0 + r.at });
     for (const c of r.trucks ?? []) items.push({ kind: 'truck', lane: lane(c), s: s0 + r.at });
+    for (const c of r.spikes ?? []) items.push({ kind: 'spikes', lane: lane(c), s: s0 + r.at });
+    for (const c of r.police ?? []) items.push({ kind: 'police', lane: lane(c), s: s0 + r.at });
+    for (const c of r.barriers ?? []) items.push({ kind: 'barrier', lane: lane(c), s: s0 + r.at });
+    for (const c of r.fences ?? []) items.push({ kind: 'fence', lane: lane(c), s: s0 + r.at });
+    for (const c of r.diggers ?? []) items.push({ kind: 'digger', lane: lane(c), s: s0 + r.at });
     for (const c of r.roof ?? []) for (let i = -1; i <= 1; i++) items.push({ kind: 'coin', lane: lane(c), s: s0 + r.at + i * ROOF_COIN_STEP, y: 1 });
     if (r.coins) for (let i = 0; i < r.coins.count; i++) items.push({ kind: 'coin', lane: lane(r.coins.lane), s: s0 + r.at + i * COIN_SPACING });
     if (r.power !== undefined) items.push({ kind: 'power', lane: lane(r.power), s: s0 + r.at });

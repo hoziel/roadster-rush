@@ -1,5 +1,5 @@
 import {
-  AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CAR_CLEAR, CAR_ROOF, CHASE_TIME, COIN_VALUE,
+  AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CAR_CLEAR, CHASE_TIME, COIN_VALUE,
   DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
   INTRO_CHASE_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
@@ -8,6 +8,8 @@ import {
   ROOF_COIN_HEIGHT, ROOF_COIN_REACH, TRAFFIC_CHANCE, TRAFFIC_FIRST_AT, TRAFFIC_GHOST_DIST, TRAFFIC_RUN, TRAFFIC_SLACK,
   TRAFFIC_SPEED,
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
+  PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
+  ZONE_WARN,
 } from './config';
 import {
   SLOT_ANGLE, TUBE_TURN_SPEED, angleGap, exitSlot, laneToSlot, slotToLane, tunnelItems, wrapSlot,
@@ -16,8 +18,8 @@ import { SWARM_SPAN, conesIn, swarmCoins } from './batswarm';
 import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
 import { CHUNK_LENGTH, placeChunk, type PlacedItem } from './chunks';
-import { isObstacle, isPower, isTraffic, type EntityKind, type PowerKind } from './spawner';
-import { catchTime, catchTimeAtLeast, clearHeight, hitDepth } from './traffic';
+import { isObstacle, isPower, isProp, isStatic, isTraffic, type EntityKind, type PowerKind } from './spawner';
+import { catchTime, catchTimeAtLeast, clearHeight, hitDepth, roofHeight } from './traffic';
 import { speedAt, speedLevel } from './speed';
 
 export type { PowerKind } from './spawner';
@@ -30,13 +32,15 @@ export interface Entity {
   slot?: number; // set for tunnel contents: slot around the tube's ring (-3..4, 0 = bottom); lane is unused
   v?: number; // m/s along the road: traffic (and the coins of a traffic chunk) drive at TRAFFIC_SPEED
   y?: number; // coins floating over a car roof: height (m); collected only when the car is up there too
-  variant?: number; // traffic: which model the view draws (any non-negative integer)
-  bumped?: number; // traffic knocked aside by a crash or a shield: run time it happened (no more collisions)
+  variant?: number; // traffic: which model the view draws; parked police car: which way it's angled (any non-negative integer)
+  bumped?: number; // traffic or a big prop knocked aside by a crash or a shield: run time it happened (no more collisions)
 }
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'boing' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel';
+  | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel'
+  | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
+  | 'police-stop' | 'roadwork'; // one coming up, ZONE_WARN ahead
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -79,6 +83,16 @@ export interface World {
   tunnelEnd: number; // s where it ends
   nextTunnelAt: number; // no new tunnel laid before this s
   tunnelQueued: boolean; // lay one at the next chunk slot (debug)
+  policeAt: number; // s of the latest police stop's chunk, -1 if none
+  policeWarned: boolean; // 'police-stop' event already sent for it
+  nextPoliceAt: number; // no new police stop laid before this s
+  policeQueued: boolean; // lay one at the next free chunk slot (debug)
+  workAt: number; // s where the latest construction zone starts, -1 if none
+  workEnd: number; // s where it ends
+  workWarned: boolean; // 'roadwork' event already sent for it
+  nextWorkAt: number; // no new construction zone laid before this s
+  workRun: number; // construction chunks still to lay in the current zone
+  workQueued: boolean; // lay one at the next free chunk slot (debug)
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
   angle: number; // current angle around the ring (rad, 0 = bottom, + = right); eases toward the slot
@@ -94,6 +108,8 @@ const runState = () => ({
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
   tunnelAt: -1, tunnelEnd: -1, nextTunnelAt: TUNNEL_FIRST_AT, tunnelQueued: false, tube: false, slot: 0, angle: 0,
+  policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
+  workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -167,6 +183,8 @@ export function step(w: World, dt: number): SimEvent[] {
   w.speed = speed;
   w.distance += speed * dt;
   if (!w.swarmSeen && w.swarmAt >= 0 && w.distance >= w.swarmAt) { w.swarmSeen = true; events.push('swarm'); }
+  if (!w.policeWarned && w.distance >= w.policeAt - ZONE_WARN) { w.policeWarned = true; events.push('police-stop'); }
+  if (!w.workWarned && w.distance >= w.workAt - ZONE_WARN) { w.workWarned = true; events.push('roadwork'); }
 
   if (!w.tube && w.tunnelAt >= 0 && w.distance >= w.tunnelAt && w.distance < w.tunnelEnd) {
     enterTube(w);
@@ -221,9 +239,14 @@ export function step(w: World, dt: number): SimEvent[] {
       events.push(e.kind === 'supercharger' ? 'battery' : 'power');
     } else if (w.y >= clearHeight(e.kind)) {
       continue; // jumped or hovering over it, or riding a car's roof
+    } else if (e.kind === 'spikes') {
+      // A spike strip stays put. Shielded (grace or a power-up), the car rolls over it unharmed.
+      if (isShielded(w)) continue;
+      events.push('puncture');
+      if (crash(w)) { events.push(w.caught ? 'caught' : 'crash'); break; }
     } else if (isShielded(w)) {
       knockAside(w, e);
-      events.push(isTraffic(e.kind) ? 'boing' : 'smash');
+      events.push(isTraffic(e.kind) || isProp(e.kind) ? 'boing' : 'smash');
     } else {
       knockAside(w, e);
       if (crash(w)) { events.push(w.caught ? 'caught' : 'crash'); break; }
@@ -233,20 +256,21 @@ export function step(w: World, dt: number): SimEvent[] {
   return events;
 }
 
-/** Cones are flattened; traffic gets a "boing" and pops aside (the view animates it), harmless from then on. */
+/** Cones are flattened; traffic and big props get a "boing" and pop aside (the view animates it), harmless from then on. */
 function knockAside(w: World, e: Entity): void {
-  if (isTraffic(e.kind)) e.bumped = w.time;
+  if (isTraffic(e.kind) || isProp(e.kind)) e.bumped = w.time;
   else e.alive = false;
 }
 
-/** CAR_ROOF if the car is up level with a car's roof that's under it, else 0 (the road). */
+/** The roof height (CAR_ROOF, or a parked police car's) if the car is up level with a roof under it, else 0 (the road). */
 function roofUnder(w: World): number {
   if (w.tube || w.y < CAR_CLEAR) return 0;
+  let roof = 0;
   for (const e of w.entities) {
-    if (!e.alive || e.kind !== 'car' || e.bumped !== undefined) continue;
-    if (Math.abs(e.s - w.distance) <= hitDepth('car') && sideOverlap(w, e)) return CAR_ROOF;
+    if (!e.alive || (e.kind !== 'car' && e.kind !== 'police') || e.bumped !== undefined) continue;
+    if (Math.abs(e.s - w.distance) <= hitDepth(e.kind) && sideOverlap(w, e)) roof = Math.max(roof, roofHeight(e.kind));
   }
-  return 0;
+  return roof;
 }
 
 /** Is the car level with `e` across the road (or around the tube's ring)? */
@@ -398,7 +422,7 @@ function pickPower(w: World): PowerKind {
 function spawn(w: World): void {
   while (w.nextRowAt < w.distance + SPAWN_AHEAD) {
     const difficulty = (speedAt(w.time) - SPEED_START) / (SPEED_MAX - SPEED_START);
-    if (layBatSwarm(w) || layTunnel(w)) continue;
+    if (layBatSwarm(w) || layTunnel(w) || layZone(w, difficulty)) continue;
     if (wantTraffic(w)) { layTraffic(w, placeChunk(w.rng, difficulty, w.nextRowAt, true).items); continue; }
     const powersOk = w.time > POWER_START_AFTER && !w.power;
     for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
@@ -449,16 +473,19 @@ function layTraffic(w: World, items: PlacedItem[]): void {
   for (const e of w.entities) if (e.alive && e.kind === 'ludicrous' && e.s > w.distance) boost += LUDICROUS_TIME;
   const fastest = (tau: number) => (tau < boost ? LUDICROUS_BOOST : 1);
   let shift = v * catchTimeAtLeast(w.time, firstZone - w.distance, 0, fastest);
-  // Never pulled back into a tunnel or Bat Swarm, or over older cones close enough to see it drive through them.
+  // Never pulled back into a tunnel or Bat Swarm, or over older static obstacles (cones, police stops, road work)
+  // close enough to see it drive through them.
   const clear = hitDepth('truck');
   const blockEnd = Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD);
   for (const it of items) shift = Math.min(shift, it.s - blockEnd - clear);
   const p = speedAt(w.time);
   for (const it of movers) {
     for (const e of w.entities) {
-      if (!e.alive || e.kind !== 'cone' || e.lane !== it.lane || e.slot !== undefined || e.s >= it.s) continue;
+      if (!e.alive || !isStatic(e.kind) || e.lane !== it.lane || e.slot !== undefined || e.s >= it.s) continue;
+      // Bodies must not overlap: a truck's half length plus the obstacle's (a cone's fits inside `clear`).
+      const gap = Math.max(clear, hitDepth('truck') + hitDepth(e.kind as 'cone') - 2 * PLAYER_HALF_LENGTH + 0.5);
       const seen = e.s - w.distance - TRAFFIC_GHOST_DIST; // > 0: still deep in the fog when traffic reaches it
-      const minStart = seen > 0 ? e.s - clear - (v * seen) / p : e.s + clear;
+      const minStart = seen > 0 ? e.s - gap - (v * seen) / p : e.s + gap;
       shift = Math.min(shift, it.s - minStart);
     }
   }
@@ -474,6 +501,55 @@ function layTraffic(w: World, items: PlacedItem[]): void {
   const slowest = (tau: number) => 1 - (STUMBLE_SLOWDOWN * Math.max(0, stumble - tau)) / STUMBLE_TIME;
   const drift = v * (catchTime(w.time, lastZone - w.distance, v, slowest) + TRAFFIC_SLACK) - shift;
   w.nextRowAt = s0 + CHUNK_LENGTH + Math.max(0, drift);
+}
+
+const between = (w: World, [lo, hi]: number[]): number => lo + w.rng() * (hi - lo);
+
+/** Ask for a police stop at the next free chunk slot (debug). */
+export function queuePoliceStop(w: World): void { w.policeQueued = true; }
+/** Ask for a construction zone at the next free chunk slot (debug). */
+export function queueConstruction(w: World): void { w.workQueued = true; }
+
+/**
+ * Now and then lay a police stop or a construction zone (one or more chunks) in place of a cone chunk. They're
+ * static like cones, so the same fairness holds (chunk validator, edge gaps, traffic pulled back only so far). Never
+ * inside or straight after a tube tunnel or Bat Swarm (both are laid at nextRowAt, so never on top of one), and never
+ * in the middle of a run of traffic chunks.
+ */
+function layZone(w: World, difficulty: number): boolean {
+  const s0 = w.nextRowAt;
+  if (s0 < Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD) + ZONE_AFTER_BLOCK) return false;
+  let pool: 'police' | 'construction';
+  if (w.workRun > 0 && s0 !== w.workEnd) w.workRun = 0; // a tunnel or swarm came in between: that zone is over
+  if (w.workRun > 0) { pool = 'construction'; w.workRun--; }
+  else if (w.trafficRun > 0) return false;
+  else if (w.policeQueued || s0 >= w.nextPoliceAt) {
+    pool = 'police';
+    w.policeQueued = false;
+    w.policeWarned = false;
+    w.nextPoliceAt = s0 + between(w, POLICE_GAP);
+    w.nextWorkAt = Math.max(w.nextWorkAt, s0 + CHUNK_LENGTH + ZONE_SPACING);
+  } else if (w.workQueued || s0 >= w.nextWorkAt) {
+    pool = 'construction';
+    w.workQueued = false;
+    w.workWarned = false;
+    const [lo, hi] = WORK_RUN;
+    w.workRun = lo + Math.floor(w.rng() * (hi - lo + 1)) - 1;
+    w.workAt = s0;
+    w.nextWorkAt = s0 + between(w, WORK_GAP);
+  } else return false;
+  const { items } = placeChunk(w.rng, difficulty, s0, pool);
+  for (const it of items) {
+    if (it.kind === 'power') { for (let i = 0; i < 3; i++) add(w, 'coin', it.lane, it.s + i * 2.2); continue; }
+    if (it.kind === 'police') w.policeAt = it.s;
+    add(w, it.kind, it.lane, it.s, undefined, undefined, undefined, it.kind === 'police' ? Math.floor(w.rng() * 1000) : undefined);
+  }
+  w.nextRowAt += CHUNK_LENGTH;
+  if (pool === 'construction') {
+    w.workEnd = w.nextRowAt;
+    if (w.workRun === 0) w.nextPoliceAt = Math.max(w.nextPoliceAt, w.nextRowAt + ZONE_SPACING);
+  }
+  return true;
 }
 
 /** Ask for a Bat Swarm at the next chunk slot, whatever the time of day (debug). */

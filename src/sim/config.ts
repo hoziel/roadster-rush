@@ -86,3 +86,22 @@ export const TUNNEL_EXIT = 25; // m before the end: the car slides back down to 
 export const TUNNEL_CHANCE = 0.3; // per chunk slot once the gap has passed
 export const TUNNEL_FIRST_AT = 500; // m into a run before the first tunnel can appear
 export const TUNNEL_MIN_GAP = 600; // m between tunnels
+
+// Police stops and construction zones: static chunk types laid now and then in place of a cone chunk
+// (src/sim/chunks/austin.json, kind "police" / "construction"). Sizes match the models in src/view/roadwork.ts.
+export const POLICE_GAP = [400, 600]; // m from one police stop to the next (min, max)
+export const POLICE_FIRST_AT = 300; // m into a run before the first police stop
+export const WORK_GAP = [300, 450]; // m from one construction zone's start to the next (a bit more often than police)
+export const WORK_FIRST_AT = 180; // m into a run before the first construction zone
+export const WORK_RUN = [1, 2]; // chunks in one construction zone (min, max)
+export const ZONE_SPACING = 120; // m kept between a police stop and a construction zone
+export const ZONE_AFTER_BLOCK = 40; // m of plain road after a tube tunnel or Bat Swarm before either
+export const ZONE_WARN = 75; // m ahead of a stop when its "Police stop!" / "Road work!" toast fires
+export const SPIKES_HEIGHT = 0.15; // m: a flat spike strip; any jump clears it
+export const PARKED_POLICE_LENGTH = 3.6; // m along the road: the police roadster parked at a slight angle
+export const PARKED_POLICE_CLEAR = 1.1; // m: jump over it like a car...
+export const PARKED_POLICE_ROOF = 1.2; // m: ...or land on its roof (with the light bar) and ride it
+export const BARRIER_HEIGHT = 0.75; // m: the low striped barrier, as high as a cone; jump it
+export const FENCE_HEIGHT = 2.1; // m: the tall construction fence, higher than any jump
+export const DIGGER_LENGTH = 3.6; // m: the parked digger (tractor shovel)
+export const DIGGER_HEIGHT = 2.2; // m: higher than any jump
