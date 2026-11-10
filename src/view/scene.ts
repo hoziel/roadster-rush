@@ -398,7 +398,9 @@ export class GameView {
     // Every switch glides (not cuts), including back to the run camera when the run starts.
     const ease = Math.min(1, dt * CAM_EASE);
     if (this.showcase && this.bust.active) this.bust.end();
-    this.bust.update(dt, time);
+    // Two hover police fly alongside after a hit, while the chase is on (not in a tunnel or up in the sky).
+    const escort = w.phase === 'running' && w.chase > 0 && !w.tube && w.y < 4 && !this.showcase;
+    this.bust.update(dt, time, escort, w.x, w.floor, w.speed);
     this.overBlend += ((w.phase === 'over' && this.bust.active ? 1 : 0) - this.overBlend) * Math.min(1, dt * 2);
     const o = smooth(this.overBlend);
     if (this.bust.active && !this.showcase) this.orbitA += dt * BUST_ORBIT.spin;
