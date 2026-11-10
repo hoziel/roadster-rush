@@ -8,6 +8,7 @@ import { Scenery } from './scenery';
 import { createSky } from './sky';
 import { dayPhase } from '../sim/daycycle';
 import { BatSwarm, coinRainLift } from './bats';
+import { Buildings } from './buildings';
 import { DayNight } from './daynight';
 import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
@@ -66,6 +67,7 @@ export class GameView {
   private nightLights = new NightLights();
   private landmarks: Landmarks;
   private batSwarm = new BatSwarm();
+  private buildings = new Buildings();
   /** Last cycle phase drawn (for the debug overlay). */
   phase = 0;
 
@@ -129,7 +131,7 @@ export class GameView {
       coneMat: this.cones.material as THREE.MeshToonMaterial,
     });
     this.landmarks = new Landmarks(this.dayNight.silhouette);
-    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group);
+    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group);
 
     window.addEventListener('resize', () => this.resize());
     // iOS can fire resize before the new size is known after rotating; visualViewport catches up.
@@ -216,6 +218,7 @@ export class GameView {
     this.dayNight.update(this.phase);
     this.nightLights.update(w.distance, this.dayNight.lights, time);
     this.landmarks.update(w.distance);
+    this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
 
     let nc = 0, nk = 0, np = 0;
