@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LANE_COUNT, LANE_WIDTH } from '../sim/config';
+import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH } from '../sim/config';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
@@ -33,6 +33,9 @@ export const POWER_COLORS: Record<PowerKind, string> = {
 };
 
 /** Grey-box renderer: draws the sim state, owns nothing about the rules. */
+const FLIP_TIME = (2 * JUMP_VELOCITY) / GRAVITY * 0.92; // land the flip just before touchdown
+const FLIP_PIVOT = 0.5; // body centre height (m)
+
 export class GameView {
   readonly renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -57,6 +60,7 @@ export class GameView {
   private raycaster = new THREE.Raycaster();
   private scenery = new Scenery();
   private honkBounce = 0;
+  private flipT = -1; // seconds into a jump's front flip; -1 = not flipping
   private shake = 0;
   private dayNight: DayNight;
   private nightLights = new NightLights();
@@ -155,8 +159,18 @@ export class GameView {
   render(w: World, dt: number, time: number): void {
     const car = this.car.group;
     const lean = THREE.MathUtils.clamp((car.position.x - w.x) * 0.5, -0.25, 0.25);
-    car.position.set(w.x, w.y, 0);
-    car.rotation.set(w.y > 0 ? -0.08 : 0, 0, lean);
+    // A normal jump (swipe up) does one front flip over the arc; hovering and landing from a hover don't.
+    if (w.y <= 0) this.flipT = -1;
+    else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) this.flipT = 0;
+    let flip = 0;
+    if (this.flipT >= 0) {
+      this.flipT += dt;
+      const p = Math.min(1, this.flipT / FLIP_TIME);
+      flip = -Math.PI * 2 * p * p * (3 - 2 * p); // smoothstep: wind up, spin, settle
+    }
+    // Spin around the body's middle, not the wheels, so the roof never dips into the road.
+    car.position.set(w.x, w.y + FLIP_PIVOT * (1 - Math.cos(flip)), -FLIP_PIVOT * Math.sin(flip));
+    car.rotation.set(flip !== 0 ? flip : w.y > 0 ? -0.08 : 0, 0, lean);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     this.car.body.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
     // Blink during the post-crash grace period.
