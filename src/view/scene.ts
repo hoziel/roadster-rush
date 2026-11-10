@@ -3,7 +3,8 @@ import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SPEED_START,
 import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, policeClose, type World } from '../sim/world';
-import { buildCar, buildPolice, type CarParts } from './cars';
+import { buildRoadster, type RoadsterParts } from './roadster';
+import { buildPoliceRoadster } from './policeRoadster';
 import { CarStyle } from './carStyle';
 import { Scenery } from './scenery';
 import { createSky } from './sky';
@@ -23,12 +24,12 @@ const MAX_POWERS = 8;
 const ROAD_LENGTH = 220;
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
-const POLICE_CLOSE = 3.7; // just behind the player, in view
+const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
 const C_BLACK = new THREE.Color('#000000');
-const C_RED_ON = new THREE.Color('#ff2a3a'), C_RED_OFF = new THREE.Color('#4a0c12');
-const C_BLUE_ON = new THREE.Color('#2a6bff'), C_BLUE_OFF = new THREE.Color('#0e1f4a');
+const CAR_SCALE = 0.9; // both roadsters: ~1.7 m wide in 2.5 m lanes
+const SIREN_HZ = 2.5; // police light-bar alternation
 
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',
@@ -53,7 +54,7 @@ export class GameView {
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
   private baseFov = 62;
-  private car: CarParts;
+  private car: RoadsterParts;
   /** Parent of the car: placed on the tube wall (and rolled) inside a tunnel, plain lane offset outside. */
   private carMount = new THREE.Group();
   /** Parent of the thruster puffs: rolls around the tube axis with the car so puffs blow off the wall. */
@@ -64,7 +65,7 @@ export class GameView {
   readonly style: CarStyle;
   /** Garage open: orbit the camera around the parked car. */
   showcase = false;
-  private police: ReturnType<typeof buildPolice>;
+  private police: ReturnType<typeof buildPoliceRoadster>;
   private policeZ = POLICE_FAR;
   private policeX = 0;
   private hoverPad: THREE.Mesh;
@@ -122,11 +123,13 @@ export class GameView {
     ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 25);
     this.scene.add(ground);
 
-    this.car = buildCar('#e8344e');
+    this.car = buildRoadster('#e8344e');
+    this.car.group.scale.setScalar(CAR_SCALE);
     this.carMount.add(this.car.group);
     this.scene.add(this.carMount);
     this.style = new CarStyle(this.car);
-    this.police = buildPolice();
+    this.police = buildPoliceRoadster();
+    this.police.group.scale.setScalar(CAR_SCALE);
     this.police.group.position.z = POLICE_FAR;
     this.scene.add(this.police.group);
 
@@ -225,7 +228,7 @@ export class GameView {
       if (p > 0 && !this.rollPuffed) {
         // Side thrusters kick the roll off: puffs from the side that pushes up.
         this.rollPuffed = true;
-        for (const cz of [-1, 0, 1]) this.puffs.emit(px + this.flipDir * 0.85, w.y + 0.3, cz, this.flipDir * 3, -2, 0, 0.3, 0.4);
+        for (const cz of [-1.24, -0.6, 0, 0.6, 1.24]) for (let n = 0; n < 3; n++) this.puffs.emit(px + this.flipDir * 0.8, w.y + 0.3, cz, this.flipDir * 3.5, -2, 0, 0.32, 0.55);
       }
     }
     // Mount: lane offset on the road, a point on the tube wall (wheels to the wall) inside, blended between.
@@ -237,7 +240,7 @@ export class GameView {
     car.rotation.set(w.y > w.floor && roll === 0 ? -0.06 : 0, 0, lean + roll);
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
-    this.car.body.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
+    car.scale.set(CAR_SCALE, CAR_SCALE * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), CAR_SCALE);
     // Blink during the post-crash grace period.
     car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
     // Glow in the power-up's color.
@@ -263,9 +266,7 @@ export class GameView {
       this.police.group.rotation.z = pa * k;
     }
     this.police.group.visible = this.policeZ < POLICE_FAR - 1;
-    const flash = Math.floor(time * 6) % 2 === 0;
-    this.police.red.color.copy(flash ? C_RED_ON : C_RED_OFF);
-    this.police.blue.color.copy(flash ? C_BLUE_OFF : C_BLUE_ON);
+    if (this.police.group.visible) this.police.updateLights(time * SIREN_HZ);
 
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);

@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Driver } from '../ui/drivers';
 import type { PaintLook } from '../ui/paints';
-import type { CarParts } from './cars';
+import { lowerGeometry, stripeGeometry, type RoadsterParts } from './roadster';
 
-// Grey-box sizes and colors for the driver, hat and plate. Retune with the art direction.
-const HEAD_R = 0.27;
-const HEAD_POS = new THREE.Vector3(0, 1.22, 0.35); // in the seat, above the cabin box
+// Driver, hat and plate sizes. The head sits in the left seat, under the see-through canopy.
+const HEAD_R = 0.17;
+const HAT_SCALE = 0.42; // small enough to clear the roof
 const HAT_COLOR = '#8a5a2b';
 const EYE_COLOR = '#1b1b22';
-const PLATE_W = 0.72, PLATE_H = 0.28;
+const PLATE_W = 0.5, PLATE_H = 0.195;
+const PLATE_POS = new THREE.Vector3(0, 0.43, 1.795); // rear panel, below the brake light
 const PLATE_BG = '#f6f1e3', PLATE_INK = '#1f2d6b', PLATE_EDGE = '#c0392b';
 const NEON_GLOW = 0.55; // emissive intensity for neon paints
 const METALLIC_STEPS = [70, 150, 205, 255]; // toon gradient bands: harder, shinier highlights
@@ -32,17 +33,18 @@ export class CarStyle {
   private metalMap: THREE.DataTexture;
   private plateName = '';
 
-  constructor(private car: CarParts) {
+  constructor(private car: RoadsterParts) {
+    const HEAD_POS = car.seat;
     const head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 18, 14), this.skin);
     head.position.copy(HEAD_POS);
     // Hair/cap blob: a squashed sphere sitting on the back and top of the head.
     const hair = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R * 1.08, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), this.hair);
-    hair.position.copy(HEAD_POS).add(new THREE.Vector3(0, 0.02, 0.07));
+    hair.position.copy(HEAD_POS).add(new THREE.Vector3(0, 0.012, 0.045));
     hair.scale.set(1, 0.85, 1);
     // Eyes face forward (-z), seen on the turntable.
     const eyeGeo = mergeGeometries([
-      new THREE.SphereGeometry(0.045, 8, 6).translate(-0.09, 0.03, -HEAD_R + 0.02),
-      new THREE.SphereGeometry(0.045, 8, 6).translate(0.09, 0.03, -HEAD_R + 0.02),
+      new THREE.SphereGeometry(0.03, 8, 6).translate(-0.06, 0.02, -HEAD_R + 0.02),
+      new THREE.SphereGeometry(0.03, 8, 6).translate(0.06, 0.02, -HEAD_R + 0.02),
     ]);
     const eyes = new THREE.Mesh(eyeGeo, new THREE.MeshBasicMaterial({ color: EYE_COLOR }));
     eyes.position.copy(HEAD_POS);
@@ -52,21 +54,21 @@ export class CarStyle {
       new THREE.CylinderGeometry(0.2, 0.25, 0.26, 18).translate(0, 0.13, 0),
     ]);
     this.hat = new THREE.Mesh(hatGeo, new THREE.MeshToonMaterial({ color: HAT_COLOR }));
+    this.hat.scale.setScalar(HAT_SCALE);
     this.hat.position.copy(HEAD_POS).add(new THREE.Vector3(0, HEAD_R * 0.7, 0));
     this.hat.rotation.x = -0.12; // tipped back a little
     car.group.add(head, hair, eyes, this.hat);
 
-    // Paint accents and plate ride on the body so they squash with the honk bounce.
-    this.stripe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.46, 3.02), this.accent);
-    this.lower = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.22, 3.02), this.accent);
-    this.lower.position.y = -0.115;
+    // Paint accents and plate (the whole car squashes for the honk bounce).
+    this.stripe = new THREE.Mesh(stripeGeometry(), this.accent);
+    this.lower = new THREE.Mesh(lowerGeometry(), this.accent);
     this.plateCanvas.width = 256; this.plateCanvas.height = 100;
     this.plateTex = new THREE.CanvasTexture(this.plateCanvas);
     this.plateTex.colorSpace = THREE.SRGBColorSpace;
     this.plateTex.anisotropy = 4;
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(PLATE_W, PLATE_H), new THREE.MeshBasicMaterial({ map: this.plateTex }));
-    plate.position.set(0, 0, 1.52); // the back of the car, facing the chase camera
-    car.body.add(this.stripe, this.lower, plate);
+    plate.position.copy(PLATE_POS); // the back of the car, facing the chase camera
+    car.group.add(this.stripe, this.lower, plate);
 
     const data = new Uint8Array(METALLIC_STEPS.flatMap((v) => [v, v, v, 255]));
     this.metalMap = new THREE.DataTexture(data, METALLIC_STEPS.length, 1, THREE.RGBAFormat);

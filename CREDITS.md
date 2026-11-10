@@ -21,7 +21,7 @@ Every third-party asset, with source URL and license. CC-BY assets are also cred
 | City Kit Commercial: building-c, -e, -i, -l, -n, skyscraper-a, -e | `assets-src/kenney/city-kit-commercial/` | Kenney | https://kenney.nl/assets/city-kit-commercial | CC0 |
 | City Kit Suburban: building-type-d, -h (→ house-d, house-h) | `assets-src/kenney/city-kit-suburban/` | Kenney | https://kenney.nl/assets/city-kit-suburban | CC0 |
 | City Kit Roads: light-curved (→ street-light) | `assets-src/kenney/city-kit-roads/` | Kenney | https://kenney.nl/assets/city-kit-roads | CC0 |
-| Car Kit: police | `assets-src/kenney/car-kit/` | Kenney | https://kenney.nl/assets/car-kit | CC0 |
+| Car Kit: traffic cars | `assets-src/kenney/car-kit/` | Kenney | https://kenney.nl/assets/car-kit | CC0 |
 | Nature Kit: tree_oak, tree_palmTall, rock_tallA | `assets-src/kenney/nature-kit/` | Kenney | https://kenney.nl/assets/nature-kit | CC0 |
 
 ## Audio
