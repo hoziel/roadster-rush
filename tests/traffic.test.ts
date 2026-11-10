@@ -80,7 +80,7 @@ describe('traffic', () => {
   it('a car hit head-on costs a battery and the car pops aside (not destroyed)', () => {
     const w = empty();
     const car = putTraffic(w, 'car', 20);
-    const events = run(w, 3);
+    const events = run(w, 2); // long enough to hit, short enough that it isn't despawned behind us
     expect(events).toContain('hit');
     expect(car.alive).toBe(true);
     expect(car.bumped).toBeDefined();

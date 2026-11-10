@@ -7,7 +7,7 @@ import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, start, steer, step } from './sim/world';
+import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, slam, start, steer, step } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
 import { HOVER_CHARGES_MAX } from './sim/config';
 
@@ -94,6 +94,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
+  else if (action === 'down') slam(world);
   else if (action === 'hover') { if (hover(world)) audio.hover(); }
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
@@ -120,6 +121,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'faster': audio.faster(); hud.toast('Faster!', '#ffd23f'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
+        case 'jump': audio.kickflip(); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
