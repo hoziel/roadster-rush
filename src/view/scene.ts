@@ -202,6 +202,8 @@ export class GameView {
 
   honk(): void { this.honkBounce = 1; }
   bump(): void { this.shake = 0.35; }
+  /** A run starts: lay a fresh random roadside (buildings and props). */
+  newRun(): void { this.buildings.newRun(); this.scenery.newRun(); }
   /** Drove over a spike strip: the car wobbles and sags on a flat tyre for a second, air hissing from the wheels. */
   puncture(): void {
     this.flatT = FLAT_TIME;
