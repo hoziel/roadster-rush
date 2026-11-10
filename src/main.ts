@@ -112,6 +112,7 @@ view.renderer.setAnimationLoop((now: number) => {
       switch (ev) {
         case 'coin': audio.coin(); break;
         case 'smash': audio.smash(); break;
+        case 'boing': audio.boing(); break;
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
         case 'power': if (world.lastPower === 'ludicrous') audio.ludicrous(); else audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
         case 'battery': audio.battery(); hud.powerToast('supercharger'); break;

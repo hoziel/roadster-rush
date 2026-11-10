@@ -17,9 +17,9 @@ export function swarmCoins(s0: number): SwarmCoin[] {
   return out;
 }
 
-/** True if any live cone sits on (or within a hitbox of) the stretch [from, to]. */
+/** True if any live obstacle (cone, car, truck) sits on (or within a cone's hitbox of) the stretch [from, to]. */
 export function conesIn(
   entities: readonly { kind: string; s: number; alive: boolean }[], from: number, to: number,
 ): boolean {
-  return entities.some((e) => e.alive && e.kind === 'cone' && e.s >= from - HIT_DEPTH && e.s <= to + HIT_DEPTH);
+  return entities.some((e) => e.alive && (e.kind === 'cone' || e.kind === 'car' || e.kind === 'truck') && e.s >= from - HIT_DEPTH && e.s <= to + HIT_DEPTH);
 }

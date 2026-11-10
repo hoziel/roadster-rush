@@ -16,13 +16,32 @@ export const GRAVITY = 28; // m/s²
 
 
 
-export const SPAWN_AHEAD = 120; // m ahead of the car we keep filled
+// m ahead of the car we keep laid. Far enough that traffic, which is laid this far ahead and then pulled
+// back to meet the car on time (see layTraffic in world.ts), still appears beyond ~110 m, deep in the fog.
+export const SPAWN_AHEAD = 200;
 export const DESPAWN_BEHIND = 10; // m behind the car we recycle
 
 export const HIT_DEPTH = 0.9; // m half-depth of the collision box along the road
 export const HIT_HALF_WIDTH = 1.0; // m half-width across lanes
 export const CONE_HEIGHT = 0.75; // m; clear it by jumping
 export const COIN_VALUE = 10;
+
+// Traffic: cars and trucks driving the same way, slower than us, so we overtake them (src/sim/traffic.ts).
+// All traffic drives at one speed, so it never runs into other traffic and each chunk keeps its layout.
+export const TRAFFIC_SPEED = 8; // m/s (~30 km/h)
+export const PLAYER_HALF_LENGTH = 1.0; // m: added to an obstacle's half length for the collision depth
+export const CAR_LENGTH = 2.8; // m, sedan/taxi/hatchback/SUV/van
+export const CAR_ROOF = 1.35; // m: the roof a jump lands on (you ride it until you're past)
+export const CAR_CLEAR = 1.1; // m: be at least this high when you reach a car to land on it (peak jump 1.8)
+export const TRUCK_LENGTH = 5.0; // m, delivery and garbage trucks
+export const TRUCK_HEIGHT = 2.4; // m: higher than any jump, so trucks must be passed by changing lanes
+export const ROOF_COIN_HEIGHT = 2.15; // m: coins floating over a car roof
+export const ROOF_COIN_REACH = 1.6; // m: an air coin is collected when the car is at most this far below it
+export const TRAFFIC_FIRST_AT = 60; // m into a run before traffic chunks can appear
+export const TRAFFIC_CHANCE = 0.4; // per cone-chunk slot: start a run of traffic chunks
+export const TRAFFIC_RUN = [1, 3]; // extra traffic chunks after the first in a run (min, max)
+export const TRAFFIC_SLACK = 1.0; // s of crash slowdowns allowed for when keeping the road after traffic clear
+export const TRAFFIC_GHOST_DIST = 90; // m: traffic pulled back over older cones may only pass them this far away
 
 // Kid mode and police chase
 export const BATTERIES = 3;

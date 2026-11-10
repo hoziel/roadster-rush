@@ -15,6 +15,7 @@ import { DayNight } from './daynight';
 import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
+import { TrafficView } from './traffic';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
@@ -88,6 +89,7 @@ export class GameView {
   private landmarks: Landmarks;
   private batSwarm = new BatSwarm();
   private buildings = new Buildings();
+  private traffic = new TrafficView();
   /** Last cycle phase drawn (for the debug overlay). */
   phase = 0;
 
@@ -155,6 +157,8 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
+    this.scene.add(this.traffic.group);
+    void this.traffic.load();
     this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffFrame, this.tunnel.group);
 
     window.addEventListener('resize', () => this.resize());
@@ -200,13 +204,18 @@ export class GameView {
     this.prevX = lat;
     const px = w.x * (1 - k); // car's x in the rolled puff frame (0 on the wall, lane x on the road)
     // A normal jump (swipe up) is a kickflip; hovering and landing from a hover aren't.
-    if (w.y <= 0) {
-      if (this.flipT >= 0) this.puffs.corners(px, 0, 0.5); // touchdown
-      this.flipT = -1;
+    if (w.y <= w.floor) {
+      if (this.flipT >= 0 && this.flipT < AIR_TIME * ROLL_END) {
+        // Landed on a car roof before the roll was done: finish it in a blink.
+        this.flipT = Math.max(this.flipT, AIR_TIME * ROLL_END - 0.08);
+      } else {
+        if (this.flipT >= 0) this.puffs.corners(px, w.floor, 0.5); // touchdown
+        this.flipT = -1;
+      }
     } else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) {
       this.flipT = 0;
       this.rollPuffed = false;
-      this.puffs.corners(px, 0, 0.45); // lift-off blast
+      this.puffs.corners(px, w.y, 0.45); // lift-off blast
     }
     let roll = 0;
     if (this.flipT >= 0) {
@@ -225,7 +234,7 @@ export class GameView {
     this.carMount.rotation.z = ang;
     this.puffFrame.rotation.z = ang;
     car.position.set(FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
-    car.rotation.set(w.y > 0 && roll === 0 ? -0.06 : 0, 0, lean + roll);
+    car.rotation.set(w.y > w.floor && roll === 0 ? -0.06 : 0, 0, lean + roll);
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     this.car.body.scale.y = 1 + Math.sin(this.honkBounce * Math.PI) * 0.25;
@@ -300,6 +309,7 @@ export class GameView {
     this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
     this.tunnel.update(w, this.dayNight.lights, time);
+    this.traffic.update(w, this.dayNight.lights, time, !this.showcase);
 
     let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {
@@ -318,7 +328,7 @@ export class GameView {
         continue;
       }
       if (e.kind === 'coin' && nc < MAX_COINS) {
-        this.place(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08 + coinRainLift(e.s, w), z, time * 3 + e.s);
+        this.place(x, (e.y ?? 0.9) + Math.sin(time * 4 + e.s) * 0.08 + coinRainLift(e.s, w), z, time * 3 + e.s);
         this.coins.setMatrixAt(nc++, this.dummy.matrix);
       } else if (e.kind === 'cone' && nk < MAX_CONES) {
         this.place(x, 0, z, 0);

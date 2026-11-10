@@ -1,10 +1,12 @@
 import {
-  AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CHASE_TIME, COIN_VALUE, CONE_HEIGHT,
+  AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CAR_CLEAR, CAR_ROOF, CHASE_TIME, COIN_VALUE,
   DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
   INTRO_CHASE_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
   SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
+  ROOF_COIN_HEIGHT, ROOF_COIN_REACH, TRAFFIC_CHANCE, TRAFFIC_FIRST_AT, TRAFFIC_GHOST_DIST, TRAFFIC_RUN, TRAFFIC_SLACK,
+  TRAFFIC_SPEED,
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
 } from './config';
 import {
@@ -13,8 +15,9 @@ import {
 import { SWARM_SPAN, conesIn, swarmCoins } from './batswarm';
 import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
-import { CHUNK_LENGTH, placeChunk } from './chunks';
-import { isPower, type EntityKind, type PowerKind } from './spawner';
+import { CHUNK_LENGTH, placeChunk, type PlacedItem } from './chunks';
+import { isObstacle, isPower, isTraffic, type EntityKind, type PowerKind } from './spawner';
+import { catchTime, catchTimeAtLeast, clearHeight, hitDepth } from './traffic';
 import { speedAt, speedLevel } from './speed';
 
 export type { PowerKind } from './spawner';
@@ -25,10 +28,14 @@ export interface Entity {
   s: number; // absolute distance along the road
   alive: boolean;
   slot?: number; // set for tunnel contents: slot around the tube's ring (-3..4, 0 = bottom); lane is unused
+  v?: number; // m/s along the road: traffic (and the coins of a traffic chunk) drive at TRAFFIC_SPEED
+  y?: number; // coins floating over a car roof: height (m); collected only when the car is up there too
+  variant?: number; // traffic: which model the view draws (any non-negative integer)
+  bumped?: number; // traffic knocked aside by a crash or a shield: run time it happened (no more collisions)
 }
 
 export type SimEvent =
-  | 'coin' | 'hit' | 'smash' | 'crash' | 'caught' | 'battery'
+  | 'coin' | 'hit' | 'smash' | 'boing' | 'crash' | 'caught' | 'battery'
   | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel';
 export type Phase = 'ready' | 'running' | 'over';
 
@@ -46,6 +53,7 @@ export interface World {
   x: number; // current sideways position (m), 0 = centre lane
   y: number; // height above road (m)
   vy: number;
+  floor: number; // what the car stands on: 0 = road, CAR_ROOF = riding a car's roof
   coins: number;
   batteries: number;
   invuln: number; // s of post-crash grace left
@@ -61,6 +69,7 @@ export interface World {
   entities: Entity[]; // pooled: dead entries are reused
   nextRowAt: number;
   dayOffset: number; // shifts the sunset-to-night cycle (debug jumps); kept across runs
+  trafficRun: number; // traffic chunks still to lay in the current run of traffic
   swarmAt: number; // s where the current/last Bat Swarm coin rain starts, -1 if none
   swarmEnd: number; // s where it ends
   swarmSeen: boolean; // 'swarm' event already sent for it
@@ -79,7 +88,7 @@ export interface World {
 export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * LANE_WIDTH;
 
 const runState = () => ({
-  time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, coins: 0,
+  time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, floor: 0, coins: 0, trafficRun: 0,
   batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0, intro: INTRO_CHASE_TIME,
   hoverCharges: HOVER_CHARGES_START, speedLevel: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
@@ -126,9 +135,9 @@ export function hover(w: World): boolean {
 export const policeClose = (w: World): boolean => w.chase > 0 || w.intro > 0;
 
 export function jump(w: World): boolean {
-  if (w.phase !== 'running' || w.y > 0 || w.power === 'hover') return false;
+  if (w.phase !== 'running' || w.y > w.floor + 1e-6 || w.power === 'hover') return false;
   w.vy = JUMP_VELOCITY;
-  w.y = 0.0001;
+  w.y = w.floor + 0.0001;
   return true;
 }
 
@@ -170,14 +179,20 @@ export function step(w: World, dt: number): SimEvent[] {
     w.x += Math.sign(dx) * Math.min(Math.abs(dx), LANE_CHANGE_SPEED * dt);
   }
 
+  // Traffic drives on; a car under us (once we're up at its roof) is the floor we ride on.
+  for (const e of w.entities) if (e.alive && e.v) e.s += e.v * dt;
+  w.floor = roofUnder(w);
   if (w.power === 'hover') {
     w.vy = 0;
     w.y = Math.min(HOVER_HEIGHT, w.y + HOVER_RISE * dt);
-  } else if (w.y > 0) {
-    // Falls back down after a hover ends; otherwise a normal jump arc.
+  } else if (w.y > w.floor || w.vy > 0) {
+    // Falls back down after a hover ends or off the front of a car; otherwise a normal jump arc.
     w.vy -= GRAVITY * dt;
     w.y += w.vy * dt;
-    if (w.y <= 0) { w.y = 0; w.vy = 0; }
+    if (w.y <= w.floor) { w.y = w.floor; w.vy = 0; }
+  } else {
+    w.y = w.floor; // landed on (or stepped up onto) a roof
+    w.vy = 0;
   }
 
   spawn(w);
@@ -186,9 +201,11 @@ export function step(w: World, dt: number): SimEvent[] {
     if (!e.alive) continue;
     const rel = e.s - w.distance;
     if (rel < -DESPAWN_BEHIND) { e.alive = false; continue; }
-    if (Math.abs(rel) > HIT_DEPTH || !sideOverlap(w, e)) continue;
+    if (e.bumped !== undefined) continue;
+    if (Math.abs(rel) > (isObstacle(e.kind) ? hitDepth(e.kind) : HIT_DEPTH) || !sideOverlap(w, e)) continue;
 
     if (e.kind === 'coin') {
+      if (e.y !== undefined && w.y < e.y - ROOF_COIN_REACH) continue; // floating over a roof: jump for it
       e.alive = false;
       w.coins++;
       events.push('coin');
@@ -202,18 +219,34 @@ export function step(w: World, dt: number): SimEvent[] {
       }
       activate(w, e.kind);
       events.push(e.kind === 'supercharger' ? 'battery' : 'power');
-    } else if (w.y >= CONE_HEIGHT) {
-      continue; // jumped or hovering over it
+    } else if (w.y >= clearHeight(e.kind)) {
+      continue; // jumped or hovering over it, or riding a car's roof
     } else if (isShielded(w)) {
-      e.alive = false;
-      events.push('smash');
+      knockAside(w, e);
+      events.push(isTraffic(e.kind) ? 'boing' : 'smash');
     } else {
-      e.alive = false;
+      knockAside(w, e);
       if (crash(w)) { events.push(w.caught ? 'caught' : 'crash'); break; }
       events.push('hit');
     }
   }
   return events;
+}
+
+/** Cones are flattened; traffic gets a "boing" and pops aside (the view animates it), harmless from then on. */
+function knockAside(w: World, e: Entity): void {
+  if (isTraffic(e.kind)) e.bumped = w.time;
+  else e.alive = false;
+}
+
+/** CAR_ROOF if the car is up level with a car's roof that's under it, else 0 (the road). */
+function roofUnder(w: World): number {
+  if (w.tube || w.y < CAR_CLEAR) return 0;
+  for (const e of w.entities) {
+    if (!e.alive || e.kind !== 'car' || e.bumped !== undefined) continue;
+    if (Math.abs(e.s - w.distance) <= hitDepth('car') && sideOverlap(w, e)) return CAR_ROOF;
+  }
+  return 0;
 }
 
 /** Is the car level with `e` across the road (or around the tube's ring)? */
@@ -340,9 +373,16 @@ function autopilot(w: World): void {
   for (const e of w.entities) {
     if (!e.alive) continue;
     const rel = e.s - w.distance;
+    if (isObstacle(e.kind)) {
+      // Cones, cars and trucks: anything ahead, or still level with us (no swerving into a car's side).
+      if (e.bumped !== undefined) continue;
+      const h = hitDepth(e.kind);
+      if (rel + h < 0 || rel - h > AUTOPILOT_LOOKAHEAD) continue;
+      scores[e.lane] -= 100 / (1 + Math.max(0, rel - h) * 0.1);
+      continue;
+    }
     if (rel < 0 || rel > AUTOPILOT_LOOKAHEAD) continue;
-    if (e.kind === 'cone') scores[e.lane] -= 100 / (1 + rel * 0.1);
-    else scores[e.lane] += e.kind === 'coin' ? 1 : 3;
+    scores[e.lane] += e.kind === 'coin' ? 1 : 3;
   }
   let best = w.lane;
   for (let l = 0; l < LANE_COUNT; l++) if (scores[l] > scores[best]) best = l;
@@ -359,6 +399,7 @@ function spawn(w: World): void {
   while (w.nextRowAt < w.distance + SPAWN_AHEAD) {
     const difficulty = (speedAt(w.time) - SPEED_START) / (SPEED_MAX - SPEED_START);
     if (layBatSwarm(w) || layTunnel(w)) continue;
+    if (wantTraffic(w)) { layTraffic(w, placeChunk(w.rng, difficulty, w.nextRowAt, true).items); continue; }
     const powersOk = w.time > POWER_START_AFTER && !w.power;
     for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
       let kind: EntityKind;
@@ -371,6 +412,68 @@ function spawn(w: World): void {
     }
     w.nextRowAt += CHUNK_LENGTH;
   }
+}
+
+/** Is the next chunk slot a traffic chunk? Traffic comes in runs of a few chunks, between cone chunks. */
+function wantTraffic(w: World): boolean {
+  // Not straight after a tunnel or Bat Swarm: traffic can't be pulled back into them, so it would be met late.
+  if (w.nextRowAt < TRAFFIC_FIRST_AT || w.nextRowAt < Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD) + 60) return false;
+  if (w.trafficRun > 0) { w.trafficRun--; return true; }
+  const first = w.nextRowAt < TRAFFIC_FIRST_AT + CHUNK_LENGTH; // the first slot that may have traffic always does
+  if (!first && w.rng() >= TRAFFIC_CHANCE) return false;
+  const [lo, hi] = TRAFFIC_RUN;
+  w.trafficRun = lo + Math.floor(w.rng() * (hi - lo + 1));
+  return true;
+}
+
+/**
+ * Lay a traffic chunk (cars, trucks and their coins, all driving at TRAFFIC_SPEED) in the slot at nextRowAt.
+ *
+ * Fairness: the chunk moves as one rigid piece, so its own layout never changes (the chunk validator checks
+ * it at top speed, which is stricter than closing on traffic). What must not happen is traffic meeting the
+ * car at the same time as static cones. So:
+ * - Behind it: the chunk is pulled back by `shift`, at most what the traffic drives before even the fastest
+ *   possible car (speed steps, plus any Ludicrous that could be picked up) reaches it. So every vehicle is
+ *   met at or beyond its spot in the slot, never back among the cones before the slot.
+ * - Ahead of it: the next slot starts only past where the last vehicle can be when the slowest car
+ *   (stumbling after crashes, allowed for by TRAFFIC_SLACK) gets past it.
+ * Without the pull-back, the car would need ages to catch traffic laid SPAWN_AHEAD away; with it, the
+ * traffic is met roughly where the chunk was designed to be, like a cone chunk.
+ */
+function layTraffic(w: World, items: PlacedItem[]): void {
+  const s0 = w.nextRowAt, v = TRAFFIC_SPEED;
+  const depth = (it: PlacedItem) => (isObstacle(it.kind) ? hitDepth(it.kind) : 0);
+  const movers = items.filter((it) => isObstacle(it.kind));
+  const firstZone = Math.min(...movers.map((it) => it.s - depth(it)));
+  let boost = w.power === 'ludicrous' ? w.powerTime : 0;
+  for (const e of w.entities) if (e.alive && e.kind === 'ludicrous' && e.s > w.distance) boost += LUDICROUS_TIME;
+  const fastest = (tau: number) => (tau < boost ? LUDICROUS_BOOST : 1);
+  let shift = v * catchTimeAtLeast(w.time, firstZone - w.distance, 0, fastest);
+  // Never pulled back into a tunnel or Bat Swarm, or over older cones close enough to see it drive through them.
+  const clear = hitDepth('truck');
+  const blockEnd = Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD);
+  for (const it of items) shift = Math.min(shift, it.s - blockEnd - clear);
+  const p = speedAt(w.time);
+  for (const it of movers) {
+    for (const e of w.entities) {
+      if (!e.alive || e.kind !== 'cone' || e.lane !== it.lane || e.slot !== undefined || e.s >= it.s) continue;
+      const seen = e.s - w.distance - TRAFFIC_GHOST_DIST; // > 0: still deep in the fog when traffic reaches it
+      const minStart = seen > 0 ? e.s - clear - (v * seen) / p : e.s + clear;
+      shift = Math.min(shift, it.s - minStart);
+    }
+  }
+  shift = Math.max(0, shift);
+  for (const it of items) {
+    if (it.kind === 'power') continue; // traffic chunks have none; the validator enforces it
+    const y = it.y ? ROOF_COIN_HEIGHT : undefined;
+    add(w, it.kind, it.lane, it.s - shift, undefined, v, y, isTraffic(it.kind) ? Math.floor(w.rng() * 1000) : undefined);
+  }
+  // Keep the road after the chunk clear of whatever the slowest car could still meet there.
+  const lastZone = Math.max(...movers.map((it) => it.s + depth(it))) - shift;
+  const stumble = w.stumble;
+  const slowest = (tau: number) => 1 - (STUMBLE_SLOWDOWN * Math.max(0, stumble - tau)) / STUMBLE_TIME;
+  const drift = v * (catchTime(w.time, lastZone - w.distance, v, slowest) + TRAFFIC_SLACK) - shift;
+  w.nextRowAt = s0 + CHUNK_LENGTH + Math.max(0, drift);
 }
 
 /** Ask for a Bat Swarm at the next chunk slot, whatever the time of day (debug). */
@@ -412,8 +515,11 @@ function layTunnel(w: World): boolean {
   return true;
 }
 
-function add(w: World, kind: EntityKind, lane: number, s: number, slot?: number): void {
-  const free = w.entities.find((e) => !e.alive);
-  if (free) Object.assign(free, { kind, lane, s, alive: true, slot });
-  else w.entities.push({ kind, lane, s, alive: true, slot });
+function add(
+  w: World, kind: EntityKind, lane: number, s: number, slot?: number, v?: number, y?: number, variant?: number,
+): void {
+  const e: Entity = { kind, lane, s, alive: true, slot, v, y, variant, bumped: undefined };
+  const free = w.entities.find((x) => !x.alive);
+  if (free) Object.assign(free, e);
+  else w.entities.push(e);
 }
