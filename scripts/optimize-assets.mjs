@@ -17,9 +17,13 @@ const OUT_DIR = 'public/themes/austin/models';
 const DEFAULT_TEXTURE_SIZE = 128;
 
 // name: { src, triangles? (target count; omit to keep), animated?, clips? (animation names to keep;
-// omit to keep all), textureSize? (max texture side in px) }
+// omit to keep all), textureSize? (max texture side in px), noTextures? (drop every texture and UV:
+// the game colors it itself), bakeColors? (material colors become vertex colors on one shared
+// material, so a multi-material model joins into a single draw call) }
 // Clip names are matched after stripping the Blender "<Armature>|" prefix, and kept clips are renamed
 // to that stripped name (e.g. "BatArmature|Bat_Flying" -> "Bat_Flying").
+const KCC = 'assets-src/kenney/city-kit-commercial';
+const KCS = 'assets-src/kenney/city-kit-suburban';
 const MANIFEST = {
   bat: { src: 'assets-src/quaternius/bat.glb', animated: true, clips: ['Bat_Flying'] },
   bull: { src: 'assets-src/quaternius/bull.glb', animated: true, clips: ['Idle', 'Walk'] },
@@ -27,6 +31,27 @@ const MANIFEST = {
   'cactus-flowers': { src: 'assets-src/quaternius/cactus-flowers.glb' },
   'food-truck': { src: 'assets-src/quaternius/sushi-truck.glb', triangles: 2500 },
   scooter: { src: 'assets-src/polypizza-ccby/scooter-minipoly.glb', triangles: 800 },
+
+  // Kenney City Kit Commercial / Suburban (CC0): buildings lining the road (src/view/buildings.ts).
+  'building-c': { src: `${KCC}/building-c.glb` },
+  'building-e': { src: `${KCC}/building-e.glb` },
+  'building-i': { src: `${KCC}/building-i.glb` },
+  'building-l': { src: `${KCC}/building-l.glb` },
+  'building-n': { src: `${KCC}/building-n.glb` },
+  'skyscraper-a': { src: `${KCC}/building-skyscraper-a.glb` },
+  'skyscraper-e': { src: `${KCC}/building-skyscraper-e.glb` },
+  'house-d': { src: `${KCS}/building-type-d.glb` },
+  'house-h': { src: `${KCS}/building-type-h.glb` },
+  // Kenney Car Kit (CC0): the police car (src/view/cars.ts).
+  police: { src: 'assets-src/kenney/car-kit/police.glb' },
+  // Kenney City Kit Roads + Nature Kit (CC0): roadside props (src/view/scenery.ts).
+  'street-light': { src: 'assets-src/kenney/city-kit-roads/light-curved.glb' },
+  'tree-oak': { src: 'assets-src/kenney/nature-kit/tree_oak.glb', bakeColors: true },
+  'tree-palm': { src: 'assets-src/kenney/nature-kit/tree_palmTall.glb', bakeColors: true },
+  'rock-tall': { src: 'assets-src/kenney/nature-kit/rock_tallA.glb', bakeColors: true },
+  // Texas State Capitol by 85 edgecroft (CC-BY 4.0): the vista at the road's end (src/view/landmarks.ts).
+  // Drawn as a sky-colored silhouette, so only the shape ships.
+  capitol: { src: 'assets-src/sketchfab-ccby/texas-state-capitol/scene.gltf', noTextures: true, triangles: 2400 },
 };
 
 // Shrinks every texture larger than maxSize (largest side) and re-encodes it: PNG as an indexed
@@ -42,6 +67,35 @@ async function shrinkTextures(doc, maxSize) {
       : await img.png({ palette: true, colors: 256, compressionLevel: 9 }).toBuffer();
     if (out.byteLength < tex.getImage().byteLength) tex.setImage(new Uint8Array(out));
   }
+}
+
+// Drops all textures and the attributes only they used (UVs, tangents); materials become plain white.
+function stripTextures(doc) {
+  for (const mat of doc.getRoot().listMaterials()) {
+    mat.setBaseColorTexture(null).setNormalTexture(null).setMetallicRoughnessTexture(null)
+      .setOcclusionTexture(null).setEmissiveTexture(null).setBaseColorFactor([1, 1, 1, 1]);
+  }
+  for (const tex of doc.getRoot().listTextures()) tex.dispose();
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const prim of mesh.listPrimitives())
+      for (const sem of prim.listSemantics())
+        if (sem.startsWith('TEXCOORD_') || sem === 'TANGENT') prim.setAttribute(sem, null);
+}
+
+// Writes each primitive's material color into a COLOR_0 vertex attribute and points every primitive
+// at one shared white material, so join() can merge the whole model into a single primitive.
+function bakeColors(doc) {
+  const shared = doc.createMaterial('baked').setBaseColorFactor([1, 1, 1, 1]).setRoughnessFactor(1).setMetallicFactor(0);
+  const buffer = doc.getRoot().listBuffers()[0];
+  for (const mesh of doc.getRoot().listMeshes())
+    for (const prim of mesh.listPrimitives()) {
+      const [r, g, b] = prim.getMaterial()?.getBaseColorFactor() ?? [1, 1, 1, 1];
+      const n = prim.getAttribute('POSITION').getCount();
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) arr.set([r, g, b], i * 3);
+      prim.setAttribute('COLOR_0', doc.createAccessor().setType('VEC3').setArray(arr).setBuffer(buffer));
+      prim.setMaterial(shared);
+    }
 }
 
 const clipName = (anim) => anim.getName().replace(/^[^|]*\|/, '');
@@ -94,6 +148,8 @@ for (const name of names) {
   const before = countTriangles(doc);
   const clipsBefore = doc.getRoot().listAnimations().length;
   if (entry.clips) keepClips(doc, entry.clips);
+  if (entry.noTextures) stripTextures(doc);
+  if (entry.bakeColors) bakeColors(doc);
   const steps = [dedup(), prune(), weld()];
   // Static props can be flattened and joined into fewer draw calls; animated ones keep their hierarchy.
   if (!entry.animated) steps.push(flatten(), join());
