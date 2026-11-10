@@ -13,7 +13,7 @@ const BRIDGE_COLOR = '#8a7484';
 const BRIDGE_VISIBLE_AHEAD = 230; // m; show it from beyond the fog
 
 const BAT_COUNT = 70;
-const BAT_COLOR = '#1c1028';
+const BAT_COLOR = '#7a4fc4'; // friendly violet: the old near-black read as holes in the sky (Ofir: too dark)
 const BAT_TRIGGER = 85; // m from the bridge when the bats burst out
 const BAT_TIME = 7; // s the swarm lasts
 const BAT_STAGGER = 1.6; // s spread of take-off times

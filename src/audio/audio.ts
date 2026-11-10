@@ -422,6 +422,40 @@ export class GameAudio {
     o.onended = () => { o.disconnect(); lp.disconnect(); g.disconnect(); };
   }
 
+  /** Bat swarm bursting out: a soft wing flutter (pulsed, muffled noise) and a few tiny squeaks. */
+  bats(): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (!this.noise) { this.whoosh(0.01, 500, 600, 0.0001); }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise!; src.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.8;
+    const flap = ctx.createGain(); flap.gain.value = 0;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 18; // wingbeats
+    const depth = ctx.createGain(); depth.gain.value = 0.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+    lfo.connect(depth).connect(flap.gain);
+    src.connect(bp).connect(flap).connect(g).connect(this.sfxBus!);
+    src.start(t); lfo.start(t); src.stop(t + 2.7); lfo.stop(t + 2.7);
+    src.onended = () => { src.disconnect(); bp.disconnect(); flap.disconnect(); lfo.disconnect(); depth.disconnect(); g.disconnect(); };
+    // Squeaks: short, soft, high chirps at random moments.
+    for (let i = 0; i < 5; i++) {
+      const at = t + 0.2 + Math.random() * 1.8, f = 2600 + Math.random() * 1400;
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f, at);
+      o.frequency.exponentialRampToValueAtTime(f * 1.35, at + 0.06);
+      og.gain.setValueAtTime(0.0001, at);
+      og.gain.exponentialRampToValueAtTime(0.035, at + 0.015);
+      og.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+      o.connect(og).connect(this.sfxBus!);
+      o.start(at); o.stop(at + 0.1); o.onended = () => { o.disconnect(); og.disconnect(); };
+    }
+  }
+
   /** Supercharger battery picked up. */
   battery(): void {
     if (!this.playSample('battery', 0.5)) this.powerUp();
