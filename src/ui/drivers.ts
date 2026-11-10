@@ -2,9 +2,8 @@
 // To swap them in, edit only this list. Everything else (garage tiles, 3D head in the car,
 // license plate, "Great drive!" avatar) reads from here.
 // Keep names short (they go on the license plate, ~8 letters max).
-// Kids' pictures live in public/drivers-private/, which is gitignored: they never enter the (future public) repo.
-// A build made on Ofir's Mac does include them in dist/, so don't deploy that folder publicly without deciding first.
-// Without the picture (a fresh clone, a public build) the avatar falls back to the coloured initial.
+// Driver pictures live in public/drivers/ and are committed: Ofir decided (Nov 10) they go public with the repo.
+// Without a picture the avatar falls back to the coloured initial.
 import type { PaintId } from '../sim/shop';
 
 export interface Driver {
@@ -18,7 +17,7 @@ export interface Driver {
 }
 
 export const DRIVERS: Driver[] = [
-  { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers-private/nevo.jpg' },
+  { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg' },
   { id: 'd1', name: 'Zoom', color: '#ff4fd8', skin: '#f2c7a5', hair: '#5a3a22' },
   { id: 'd2', name: 'Bolt', color: '#35e0ff', skin: '#c68a5e', hair: '#1d1d26' },
   { id: 'd3', name: 'Sunny', color: '#ffd23f', skin: '#8d5a3b', hair: '#e04a2a' },
