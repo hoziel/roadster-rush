@@ -92,6 +92,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (world.phase !== 'running') {
     if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
       start(world);
+      view.newRun();
       audio.runStart();
       hud.hideCard();
       const d = driverById(storage.shop.driver);
@@ -197,6 +198,7 @@ if (debug) {
   const go = q.get('go');
   if (go) setTimeout(() => {
     start(world);
+    view.newRun();
     hud.hideCard();
     document.getElementById('card')?.style.setProperty('transition', 'none');
     if (q.has('tod')) world.dayOffset = offsetFor(world, Number(q.get('tod')));

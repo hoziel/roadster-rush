@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { loadModel, modelGeometry } from './models';
 
-// City blocks lining both sides of the road, on a looping strip like scenery.ts. Kenney City Kit
-// Commercial and Suburban models (CC0), one InstancedMesh per model, so one draw call each.
+// City blocks lining both sides of the road, streamed endlessly at random (a fresh layout every
+// run). Kenney City Kit Commercial and Suburban models (CC0), one InstancedMesh per model, so one
+// draw call each; each mesh is a fixed-size pool that buildings are recycled through.
 // Their white walls take a per-building color from the warm Austin palette, and the blue window
 // panes light up at night.
-const SPAN = 220; // m of roadside that loops (treadmill)
+const SPAN = 220; // m of roadside kept laid out ahead of the camera
 const NEAR_Z = 20; // where a building leaves the screen behind the camera
 const FRONT_X = 18; // m from the road centre to the shop fronts (behind cacti, poles, signs)
 const RISE_FROM_Z = -165; // far end: buildings grow out of the haze here...
@@ -13,6 +14,8 @@ const RISE_TO_Z = -110; // ...and are full height here (keeps the Capitol vista 
 const GAP: [number, number] = [1.5, 4]; // m between neighbours
 const PLAZA_CHANCE = 0.16; // chance of a wide gap after a building, so landmarks show through
 const PLAZA: [number, number] = [14, 22];
+const JITTER: [number, number] = [0.92, 1.08]; // per-building width/scale jitter
+const POOL_MARGIN = 2; // spare instances per model on top of the worst case
 
 // Warm sunset Austin palette (white walls take one per building).
 const PALETTE = ['#d9734e', '#f2e3c6', '#3fa7a0', '#e0b03a', '#f08aa8', '#b49ad8', '#e8a77a', '#7cc3b0'];
@@ -36,15 +39,37 @@ const VARIANTS: Variant[] = [
   { file: 'house-h.glb', weight: 0.1, scale: 9, stretchY: [1, 1.15] },
 ];
 
-interface Slot { t: number; x: number; rotY: number; scale: number; stretchY: number }
 interface Model { variant: Variant; geometry: THREE.BufferGeometry; map: THREE.Texture | null; width: number }
+
+/**
+ * One model's fixed-capacity pool. Live buildings are packed at instance indices 0..n-1
+ * (mesh.count = n), so nothing past them is drawn; recycling one moves the last into its slot.
+ */
+interface Pool {
+  model: Model;
+  mesh: THREE.InstancedMesh;
+  icol: THREE.InstancedBufferAttribute;
+  n: number;
+  a: Float32Array; // road position of the building's centre (m): z = NEAR_Z - (a - distance)
+  x: Float32Array;
+  rotY: Float32Array;
+  scale: Float32Array;
+  stretchY: Float32Array;
+}
+
+/** Each side of the road streams its own row from a frontier ahead of the car. */
+interface Side { dir: number; frontier: number; prev: number }
 
 export class Buildings {
   readonly group = new THREE.Group();
   private night = { value: 0 };
   private glow = { value: new THREE.Color(GLOW) };
-  private meshes: THREE.InstancedMesh[] = [];
-  private slots: Slot[][] = [];
+  private pools: Pool[] = [];
+  private totalWeight = 0;
+  private sides: Side[] = [{ dir: -1, frontier: 0, prev: -1 }, { dir: 1, frontier: 0, prev: -1 }];
+  private lastDistance = 0;
+  private needsReset = true;
+  private color = new THREE.Color();
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private p = new THREE.Vector3();
@@ -55,7 +80,12 @@ export class Buildings {
     void this.load();
   }
 
-  /** Loads the models, then lays out the strip. Renders nothing until then. */
+  /** A fresh random roadside for the next run (laid out on the next update). */
+  newRun(): void {
+    this.needsReset = true;
+  }
+
+  /** Loads the models and makes one pooled InstancedMesh per model. Renders nothing until then. */
   private async load(): Promise<void> {
     const results = await Promise.allSettled(VARIANTS.map((v) => loadModel(v.file)));
     const models: Model[] = [];
@@ -72,24 +102,31 @@ export class Buildings {
     });
     if (models.length === 0) return;
 
-    const layout = this.layout(models);
-    const color = new THREE.Color();
-    models.forEach((model, mi) => {
-      const slots = layout.filter((l) => l.model === mi).map((l) => l.slot);
-      if (slots.length === 0) return;
-      const mesh = new THREE.InstancedMesh(model.geometry, this.material(model.map), slots.length);
+    this.totalWeight = models.reduce((s, m) => s + m.variant.weight, 0);
+    const maxWidth = Math.max(...models.map((m) => m.width)) * JITTER[1];
+    const live = SPAN + 2 * maxWidth; // road one side's live buildings can cover at once
+    for (const model of models) {
+      // Twins never stand side by side, so a model is at most every other building on a side.
+      const others = models.filter((o) => o !== model);
+      const otherMin = others.length ? Math.min(...others.map((o) => o.width)) : model.width;
+      const period = others.length ? (model.width + otherMin) * JITTER[0] + 2 * GAP[0] : model.width * JITTER[0] + GAP[0];
+      const capacity = 2 * (Math.floor(live / period) + 1) + POOL_MARGIN;
+      const mesh = new THREE.InstancedMesh(model.geometry, this.material(model.map), capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false;
-      const icol = new Float32Array(slots.length * 4);
-      slots.forEach((slot, i) => {
-        color.set(PALETTE[Math.floor(hash(slot.t * 0.37 + slot.x) * PALETTE.length)]);
-        icol.set([color.r, color.g, color.b, LIT_MIN + (1 - LIT_MIN) * hash(slot.t * 1.9 + slot.x * 0.3)], i * 4);
+      mesh.count = 0;
+      mesh.visible = false;
+      const icol = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
+      icol.setUsage(THREE.DynamicDrawUsage);
+      mesh.geometry.setAttribute('iCol', icol);
+      this.pools.push({
+        model, mesh, icol, n: 0,
+        a: new Float32Array(capacity), x: new Float32Array(capacity), rotY: new Float32Array(capacity),
+        scale: new Float32Array(capacity), stretchY: new Float32Array(capacity),
       });
-      mesh.geometry.setAttribute('iCol', new THREE.InstancedBufferAttribute(icol, 4));
-      this.slots.push(slots);
-      this.meshes.push(mesh);
       this.group.add(mesh);
-    });
+    }
+    this.needsReset = true;
   }
 
   /**
@@ -125,73 +162,109 @@ export class Buildings {
     return mat;
   }
 
-  /** Walk each side of the strip, dropping buildings with small gaps and the odd wide plaza. */
-  private layout(models: Model[]): { model: number; slot: Slot }[] {
-    const out: { model: number; slot: Slot }[] = [];
-    const totalWeight = models.reduce((s, m) => s + m.variant.weight, 0);
-    for (const side of [-1, 1]) {
-      let t = side < 0 ? 3 : 9; // stagger the two sides
-      let n = side < 0 ? 0 : 100;
-      let prev = -1;
-      for (;;) {
-        n++;
-        let mi = pick(models, hash(n * 4.13) * totalWeight);
-        if (mi === prev) mi = (mi + 1) % models.length; // no twins side by side
-        prev = mi;
-        const model = models[mi];
-        const v = model.variant;
-        const jitter = 0.92 + hash(n * 2.71) * 0.16;
-        const width = model.width * jitter;
-        if (t + width > SPAN - GAP[0]) break;
-        out.push({
-          model: mi,
-          slot: {
-            t: t + width / 2,
-            x: side * FRONT_X,
-            rotY: side < 0 ? Math.PI / 2 : -Math.PI / 2, // fronts face the road
-            scale: v.scale * jitter,
-            stretchY: v.stretchY[0] + hash(n * 6.37) * (v.stretchY[1] - v.stretchY[0]),
-          },
-        });
-        const plaza = hash(n * 8.91) < PLAZA_CHANCE;
-        const [g0, g1] = plaza ? PLAZA : GAP;
-        t += width + g0 + hash(n * 3.17) * (g1 - g0);
-      }
+  /** Empty every pool and restart both frontiers at the car. */
+  private reset(distance: number): void {
+    for (const pool of this.pools) pool.n = 0;
+    for (const side of this.sides) {
+      side.frontier = distance + (side.dir < 0 ? 3 : 9); // stagger the two sides
+      side.prev = -1;
     }
-    return out;
+  }
+
+  /** True if pool mi can take the next building on this side (has room, and isn't a twin). */
+  private fits(mi: number, side: Side): boolean {
+    const pool = this.pools[mi];
+    return pool.n < pool.a.length && (mi !== side.prev || this.pools.length === 1);
+  }
+
+  /** Drop the next building on a side (random model, width jitter, stretch, colour), then a gap. */
+  private place(side: Side): void {
+    const pools = this.pools;
+    let mi = pick(pools, Math.random() * this.totalWeight);
+    if (mi === side.prev) mi = (mi + 1) % pools.length; // no twins side by side
+    // Pools are sized for the worst case; if one is still full, take the next model with room.
+    for (let k = 0; k < pools.length && !this.fits(mi, side); k++) mi = (mi + 1) % pools.length;
+    if (!this.fits(mi, side)) { side.frontier += GAP[1]; return; }
+    side.prev = mi;
+    const pool = pools[mi];
+    const v = pool.model.variant;
+    const jitter = JITTER[0] + Math.random() * (JITTER[1] - JITTER[0]);
+    const width = pool.model.width * jitter;
+    const i = pool.n++;
+    pool.a[i] = side.frontier + width / 2;
+    pool.x[i] = side.dir * FRONT_X;
+    pool.rotY[i] = side.dir < 0 ? Math.PI / 2 : -Math.PI / 2; // fronts face the road
+    pool.scale[i] = v.scale * jitter;
+    pool.stretchY[i] = v.stretchY[0] + Math.random() * (v.stretchY[1] - v.stretchY[0]);
+    this.color.set(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+    pool.icol.setXYZW(i, this.color.r, this.color.g, this.color.b, LIT_MIN + (1 - LIT_MIN) * Math.random());
+    pool.icol.needsUpdate = true;
+    const [g0, g1] = Math.random() < PLAZA_CHANCE ? PLAZA : GAP; // the odd wide plaza lets landmarks show through
+    side.frontier += width + g0 + Math.random() * (g1 - g0);
+  }
+
+  /** Move pool slot `from` into slot `to` (keeps the live buildings packed after one is recycled). */
+  private move(pool: Pool, from: number, to: number): void {
+    pool.a[to] = pool.a[from];
+    pool.x[to] = pool.x[from];
+    pool.rotY[to] = pool.rotY[from];
+    pool.scale[to] = pool.scale[from];
+    pool.stretchY[to] = pool.stretchY[from];
+    const c = pool.icol;
+    c.setXYZW(to, c.getX(from), c.getY(from), c.getZ(from), c.getW(from));
+    c.needsUpdate = true;
   }
 
   /** distance: world.distance; lights: night factor 0..1 from DayNight. */
   update(distance: number, lights: number): void {
     this.night.value = lights;
-    this.slots.forEach((slots, k) => {
-      const mesh = this.meshes[k];
-      slots.forEach((slot, i) => {
-        const z = NEAR_Z - SPAN + ((slot.t + distance) % SPAN);
+    if (this.pools.length === 0) return;
+    // A new run (distance went back) or a big jump ahead: lay a fresh roadside from here.
+    if (this.needsReset || distance < this.lastDistance || distance - this.lastDistance > SPAN) {
+      this.reset(distance);
+      this.needsReset = false;
+    }
+    this.lastDistance = distance;
+
+    // Recycle buildings that have passed behind the camera (z beyond NEAR_Z).
+    for (const pool of this.pools) {
+      for (let i = pool.n - 1; i >= 0; i--) {
+        if (pool.a[i] < distance) {
+          pool.n--;
+          if (i !== pool.n) this.move(pool, pool.n, i);
+        }
+      }
+    }
+    // Stream new ones in at the far end (they start flat and rise out of the haze).
+    for (const side of this.sides) {
+      while (side.frontier < distance + SPAN) this.place(side);
+    }
+
+    for (const pool of this.pools) {
+      const mesh = pool.mesh;
+      for (let i = 0; i < pool.n; i++) {
+        const z = NEAR_Z - (pool.a[i] - distance);
         const u = Math.min(1, Math.max(0, (z - RISE_FROM_Z) / (RISE_TO_Z - RISE_FROM_Z)));
         const rise = u * u * (3 - 2 * u);
-        this.q.setFromAxisAngle(this.up, slot.rotY);
-        this.s.set(slot.scale, slot.scale * slot.stretchY * Math.max(0.001, rise), slot.scale);
-        this.m.compose(this.p.set(slot.x, 0, z), this.q, this.s);
+        this.q.setFromAxisAngle(this.up, pool.rotY[i]);
+        const sc = pool.scale[i];
+        this.s.set(sc, sc * pool.stretchY[i] * Math.max(0.001, rise), sc);
+        this.m.compose(this.p.set(pool.x[i], 0, z), this.q, this.s);
         mesh.setMatrixAt(i, this.m);
-      });
+      }
+      mesh.count = pool.n;
+      mesh.visible = pool.n > 0;
       mesh.instanceMatrix.needsUpdate = true;
-    });
+    }
   }
 }
 
-/** Index of the model whose cumulative weight passes r. */
-function pick(models: Model[], r: number): number {
+/** Index of the pool whose cumulative model weight passes r. */
+function pick(pools: Pool[], r: number): number {
   let acc = 0;
-  for (let i = 0; i < models.length - 1; i++) {
-    acc += models[i].variant.weight;
+  for (let i = 0; i < pools.length - 1; i++) {
+    acc += pools[i].model.variant.weight;
     if (r < acc) return i;
   }
-  return models.length - 1;
-}
-
-/** Deterministic 0..1 noise so the layout is the same every run. */
-function hash(n: number): number {
-  const x = Math.sin(n * 127.1) * 43758.5453;
-  return x - Math.floor(x);
+  return pools.length - 1;
 }
