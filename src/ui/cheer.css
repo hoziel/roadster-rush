@@ -1,0 +1,10 @@
+/* Uplifting cheer line: soft and elegant, near the top (above the toasts), gliding in and fading. */
+.cheer { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 132px); margin: 0 auto; width: max-content; max-width: calc(100% - 40px);
+  pointer-events: none; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 600 23px 'Fredoka', ui-rounded, system-ui, sans-serif; letter-spacing: .6px; color: #fff6e0;
+  text-shadow: 0 0 10px rgba(255, 196, 90, .85), 0 0 22px rgba(255, 140, 80, .5), 0 2px 0 rgba(42, 22, 80, .75);
+  opacity: 0; transform: translateY(-8px); }
+.cheer::before, .cheer::after { content: '\2726'; color: #ffd23f; font-size: 15px; margin: 0 10px; vertical-align: 3px; }
+.cheer.show { animation: cheer 2.6s ease-in-out forwards; }
+@keyframes cheer { 0% { opacity: 0; transform: translateY(-8px); letter-spacing: 3px; } 18% { opacity: 1; transform: translateY(0); letter-spacing: .6px; }
+  80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(4px); } }

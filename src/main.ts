@@ -6,6 +6,7 @@ import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
 import { InstallNudge } from './ui/install';
 import { Splash } from './ui/splash';
+import { Cheer } from './ui/cheer';
 import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
@@ -59,6 +60,7 @@ view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 new InstallNudge(document.getElementById('ui')!);
+const cheer = new Cheer(document.getElementById('ui')!); // after the HUD has built #ui
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
 // A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
 document.getElementById('ui')!.addEventListener('click', (e) => {
@@ -209,6 +211,7 @@ view.renderer.setAnimationLoop((now: number) => {
   // One steady run track (no jarring switch to the climax track during Ludicrous).
   audio.music(running ? 'run' : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
+  cheer.update(world, driverById(storage.shop.driver).name, storage.shop.driver);
   view.render(world, dt, now / 1000);
   if (stampDraws) { const r = view.renderer.info.render; hud.debug(`${r.calls} draws · ${r.triangles} tris`); }
 
