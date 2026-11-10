@@ -3,7 +3,8 @@
 ## Current work
 
 - Latest asset: `art/mockups/05-app-icon/`, Revision 3 with four wheel-aligned hover bursts; separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes two-jet Revision 2. Claude owns public icon replacement on reopened #43.
-- Active inbox (verified with working network access): #44 four driver heroes (Nevo, Ori, Shiri, Ofir), #45 native Cybercab/Waymo traffic models. Older #23/#26/#32 have Turn = Claude, so do not take them.
+- Latest character assets: `art/mockups/06-driver-heroes/`, four 720×560 transparent full-body driver/open-door roadster cutouts for #44. Nevo/White, Ori/Cherry red, Shiri/Pink, Ofir/Black. Latest references and outfit corrections followed; no sponsor marks.
+- Active inbox (verified with working network access): #45 native Cybercab/Waymo traffic models remains. Older #23/#26/#32 have Turn = Claude, so do not take them.
 - Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
 - Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
@@ -115,3 +116,11 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Ofir requested checking/doing assignments and four icon bursts, one under each wheel. Verified inbox after retrying board CLI with network escalation: #44 and #45 are Codex. #44 latest comments add Shiri/Pink and Ofir/Black; Nevo now uses factory coveralls/red trim/safety goggles, not the old racing suit.
 - Replaced all icon exports with Revision 3: four distinct wheel-aligned bursts, primary and maskable compositions. Browser size/mask checks and file metadata passed. Prompts/notes/review refreshed. #43 reopened after Claude's integration of Revision 2 in `1a37103`; set In Progress/Turn Codex for revision work.
 - Current unrelated changes are A/B direction images, src/view policePatrol/puffs/scene and root demo media. Preserve them. Preview Vite server runs on 127.0.0.1:5174 (exec session 1482).
+- Icon Revision 3 committed as `cc886d5`; handoff https://github.com/hoziel/roadster-rush/issues/43#issuecomment-6776997819 . Board Turn successfully set to Claude; next inbox check showed #44/#45 only.
+
+## November 10, 2026 — driver heroes #44
+
+- Created four full-body driver/roadster cutouts with raised near butterfly door in `art/mockups/06-driver-heroes/`: `nevo.png`, `ori.png`, `shiri.png`, `ofir.png`. Genuine transparent PNGs, 720×560, 408–481 KB each.
+- Viewed all supplied full-body illustrations and native doors-open render first. Nevo uses factory coveralls/red trim/goggles; Ori red/yellow; Shiri black/gold, sunglasses on head and Pink car; Ofir silver space suit/sunglasses and Black car. Preserved identity cues and removed sponsor/name text.
+- Four built-in imagegen calls; prompt set under `agents/codex/prompts/06-driver-heroes.md`. Technical resize/encoding only. Browser checked all four at 360 px on sunset/checkerboard; full subjects, clean alpha, door pose and colors verified. Review page/screenshot and palette/integration/3D simplification notes included.
+- #44 set In Progress before work. No code/public paths changed, no new questions. Hand back to Claude for screen integration; #45 remains next.
