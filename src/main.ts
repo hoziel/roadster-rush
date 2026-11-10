@@ -102,6 +102,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
 let last = performance.now();
 let acc = 0;
 let frames = 0, fpsTime = 0;
+let airborne = false; // for the kickflip touchdown sound
 
 view.renderer.setAnimationLoop((now: number) => {
   const dt = Math.min((now - last) / 1000, 0.1);
@@ -127,6 +128,9 @@ view.renderer.setAnimationLoop((now: number) => {
   }
 
   const running = world.phase === 'running' && !paused;
+  const inAir = running && world.y > world.floor + 0.05 && world.power !== 'hover';
+  if (airborne && !inAir && running) audio.land();
+  airborne = inAir;
   audio.motorUpdate(world.speed, running);
   audio.siren(running && policeClose(world), now / 1000);
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
