@@ -12,7 +12,7 @@ export default defineConfig({
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,jpg,ttf,woff2,glb,ogg,mp3,m4a,json}'] },
       manifest: {
         name: 'Roadster Rush',
-        short_name: 'Roadster',
+        short_name: 'Roadster Rush', // the name under the home-screen icon
         description: 'Drive a roadster through sunset Austin.',
         theme_color: '#3b1f5c',
         background_color: '#3b1f5c',
