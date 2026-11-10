@@ -57,3 +57,20 @@
 .g-buy.poor .g-coin { color: var(--g-ink); }
 .g-buy.nope { animation: g-nope .4s; }
 @keyframes g-nope { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+/* Start-card shortcuts and the Sound panel */
+.g-quick { pointer-events: auto; cursor: pointer; font: 700 18px 'Fredoka', ui-rounded, system-ui, sans-serif; color: #fff;
+  background: rgba(255,255,255,.18); border: 2px solid rgba(255,255,255,.7); border-radius: 16px; min-height: 48px; padding: 0 16px; }
+.g-quick:active { transform: translateY(2px); }
+.sound-panel { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: rgba(30, 14, 50, .92); pointer-events: auto; padding: 24px; z-index: 5; }
+.sound-panel.show { display: flex; }
+.sound-panel h2 { margin: 0 0 6px; font-size: 34px; }
+.s-switch { width: min(320px, 100%); min-height: 72px; display: flex; align-items: center; gap: 14px; padding: 0 20px; cursor: pointer;
+  font: 700 24px 'Fredoka', ui-rounded, system-ui, sans-serif; color: #fff; background: rgba(255,255,255,.12);
+  border: 3px solid rgba(255,255,255,.35); border-radius: 22px; }
+.s-switch .s-icon { font-size: 32px; }
+.s-switch b { margin-left: auto; font-size: 20px; padding: 6px 12px; border-radius: 999px; background: rgba(0,0,0,.3); }
+.s-switch.on { border-color: #4cff6a; }
+.s-switch.on b { background: #4cff6a; color: #123; }
+.s-done { margin-top: 8px; }

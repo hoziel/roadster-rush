@@ -129,7 +129,7 @@ export class Hud {
   showReady(best: number, extra = ''): void {
     this.creditsBtn.classList.add('show');
     this.el.card.className = 'card show';
-    this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to jump</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}${extra}`;
+    this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to flip, 🛸 to hover</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}${extra}`;
   }
 
   hideCard(): void {

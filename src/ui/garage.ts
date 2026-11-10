@@ -56,7 +56,8 @@ export class Garage {
     this.el.addEventListener('click', (e) => this.onClick(e));
     // Open buttons live on the start/finish cards (see cardHtml), so delegate from the UI root.
     root.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('[data-garage-open]')) this.open();
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-garage-open]');
+      if (btn) this.open((btn.dataset.garageOpen || undefined) as Tab | undefined);
     });
     root.addEventListener('pointerdown', (e) => {
       if ((e.target as HTMLElement).closest('[data-garage-open]')) e.stopPropagation();
@@ -68,6 +69,10 @@ export class Garage {
     return `<div class="g-cardrow">
       <span class="g-wallet" data-wallet>${coin(this.deps.getShop().wallet)}</span>
       <button class="g-open" data-garage-open>🚗 Garage</button>
+    </div>
+    <div class="g-cardrow">
+      <button class="g-quick" data-garage-open="driver">👤 Driver</button>
+      <button class="g-quick" data-sound-open>🔊 Sound</button>
     </div>`;
   }
 
@@ -77,7 +82,9 @@ export class Garage {
     return `<div class="g-driver">${avatarHtml(d, 56)}<span>${d.name}</span></div>`;
   }
 
-  open(): void {
+  /** Open on a given tab (the start card's Driver button opens straight to drivers). */
+  open(tab?: Tab): void {
+    if (tab) this.tab = tab;
     this.isOpen = true;
     this.preview = null;
     this.root.classList.add('garage-open');

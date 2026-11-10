@@ -4,6 +4,7 @@ import { storage } from './storage';
 import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
+import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
 import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, score, start, steer, step } from './sim/world';
@@ -31,6 +32,13 @@ const garage = new Garage(document.getElementById('ui')!, {
   playHorn: (id) => { audio.unlock(); audio.honk(id); },
   setOpen: (open) => { view.showcase = open; },
 });
+const sound = new SoundPanel(document.getElementById('ui')!, {
+  get: () => ({ music: storage.music, sfx: storage.sfx }),
+  set: (music, sfx) => { storage.set({ music, sfx }); audio.unlock(); audio.setMix(music, sfx); },
+  openHorns: () => garage.open('horn'),
+  preview: () => audio.coin(),
+});
+audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
@@ -65,7 +73,7 @@ function finish(): void {
 
 bindInput(view.renderer.domElement, (action, x, y) => {
   audio.unlock();
-  if (garage.isOpen) return; // keys and stray taps never start a run from the garage
+  if (garage.isOpen || sound.isOpen) return; // keys and stray taps never start a run from these screens
   if (paused) {
     if (action === 'tap' || action === 'jump') { paused = false; hud.hideCard(); }
     return;

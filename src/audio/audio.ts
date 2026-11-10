@@ -18,6 +18,9 @@ export class GameAudio {
   private ctx?: AudioContext;
   private master?: GainNode;
   private musicBus?: GainNode;
+  private sfxBus?: GainNode; // every sound that isn't music (motor, siren, horns, pickups)
+  private musicOn = true;
+  private sfxOn = true;
   private motor?: { osc: OscillatorNode; sub: OscillatorNode; gain: GainNode; filter: BiquadFilterNode };
   private muted: boolean;
   private sirenOsc?: OscillatorNode;
@@ -38,8 +41,11 @@ export class GameAudio {
     this.master.gain.value = this.muted ? 0 : MASTER_VOL;
     this.master.connect(ctx.destination);
     this.musicBus = ctx.createGain();
-    this.musicBus.gain.value = MUSIC_VOL;
+    this.musicBus.gain.value = this.musicOn ? MUSIC_VOL : 0;
     this.musicBus.connect(this.master);
+    this.sfxBus = ctx.createGain();
+    this.sfxBus.gain.value = this.sfxOn ? 1 : 0;
+    this.sfxBus.connect(this.master);
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
@@ -51,7 +57,7 @@ export class GameAudio {
     const sub = ctx.createOscillator();
     sub.type = 'sine';
     osc.connect(filter); sub.connect(filter);
-    filter.connect(gain).connect(this.master);
+    filter.connect(gain).connect(this.sfxBus!);
     osc.start(); sub.start();
     this.motor = { osc, sub, gain, filter };
 
@@ -151,7 +157,7 @@ export class GameAudio {
 
   /** Dip the music briefly so an SFX reads clearly. */
   private duck(len: number): void {
-    if (!this.ctx || !this.musicBus) return;
+    if (!this.ctx || !this.musicBus || !this.musicOn || !this.sfxOn) return;
     const g = this.musicBus.gain;
     const t = this.ctx.currentTime;
     g.cancelScheduledValues(t);
@@ -167,10 +173,20 @@ export class GameAudio {
     src.buffer = d.buffer;
     const g = this.ctx.createGain();
     g.gain.value = vol;
-    src.connect(g).connect(this.master);
+    src.connect(g).connect(this.sfxBus!);
     src.start(this.ctx.currentTime, d.onset);
     this.duck(d.buffer.duration - d.onset);
     return true;
+  }
+
+  /** Music and sound effects can be switched off separately (Sound panel). */
+  setMix(music: boolean, sfx: boolean): void {
+    this.musicOn = music;
+    this.sfxOn = sfx;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.sfxBus?.gain.setTargetAtTime(sfx ? 1 : 0, t, 0.05);
+    this.musicBus?.gain.setTargetAtTime(music ? MUSIC_VOL : 0, t, 0.05);
   }
 
   setMuted(muted: boolean): void {
@@ -196,7 +212,7 @@ export class GameAudio {
   honk(id: string = this.horn): void {
     const horn = (HORN_IDS as readonly string[]).includes(id) ? (id as HornId) : 'classic';
     if (horn === 'bike' && this.playSample('bike-horn', 0.6)) return;
-    if (this.ctx && this.master) playHorn(horn, this.ctx, this.master);
+    if (this.ctx && this.master) playHorn(horn, this.ctx, this.sfxBus!);
   }
 
   coin(): void {
@@ -210,7 +226,7 @@ export class GameAudio {
     o.frequency.setValueAtTime(1568, t + 0.06);
     g.gain.setValueAtTime(0.15, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    o.connect(g).connect(this.master);
+    o.connect(g).connect(this.sfxBus!);
     o.start(t); o.stop(t + 0.2); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
@@ -226,7 +242,7 @@ export class GameAudio {
     src.buffer = buf;
     const g = this.ctx.createGain();
     g.gain.value = 0.3;
-    src.connect(g).connect(this.master);
+    src.connect(g).connect(this.sfxBus!);
     src.start(t);
     src.onended = () => { src.disconnect(); g.disconnect(); };
     this.tone([330, 262], 'triangle', 0.4, 0.1, t + 0.1);
@@ -240,7 +256,7 @@ export class GameAudio {
       o.type = 'triangle';
       const g = this.ctx.createGain();
       g.gain.value = 0;
-      o.connect(g).connect(this.master);
+      o.connect(g).connect(this.sfxBus!);
       o.start();
       this.sirenOsc = o;
       this.sirenGain = g;
@@ -267,7 +283,7 @@ export class GameAudio {
     o.frequency.exponentialRampToValueAtTime(90, t + 0.25);
     g.gain.setValueAtTime(0.35, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    o.connect(g).connect(this.master);
+    o.connect(g).connect(this.sfxBus!);
     o.start(t); o.stop(t + 0.32); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
@@ -293,7 +309,7 @@ export class GameAudio {
     g.gain.linearRampToValueAtTime(vol, t + 0.01);
     g.gain.setValueAtTime(vol, t + dur - 0.05);
     g.gain.linearRampToValueAtTime(0, t + dur);
-    g.connect(this.master);
+    g.connect(this.sfxBus!);
     for (const f of freqs) {
       const o = this.ctx.createOscillator();
       o.type = type;
