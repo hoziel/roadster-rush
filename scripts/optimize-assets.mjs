@@ -44,6 +44,15 @@ const MANIFEST = {
   'house-h': { src: `${KCS}/building-type-h.glb` },
   // Kenney Car Kit (CC0): the police car (src/view/cars.ts).
   police: { src: 'assets-src/kenney/car-kit/police.glb' },
+  // Traffic (src/view/traffic.ts): low cars you can jump, tall trucks you can't. Each is one textured mesh,
+  // so one instanced draw call per model.
+  'car-sedan': { src: 'assets-src/kenney/car-kit/sedan.glb' },
+  'car-taxi': { src: 'assets-src/kenney/car-kit/taxi.glb' },
+  'car-hatchback': { src: 'assets-src/kenney/car-kit/hatchback-sports.glb' },
+  'car-suv': { src: 'assets-src/kenney/car-kit/suv.glb' },
+  'car-van': { src: 'assets-src/kenney/car-kit/van.glb' },
+  'truck-delivery': { src: 'assets-src/kenney/car-kit/delivery.glb' },
+  'truck-garbage': { src: 'assets-src/kenney/car-kit/garbage-truck.glb' },
   // Kenney City Kit Roads + Nature Kit (CC0): roadside props (src/view/scenery.ts).
   'street-light': { src: 'assets-src/kenney/city-kit-roads/light-curved.glb' },
   'tree-oak': { src: 'assets-src/kenney/nature-kit/tree_oak.glb', bakeColors: true },

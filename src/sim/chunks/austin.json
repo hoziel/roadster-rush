@@ -1,6 +1,6 @@
 {
   "length": 40,
-  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard.",
+  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard. Traffic chunks (traffic: true): cars = low cars (jump onto/over), trucks = tall trucks (change lanes), roof = car lanes with coins over the roof; everything in them drives at TRAFFIC_SPEED.",
   "chunks": [
     {"id": "warmup-straight", "difficulty": 0, "rows": [{"at": 10, "coins": {"lane": 1, "count": 6}}, {"at": 30, "cones": [0]}]},
     {"id": "single-left", "difficulty": 0, "rows": [{"at": 8, "cones": [0], "coins": {"lane": 1, "count": 4}}, {"at": 28, "cones": [2], "coins": {"lane": 0, "count": 4}}]},
@@ -19,6 +19,18 @@
     {"id": "wall-hop", "difficulty": 2, "rows": [{"at": 6, "cones": [0, 2], "coins": {"lane": 1, "count": 3}}, {"at": 16, "cones": [1]}, {"at": 26, "cones": [0, 2]}, {"at": 34, "cones": [1]}]},
     {"id": "edge-dash", "difficulty": 2, "rows": [{"at": 6, "cones": [1, 2]}, {"at": 16, "cones": [1, 2], "coins": {"lane": 0, "count": 3}}, {"at": 26, "cones": [2]}, {"at": 34, "cones": [0, 1]}]},
     {"id": "double-gate", "difficulty": 2, "rows": [{"at": 6, "cones": [0, 2]}, {"at": 16, "cones": [0, 1]}, {"at": 26, "cones": [0, 2]}, {"at": 34, "cones": [0, 1], "power": 2}]},
-    {"id": "coin-gauntlet", "difficulty": 2, "rows": [{"at": 6, "cones": [0], "coins": {"lane": 1, "count": 4}}, {"at": 16, "cones": [1, 2]}, {"at": 24, "cones": [1], "coins": {"lane": 2, "count": 3}}, {"at": 34, "cones": [2]}]}
+    {"id": "coin-gauntlet", "difficulty": 2, "rows": [{"at": 6, "cones": [0], "coins": {"lane": 1, "count": 4}}, {"at": 16, "cones": [1, 2]}, {"at": 24, "cones": [1], "coins": {"lane": 2, "count": 3}}, {"at": 34, "cones": [2]}]},
+    {"id": "traffic-cruise", "difficulty": 0, "traffic": true, "rows": [{"at": 10, "cars": [1], "roof": [1], "coins": {"lane": 2, "count": 5}}, {"at": 27, "cars": [0], "coins": {"lane": 1, "count": 3}}]},
+    {"id": "traffic-one-truck", "difficulty": 0, "traffic": true, "rows": [{"at": 12, "trucks": [1], "coins": {"lane": 0, "count": 5}}, {"at": 30, "cars": [2], "roof": [2]}]},
+    {"id": "traffic-pair", "difficulty": 0, "traffic": true, "rows": [{"at": 10, "cars": [0, 2], "roof": [0], "coins": {"lane": 1, "count": 4}}, {"at": 29, "trucks": [0], "coins": {"lane": 2, "count": 3}}]},
+    {"id": "traffic-lone-van", "difficulty": 0, "traffic": true, "rows": [{"at": 6, "coins": {"lane": 0, "count": 4}}, {"at": 20, "cars": [0], "roof": [0], "coins": {"lane": 1, "count": 5}}]},
+    {"id": "traffic-wall-gap", "difficulty": 1, "traffic": true, "rows": [{"at": 10, "trucks": [0], "cars": [1], "roof": [1]}, {"at": 25, "cars": [2], "roof": [2], "coins": {"lane": 0, "count": 3}}]},
+    {"id": "traffic-convoy", "difficulty": 1, "traffic": true, "rows": [{"at": 9, "trucks": [2], "coins": {"lane": 0, "count": 3}}, {"at": 21, "trucks": [1], "cars": [2]}, {"at": 32, "cars": [0], "roof": [0]}]},
+    {"id": "traffic-hop", "difficulty": 1, "traffic": true, "rows": [{"at": 10, "cars": [1], "trucks": [0], "roof": [1]}, {"at": 26, "trucks": [2], "cars": [1], "roof": [1]}]},
+    {"id": "traffic-weave", "difficulty": 1, "traffic": true, "rows": [{"at": 8, "cars": [0], "coins": {"lane": 2, "count": 3}}, {"at": 19, "trucks": [1], "coins": {"lane": 0, "count": 4}}, {"at": 31, "cars": [2], "roof": [2]}]},
+    {"id": "traffic-slalom", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [0, 1], "coins": {"lane": 2, "count": 3}}, {"at": 25, "trucks": [1, 2]}, {"at": 32, "cars": [1, 2], "roof": [1]}]},
+    {"id": "traffic-rush", "difficulty": 2, "traffic": true, "rows": [{"at": 8, "cars": [0, 2], "roof": [0]}, {"at": 19, "cars": [1], "roof": [1]}, {"at": 30, "cars": [0, 2], "roof": [2]}]},
+    {"id": "traffic-gauntlet", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [2], "cars": [0]}, {"at": 22, "trucks": [0], "cars": [1], "roof": [1]}, {"at": 32.5, "cars": [2]}]},
+    {"id": "traffic-truck-line", "difficulty": 2, "traffic": true, "rows": [{"at": 9, "trucks": [1], "cars": [0], "roof": [0]}, {"at": 24, "trucks": [0, 2], "coins": {"lane": 1, "count": 4}}]}
   ]
 }

@@ -3,6 +3,7 @@ import { SPEED_MAX, SPEED_START, SPEED_STEPS, SPEED_STEP_TIME, SPEED_SURGE } fro
 import { speedAt } from '../src/sim/speed';
 import { SLOT_ANGLE, wrapSlot } from '../src/sim/tunnel';
 import { createWorld, jump, laneX, start, steer, step, type World } from '../src/sim/world';
+import { dodge } from './bot';
 
 const DT = 1 / 60;
 const run = (w: World, seconds: number) => {
@@ -91,6 +92,7 @@ describe('world', () => {
     start(w);
     w.time = 1000; // already at the speed cap
     for (let t = 0; t < 120; t += DT) {
+      if (!w.tube) { dodge(w); step(w, DT); continue; }
       const ahead = w.entities.filter((e) => e.alive && e.kind === 'cone' && e.s - w.distance > 0 && e.s - w.distance < 14);
       if (w.tube) {
         // Tube tunnel: same idea, around the ring of slots.
@@ -103,13 +105,6 @@ describe('world', () => {
         step(w, DT);
         continue;
       }
-      const blocked = new Set(ahead.map((e) => e.lane));
-      if (blocked.has(w.lane)) {
-        const free = [0, 1, 2].filter((l) => !blocked.has(l)).sort((a, b) => Math.abs(a - w.lane) - Math.abs(b - w.lane))[0];
-        if (free !== undefined) steer(w, free > w.lane ? 1 : -1);
-        else jump(w);
-      }
-      step(w, DT);
     }
     expect(w.phase).toBe('running');
   });

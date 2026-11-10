@@ -310,6 +310,30 @@ export class GameAudio {
     this.tone([880, 1320], 'triangle', 0.08, 0.06);
   }
 
+  /** Traffic knocked aside by a shield: a cartoon spring "boing" (pitch leaps up, then wobbles down). */
+  boing(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const wob = this.ctx.createOscillator();
+    const depth = this.ctx.createGain();
+    const g = this.ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(620, t + 0.07);
+    o.frequency.exponentialRampToValueAtTime(260, t + 0.4);
+    wob.frequency.value = 16;
+    depth.gain.setValueAtTime(70, t);
+    depth.gain.exponentialRampToValueAtTime(5, t + 0.4);
+    wob.connect(depth).connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    o.connect(g).connect(this.sfxBus!);
+    o.start(t); wob.start(t); o.stop(t + 0.45); wob.stop(t + 0.45);
+    o.onended = () => { o.disconnect(); wob.disconnect(); depth.disconnect(); g.disconnect(); };
+  }
+
   /** Supercharger battery picked up. */
   battery(): void {
     if (!this.playSample('battery', 0.5)) this.powerUp();
