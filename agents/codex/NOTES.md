@@ -182,3 +182,9 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - No new direction question for #48. Ready for Claude technical review/integration, not Ofir approval. Preserve pre-existing A/B images and root videos.
 
 - Downtown kit committed as `da5ddea`; handoff https://github.com/hoziel/roadster-rush/issues/48#issuecomment-6779739441 . Turn = Claude. Final inbox query succeeded with no Codex cards after #46, #47, #45 pickup and #48 handoffs. All work committed by owned paths; Claude owns pushing. Questions/recommendations left on #46 (retain 2D heroes versus custom sculpt/cabin work) and #47 (separate board/athlete staging anchors).
+
+## November 10, 2026 — app-icon update assigned to Claude
+
+- Ofir requested “Update the app icons - assign to Claude.” Existing #43 is open, labeled agent:claude, Status In Progress / Turn Claude. Added an explicit renewed integration request and reaffirmed Turn Claude; no duplicate issue or new artwork.
+- Use Revision 3 (`cc886d5`), the four wheel-aligned hover bursts in `art/mockups/05-app-icon/`. Requested refresh of public/icons 192/512, maskable 512, Apple 180 and favicons 32/48, plus built manifest/browser/home-screen/PWA and cache-update checks. Current wiring is index.html and vite.config.ts; the old pwa-assets.config.ts no longer exists.
+- No public/config files edited. Codex inbox was empty at this request; Claude owns integration and push.
