@@ -3,7 +3,7 @@
 A casual, Subway Surfers–style endless runner for kids. You drive an electric roadster through a stylized Austin.
 
 - **Platform:** browser, mobile-first (portrait, touch); desktop works too
-- **Hosting:** the repo stays private until Ofir decides to publish. Until then, play it on the phone from the Vite dev server over home Wi-Fi. At publish time: make the repo public and deploy to GitHub Pages (Cloudflare Pages as a fallback)
+- **Hosting:** public repo, deployed to GitHub Pages on every push to main (`.github/workflows/pages.yml`): https://hoziel.github.io/roadster-rush/. The game nudges players to save it to the home screen (works offline).
 - **Audience:** a young kid. No ads, accounts, tracking or network calls.
 - **Mockup:** https://claude.ai/artifact/E2gHYnsEDPFJBdmLTRTt8s
 
@@ -169,5 +169,5 @@ roadster-rush/
 ## Risks and notes
 
 - **Trademarks:** Tesla, Roadster styling, Autopilot, Ludicrous and Supercharger are Tesla brand terms. That's fine for a private game. If the game ever goes public, rename them (for example Volt Roadster, Turbo Boost, Auto-Steer, Charge Station), drop the logos and don't monetize. The traffic robotaxis (`src/view/robotaxis.ts`) are look-alikes of the Cybercab and a Waymo SUV with no logos; rename them in code and docs at publish too. The fan themes (`src/view/fanThemes.ts`) name the Spurs and Wemby (a real player) on billboards and signs: fine for the family build, rename or drop at publish. Driver art: the driver pictures show sponsor logos (and Nevo's factory outfit shows Tesla logos) (Goodyear and others) on the suit; review at publish.
-- **Private now, public later:** the repo is private until publish. A free GitHub Pages site needs a public repo, and the whole git history becomes visible then, so commit only CC0/CC-BY assets from day one. Royalty-free and Pixabay files stay out.
+- **Public since Nov 10, 2026:** decision: published with the family art, names and brand terms as they are (Ofir: low risk for a free game; rename if a complaint comes). History was rewritten first so commits show `hoziel`, not Ofir's surname. A free GitHub Pages site needs a public repo, and the whole git history becomes visible then, so commit only CC0/CC-BY assets from day one. Royalty-free and Pixabay files stay out.
 - **iOS Safari:** older iPhones have no WebGPU and limited memory, the silent switch can mute audio, and there's no true fullscreen. To handle this: use WebGL 2, keep textures small, add a visible mute toggle, and test on the oldest device you have.
