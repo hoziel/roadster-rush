@@ -2,6 +2,9 @@ import { BATTERIES, HOVER_CHARGES_MAX } from '../sim/config';
 import type { PowerKind } from '../sim/spawner';
 import type { World } from '../sim/world';
 import { CREDITS } from './credits';
+import { ICON } from './icons';
+
+const fmt = (n: number) => n.toLocaleString('en-US');
 
 const POWER_LABEL: Record<PowerKind, string> = {
   ludicrous: 'LUDICROUS!', autopilot: 'AUTOPILOT', hover: 'HOVER', supercharger: 'CHARGED!',
@@ -10,10 +13,13 @@ const POWER_COLOR: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8', autopilot: '#35e0ff', supercharger: '#4cff6a', hover: '#b18cff',
 };
 
-/** DOM overlay: score, coins, batteries, power timer, start and finish cards, mute toggle. */
+/**
+ * DOM overlay in the cream/plum style of art/mockups/03-austin-stretch: coin pill, score plaque, mute,
+ * batteries, horn and hover buttons, Kid Mode tag, toasts, and the start / finish cards.
+ */
 export class Hud {
   private root: HTMLElement;
-  private el: Record<'score' | 'coins' | 'batteries' | 'power' | 'powerLabel' | 'powerBar' | 'card' | 'debug' | 'toast' | 'confetti', HTMLElement>;
+  private el: Record<'score' | 'coins' | 'batteries' | 'power' | 'powerLabel' | 'powerBar' | 'card' | 'debug' | 'toast' | 'confetti' | 'kid', HTMLElement>;
   private muteBtn: HTMLButtonElement;
   private lastBatteries = -1;
   private countUp = 0;
@@ -22,30 +28,34 @@ export class Hud {
   private lastHover = '';
   private speedo!: HTMLElement;
   private lastKmh = -1;
+  private hornBtn: HTMLButtonElement;
+  private lastRun = '';
 
-  constructor(onMute: () => void, onHover: () => void) {
+  constructor(onMute: () => void, onHover: () => void, onHonk: () => void) {
     this.root = document.getElementById('ui')!;
     this.root.innerHTML = `
       <div class="top">
-        <div class="pill" id="score">0</div>
-        <div class="pill coins" id="coins">● 0</div>
-        <div class="pill batteries" id="batteries"></div>
-        <button class="pill mute" id="mute" aria-label="Mute"></button>
+        <div class="hud-coins"><i class="coin-ico"></i><span id="coins">0</span></div>
+        <div class="hud-score"><small>Score</small><b id="score">0</b></div>
+        <button class="hud-round mute" id="mute" aria-label="Sound on/off"></button>
       </div>
+      <div class="batteries" id="batteries"></div>
       <div class="power" id="power"><span id="powerLabel"></span><div class="bar"><div id="powerBar"></div></div></div>
       <div class="toast" id="toast"></div>
       <div class="card" id="card"></div>
       <div class="confetti" id="confetti"></div>
-      <button class="pill credits-btn" id="creditsBtn">Credits</button>
+      <button class="credits-btn" id="creditsBtn">Credits</button>
       <div class="credits" id="credits"></div>
-      <div class="pill speedo" id="speedo"></div>
+      <div class="speedo" id="speedo"></div>
+      <div class="kid-tag" id="kidTag">Kid mode</div>
       <button class="hover-btn" id="hoverBtn" aria-label="Hover"><span class="ufo">🛸</span><span class="pips" id="hoverPips"></span></button>
+      <button class="horn-btn" id="hornBtn" aria-label="Horn">${ICON.horn}</button>
       <div class="debug" id="debug"></div>`;
     const q = (id: string) => this.root.querySelector<HTMLElement>('#' + id)!;
     this.el = {
       score: q('score'), coins: q('coins'), batteries: q('batteries'), power: q('power'),
       powerLabel: q('powerLabel'), powerBar: q('powerBar'), card: q('card'), debug: q('debug'),
-      toast: q('toast'), confetti: q('confetti'),
+      toast: q('toast'), confetti: q('confetti'), kid: q('kidTag'),
     };
     this.muteBtn = q('mute') as HTMLButtonElement;
     // Stop the mute tap from also starting a run.
@@ -58,6 +68,10 @@ export class Hud {
     this.hoverBtn = q('hoverBtn') as HTMLButtonElement;
     this.hoverBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); onHover(); });
     this.hoverBtn.addEventListener('pointerup', (e) => e.stopPropagation());
+    // Horn button: same treatment (tapping the car still honks too).
+    this.hornBtn = q('hornBtn') as HTMLButtonElement;
+    this.hornBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); onHonk(); });
+    this.hornBtn.addEventListener('pointerup', (e) => e.stopPropagation());
 
     const creditsBtn = q('creditsBtn');
     const credits = q('credits');
@@ -77,19 +91,19 @@ export class Hud {
 
   private creditsBtn!: HTMLElement;
 
-  setMuted(muted: boolean): void { this.muteBtn.textContent = muted ? '🔇' : '🔊'; }
+  setMuted(muted: boolean): void { this.muteBtn.innerHTML = muted ? ICON.soundOff : ICON.soundOn; }
 
   private last = { score: -1, coins: -1, power: '' as string, bar: -1 };
 
   update(w: World, score: number, powerTotal: number): void {
     // Only touch the DOM when something changed (mobile Safari restyles on every write).
-    if (score !== this.last.score) { this.last.score = score; this.el.score.textContent = String(score); }
-    if (w.coins !== this.last.coins) { this.last.coins = w.coins; this.el.coins.textContent = `● ${w.coins}`; }
+    if (score !== this.last.score) { this.last.score = score; this.el.score.textContent = fmt(score); }
+    if (w.coins !== this.last.coins) { this.last.coins = w.coins; this.el.coins.textContent = fmt(w.coins); }
     if (w.batteries !== this.lastBatteries) {
       const lost = w.batteries < this.lastBatteries;
       this.lastBatteries = w.batteries;
       this.el.batteries.innerHTML = Array.from({ length: BATTERIES }, (_, i) =>
-        `<span class="cell ${i < w.batteries ? 'full' : 'empty'}"></span>`).join('');
+        `<span class="cell ${i < w.batteries ? 'full' : 'empty'}">${i < w.batteries ? ICON.bolt : ''}</span>`).join('');
       if (lost) this.flash(this.el.batteries);
     }
     // Speedometer (km/h), shown during a run; rounded to 5 so it doesn't flicker.
@@ -98,6 +112,13 @@ export class Hud {
       this.lastKmh = kmh;
       this.speedo.classList.toggle('show', kmh >= 0);
       if (kmh >= 0) this.speedo.textContent = `${kmh} km/h`;
+    }
+    // Horn button and the passive Kid Mode tag: shown during a run.
+    const run = `${w.phase === 'running'}|${w.kidMode}`;
+    if (run !== this.lastRun) {
+      this.lastRun = run;
+      this.hornBtn.classList.toggle('show', w.phase === 'running');
+      this.el.kid.classList.toggle('show', w.phase === 'running' && w.kidMode);
     }
     // Hover button: shown during a run, pips = banked charges, dim when empty, glowing while hovering.
     const hv = `${w.phase === 'running'}|${w.hoverCharges}|${w.power === 'hover'}`;
@@ -115,8 +136,7 @@ export class Hud {
       this.el.power.classList.toggle('show', !!p);
       if (p) {
         this.el.powerLabel.textContent = POWER_LABEL[p];
-        this.el.powerBar.style.background = POWER_COLOR[p];
-        this.el.power.style.color = POWER_COLOR[p];
+        this.el.power.style.setProperty('--accent', POWER_COLOR[p]);
       }
     }
     if (p) {
@@ -125,10 +145,12 @@ export class Hud {
     }
   }
 
-  toast(text: string, color = '#fff'): void {
+  /** Compact cream badge (the mockups' "AIR TIME!" banner); `color` tints the star. */
+  toast(text: string, color = '#ffd23f'): void {
     const t = this.el.toast;
-    t.textContent = text;
-    t.style.color = color;
+    t.innerHTML = `<span class="t-star">${ICON.star}</span><span class="t-text"></span>`;
+    t.querySelector('.t-text')!.textContent = text;
+    t.style.setProperty('--accent', color);
     t.classList.remove('show');
     void t.offsetWidth; // restart the animation
     t.classList.add('show');
@@ -136,15 +158,30 @@ export class Hud {
 
   powerToast(kind: PowerKind): void { this.toast(POWER_LABEL[kind], POWER_COLOR[kind]); }
 
-  /** `extra`: wallet + Garage button from the garage module. */
-  showReady(best: number, extra = ''): void {
+  /**
+   * Title screen. The big "Let's drive" button lets taps fall through to the game canvas, so it starts
+   * the run exactly like tapping anywhere does. `wallet` and `buttons` come from the garage module.
+   */
+  showReady(best: number, wallet = '', buttons = '', kidMode = true): void {
     this.creditsBtn.classList.add('show');
-    this.el.card.className = 'card show';
-    this.el.card.innerHTML = `<h1>Roadster Rush</h1><p>Swipe ← → to steer, ↑ to flip, 🛸 to hover</p><p class="go">Tap to drive</p>${best ? `<p class="best">Best ${best}</p>` : ''}${extra}`;
+    this.root.classList.add('menu');
+    this.el.card.className = 'card show ready';
+    this.el.card.innerHTML = `
+      <div class="m-title">
+        <h1 class="logo"><span class="l1">Roadster</span><span class="l2">Rush</span><span class="l3">Austin</span></h1>
+        <div class="m-chips">${wallet}${best ? `<span class="m-chip best">${ICON.star}<span>Best ${fmt(best)}</span></span>` : ''}</div>
+      </div>
+      <div class="m-bottom">
+        <p class="m-hint">Swipe ← → to steer · ↑ to flip · 🛸 to hover</p>
+        <div class="m-drive" aria-hidden="true">Let's drive ${ICON.play}</div>
+        ${buttons}
+        ${kidMode ? '<div class="m-kid">Kid mode <i class="m-on"></i></div>' : ''}
+      </div>`;
   }
 
   hideCard(): void {
     this.creditsBtn.classList.remove('show');
+    this.root.classList.remove('menu');
     this.root.querySelector('#credits')?.classList.remove('show');
     this.el.card.className = 'card';
     this.el.confetti.innerHTML = '';
@@ -152,17 +189,27 @@ export class Hud {
   }
 
   /** "Great drive!" with a coin count-up, and confetti on a new best. */
-  showFinish(score: number, coins: number, best: number, newBest: boolean, caught: boolean, driver = '', extra = ''): void {
+  showFinish(score: number, coins: number, best: number, newBest: boolean, caught: boolean, driver = '', wallet = '', buttons = ''): void {
     this.creditsBtn.classList.add('show');
+    this.root.classList.add('menu');
     this.el.card.className = 'card show finish';
     this.el.card.innerHTML = `
-      <h1>Great drive!</h1>
-      ${driver}
-      ${caught ? '<p class="sub">The police caught up. Nice chase!</p>' : ''}
-      <p class="big" id="final">0</p>
-      <p class="coinline">● <span id="finalCoins">0</span> coins</p>
-      ${newBest ? '<p class="best newbest">New best! ★</p>' : `<p class="best">Best ${best}</p>`}
-      <p class="go">Tap to drive again</p>${extra}`;
+      <div class="f-panel">
+        <div class="f-stats">
+          <h1 class="f-head">Great drive!</h1>
+          ${driver}
+          ${caught ? '<p class="sub">The police caught up. Nice chase!</p>' : ''}
+          <p class="f-label">Score</p>
+          <p class="big" id="final">0</p>
+          <p class="coinline"><i class="coin-ico"></i> <span id="finalCoins">0</span> coins</p>
+          ${newBest ? `<p class="best newbest">${ICON.star} New best!</p>` : `<p class="best">Best ${fmt(best)}</p>`}
+        </div>
+        <div class="f-actions">
+          <div class="m-drive" aria-hidden="true">Drive again ${ICON.play}</div>
+          ${buttons}
+          <div class="m-chips">${wallet}</div>
+        </div>
+      </div>`;
     const finalEl = this.el.card.querySelector<HTMLElement>('#final')!;
     const coinsEl = this.el.card.querySelector<HTMLElement>('#finalCoins')!;
     const t0 = performance.now();
@@ -170,8 +217,8 @@ export class Hud {
     const tick = () => {
       const k = Math.min(1, (performance.now() - t0) / dur);
       const e = 1 - Math.pow(1 - k, 3);
-      finalEl.textContent = String(Math.round(score * e));
-      coinsEl.textContent = String(Math.round(coins * e));
+      finalEl.textContent = fmt(Math.round(score * e));
+      coinsEl.textContent = fmt(Math.round(coins * e));
       if (k < 1) this.countUp = requestAnimationFrame(tick);
     };
     this.countUp = requestAnimationFrame(tick);
@@ -197,8 +244,8 @@ export class Hud {
   }
 
   showPaused(): void {
-    this.el.card.className = 'card show';
-    this.el.card.innerHTML = '<h1>Paused</h1><p class="go">Tap to continue</p>';
+    this.el.card.className = 'card show paused';
+    this.el.card.innerHTML = `<div class="f-panel"><h1 class="f-head">Paused</h1><div class="m-drive" aria-hidden="true">Keep going ${ICON.play}</div></div>`;
   }
 
   debug(text: string): void { this.el.debug.textContent = text; }

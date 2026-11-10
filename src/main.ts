@@ -22,7 +22,8 @@ const hud = new Hud(() => {
   audio.unlock();
   audio.setMuted(storage.muted);
   hud.setMuted(storage.muted);
-}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); });
+}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); },
+() => { audio.unlock(); if (!paused && world.phase === 'running') honk(); });
 hud.setMuted(storage.muted);
 
 const garage = new Garage(document.getElementById('ui')!, {
@@ -42,11 +43,11 @@ audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
-hud.showReady(storage.best, garage.cardHtml());
+hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
 // A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
 document.getElementById('ui')!.addEventListener('click', (e) => {
   const b = (e.target as Element).closest('button');
-  if (b && b.id !== 'hoverBtn') audio.uiTap();
+  if (b && b.id !== 'hoverBtn' && b.id !== 'hornBtn') audio.uiTap();
 });
 
 const debug = new URLSearchParams(location.search).has('debug');
@@ -72,7 +73,7 @@ function finish(): void {
   if (newBest) storage.set({ best: s });
   storage.set({ shop: addCoins(storage.shop, world.coins) });
   finishedAt = performance.now();
-  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.cardHtml());
+  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.walletHtml(), garage.buttonsHtml());
   setTimeout(() => audio.finishJingle(newBest), 600);
 }
 
