@@ -16,7 +16,7 @@ export interface PlayerSpec {
   target?: [number, number, number];
 }
 
-const MAX_PLAYERS = 16, MAX_BALLS = 10;
+const MAX_PLAYERS = 24, MAX_BALLS = 14;
 const HIP = 0.72, SHOULDER = 1.28, HEAD = 1.55, LEG = 0.72, ARM = 0.58;
 const SKINS = ['#f2c7a5', '#e0a77e', '#b9774f', '#8a5434'];
 const BASKETBALL = '#f08a24', VOLLEYBALL = '#ffd23f';

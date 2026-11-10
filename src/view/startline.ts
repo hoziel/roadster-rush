@@ -233,7 +233,7 @@ function parkedPolice(): PoliceRoadsterParts {
 }
 
 /** Nevo's basketball hoop by the start line: pole, backboard, orange rim, a net (1 group, 4 draw calls). */
-function hoop(): THREE.Group {
+export function hoop(): THREE.Group {
   const g = new THREE.Group();
   const toon = (c: string) => new THREE.MeshToonMaterial({ color: c });
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 3.6, 10).translate(0, 1.8, 0), toon('#3a3f52'));
@@ -248,7 +248,7 @@ function hoop(): THREE.Group {
 }
 
 /** Ori's volleyball net by the start line: two posts, a blue-trimmed net, a ball on top of a post. */
-function net(): THREE.Group {
+export function net(): THREE.Group {
   const g = new THREE.Group();
   const toon = (c: string) => new THREE.MeshToonMaterial({ color: c });
   const posts = new THREE.Mesh(mergeGeometries([

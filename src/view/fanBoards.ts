@@ -6,10 +6,10 @@ import type { FanTheme } from './fanThemes';
 // standing along the roadside every so often, alternating sides. A few boards are recycled ahead of the car;
 // each shows the next ad in the driver's set. Nothing shows for drivers without ads.
 
-const BOARDS = 3;
-const GAP = [110, 170]; // m between boards
+const BOARDS = 4;
+const GAP = [65, 115]; // m between boards (often: the driver's favourites all along the road)
 const FIRST = 90; // m into a run before the first
-const X = 9.5; // m from the road centre (beside the road, in front of the shops)
+const X = 8.4; // m from the road centre: over the sidewalk, close enough to read
 const W = 8.4, H = 4.2, POST = 3.4; // panel size and height of its bottom edge (m)
 const CANVAS_W = 768, CANVAS_H = 384;
 

@@ -21,6 +21,7 @@ import { StartLine } from './startline';
 import { SkyLanes } from './skyLanes';
 import { BustScene } from './bust';
 import { FanBoards } from './fanBoards';
+import { FanSpots } from './fanSpots';
 import { themeFor } from './fanThemes';
 import { Sideline } from './sideline';
 import { ScreenHits, type ScreenHitKind } from './screenHits';
@@ -218,7 +219,7 @@ export class GameView {
     this.puffFrame.position.y = TUBE_CY;
     this.screenHits = new ScreenHits(this.camera);
     this.scene.add(this.screenHits.group, this.puddles.group);
-    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.sideline.group);
+    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.fanSpots.group, this.sideline.group);
     void document.fonts?.ready.then(() => this.fanBoards.refresh());
     this.scene.add(this.traffic.group);
     void this.traffic.load();
@@ -484,6 +485,7 @@ export class GameView {
     this.batSwarm.update(w, dt, time);
     this.skyLanes.update(w, this.skyK, time);
     this.fanBoards.update(w.distance, !w.tube);
+    this.fanSpots.update(w.distance, !w.tube && !this.showcase);
     this.sideline.update(time);
     this.puddles.update(w);
     this.tunnel.update(w, this.dayNight.lights, time);
@@ -536,9 +538,11 @@ export class GameView {
     this.startLine.setDriver(url, name, id);
     const theme = themeFor(id);
     this.fanBoards.setTheme(theme.ads);
+    this.fanSpots.setTheme(theme, name);
     const prop = theme.prop ? this.startLine.props[theme.prop] : null;
     this.sideline.setScenes([
       ...(prop ? [{ anchor: prop, players: theme.startPlayers }] : []),
+      ...(prop ? this.fanSpots.anchors().map((anchor) => ({ anchor, players: theme.startPlayers })) : []),
       ...this.fanBoards.anchors.map((anchor, i) => ({ anchor, players: theme.boardPlayers[i % Math.max(1, theme.boardPlayers.length)] ?? [] })),
     ]);
   }
@@ -546,6 +550,7 @@ export class GameView {
   focusDriver(on: boolean): void { this.driverFocus = on; }
   private startLine = new StartLine();
   private fanBoards = new FanBoards();
+  private fanSpots = new FanSpots();
   private sideline = new Sideline();
   private screenHits!: ScreenHits;
   /** Drove through a puddle (water) or mud: main shows the splash on the screen. */
