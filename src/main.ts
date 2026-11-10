@@ -6,7 +6,7 @@ import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, score, start, steer, step } from './sim/world';
+import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, start, steer, step } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
 import { HOVER_CHARGES_MAX } from './sim/config';
 
@@ -103,6 +103,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'battery': audio.powerUp(); hud.powerToast('supercharger'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
+        case 'tunnel': hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
     }
@@ -135,6 +136,8 @@ if (debug) {
     timeOfDay: (phase: number) => { world.dayOffset = offsetFor(world, phase); },
     /** Lay a Bat Swarm at the next chunk slot (~6 s ahead), any time of day. */
     swarm: () => { world.dayOffset = offsetFor(world, 0.3); queueSwarm(world); },
+    /** Lay a tube tunnel at the next chunk slot (~6 s ahead). */
+    tunnel: () => queueTunnel(world),
     give: (k: 'ludicrous' | 'autopilot' | 'hover') => { world.power = k; world.powerTime = POWER_TIME[k]; world.lastPower = k; hud.powerToast(k); },
   };
 }

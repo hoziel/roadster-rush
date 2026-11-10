@@ -5,7 +5,11 @@ import {
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
   SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
+  TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
 } from './config';
+import {
+  SLOT_ANGLE, TUBE_TURN_SPEED, angleGap, exitSlot, laneToSlot, slotToLane, tunnelItems, wrapSlot,
+} from './tunnel';
 import { SWARM_SPAN, conesIn, swarmCoins } from './batswarm';
 import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
@@ -20,11 +24,12 @@ export interface Entity {
   lane: number;
   s: number; // absolute distance along the road
   alive: boolean;
+  slot?: number; // set for tunnel contents: slot around the tube's ring (-3..4, 0 = bottom); lane is unused
 }
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end' | 'swarm' | 'charge';
+  | 'power' | 'power-end' | 'swarm' | 'charge' | 'tunnel';
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -60,6 +65,13 @@ export interface World {
   swarmSeen: boolean; // 'swarm' event already sent for it
   nextSwarmAt: number; // no new swarm laid before this s
   swarmQueued: boolean; // lay one at the next chunk slot whatever the time of day
+  tunnelAt: number; // s where the current/last tube tunnel starts, -1 if none
+  tunnelEnd: number; // s where it ends
+  nextTunnelAt: number; // no new tunnel laid before this s
+  tunnelQueued: boolean; // lay one at the next chunk slot (debug)
+  tube: boolean; // driving inside a tunnel: steering moves around the ring
+  slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
+  angle: number; // current angle around the ring (rad, 0 = bottom, + = right); eases toward the slot
   rng: Rng;
 }
 
@@ -71,6 +83,7 @@ const runState = () => ({
   hoverCharges: HOVER_CHARGES_START,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
+  tunnelAt: -1, tunnelEnd: -1, nextTunnelAt: TUNNEL_FIRST_AT, tunnelQueued: false, tube: false, slot: 0, angle: 0,
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -93,6 +106,7 @@ export const isShielded = (w: World): boolean =>
 
 export function steer(w: World, dir: -1 | 1): boolean {
   if (w.phase !== 'running' || w.power === 'autopilot') return false;
+  if (w.tube) return turnSlot(w, dir);
   const next = Math.max(0, Math.min(LANE_COUNT - 1, w.lane + dir));
   if (next === w.lane) return false;
   w.lane = next;
@@ -142,9 +156,16 @@ export function step(w: World, dt: number): SimEvent[] {
   w.distance += speed * dt;
   if (!w.swarmSeen && w.swarmAt >= 0 && w.distance >= w.swarmAt) { w.swarmSeen = true; events.push('swarm'); }
 
-  if (w.power === 'autopilot') autopilot(w);
-  const dx = laneX(w.lane) - w.x;
-  w.x += Math.sign(dx) * Math.min(Math.abs(dx), LANE_CHANGE_SPEED * dt);
+  if (!w.tube && w.tunnelAt >= 0 && w.distance >= w.tunnelAt && w.distance < w.tunnelEnd) {
+    enterTube(w);
+    events.push('tunnel');
+  }
+  if (w.tube) driveTube(w, dt);
+  else {
+    if (w.power === 'autopilot') autopilot(w);
+    const dx = laneX(w.lane) - w.x;
+    w.x += Math.sign(dx) * Math.min(Math.abs(dx), LANE_CHANGE_SPEED * dt);
+  }
 
   if (w.power === 'hover') {
     w.vy = 0;
@@ -162,7 +183,7 @@ export function step(w: World, dt: number): SimEvent[] {
     if (!e.alive) continue;
     const rel = e.s - w.distance;
     if (rel < -DESPAWN_BEHIND) { e.alive = false; continue; }
-    if (Math.abs(rel) > HIT_DEPTH || Math.abs(laneX(e.lane) - w.x) > HIT_HALF_WIDTH) continue;
+    if (Math.abs(rel) > HIT_DEPTH || !sideOverlap(w, e)) continue;
 
     if (e.kind === 'coin') {
       e.alive = false;
@@ -190,6 +211,94 @@ export function step(w: World, dt: number): SimEvent[] {
     }
   }
   return events;
+}
+
+/** Is the car level with `e` across the road (or around the tube's ring)? */
+function sideOverlap(w: World, e: Entity): boolean {
+  if (w.tube) {
+    // Inside the tube, compare angles; road items count as the bottom slot of their lane.
+    const slot = e.slot ?? laneToSlot(e.lane);
+    return angleGap(w.angle, slot * SLOT_ANGLE) * TUNNEL_RADIUS <= HIT_HALF_WIDTH;
+  }
+  if (e.slot !== undefined) {
+    // Tube item met on the road (only at the very mouth): bottom slots only.
+    if (Math.abs(e.slot) > 1) return false;
+    return Math.abs(laneX(slotToLane(e.slot)) - w.x) <= HIT_HALF_WIDTH;
+  }
+  return Math.abs(laneX(e.lane) - w.x) <= HIT_HALF_WIDTH;
+}
+
+/** In the exit stretch, only the bottom slots are allowed: the car slides back down to leave in a lane. */
+const inTubeExit = (w: World): boolean => w.distance >= w.tunnelEnd - TUNNEL_EXIT;
+
+/** Move one slot around the ring; it wraps, so a kid can keep going all the way round. */
+function turnSlot(w: World, dir: number): boolean {
+  let next = w.slot + dir;
+  if (inTubeExit(w)) next = Math.max(-1, Math.min(1, next));
+  if (next === w.slot) return false;
+  w.slot = next;
+  // Keep slot in -3..4; shift the angle by a full turn with it so nothing visibly jumps.
+  if (w.slot > TUNNEL_SLOTS / 2) { w.slot -= TUNNEL_SLOTS; w.angle -= Math.PI * 2; }
+  if (w.slot < 1 - TUNNEL_SLOTS / 2) { w.slot += TUNNEL_SLOTS; w.angle += Math.PI * 2; }
+  return true;
+}
+
+function enterTube(w: World): void {
+  w.tube = true;
+  w.angle = (w.x / LANE_WIDTH) * SLOT_ANGLE; // lane positions map straight onto the bottom slots
+  w.slot = laneToSlot(w.lane);
+}
+
+function driveTube(w: World, dt: number): void {
+  if (inTubeExit(w)) w.slot = exitSlot(w.slot);
+  if (w.power === 'autopilot') tubeAutopilot(w);
+  const da = w.slot * SLOT_ANGLE - w.angle;
+  w.angle += Math.sign(da) * Math.min(Math.abs(da), TUBE_TURN_SPEED * dt);
+  // x follows the angle near the bottom (police, entry/exit blend), clamped to the road.
+  w.x = Math.max(laneX(0), Math.min(laneX(LANE_COUNT - 1), (w.angle / SLOT_ANGLE) * LANE_WIDTH));
+  if (w.distance >= w.tunnelEnd) {
+    w.tube = false;
+    w.lane = slotToLane(w.slot);
+    w.angle = 0;
+    w.slot = 0;
+  }
+}
+
+const SLOT_SCORES: number[] = new Array(TUNNEL_SLOTS).fill(0);
+const SLOT_CONE: number[] = new Array(TUNNEL_SLOTS).fill(0);
+
+/**
+ * Tube autopilot: head for the slot with the most coins and no cones ahead, by a way round that
+ * doesn't cross a slot with a cone coming up before the car is past it.
+ */
+function tubeAutopilot(w: World): void {
+  if (angleGap(w.angle, w.slot * SLOT_ANGLE) > 0.1) return; // finish the current move first
+  const exit = inTubeExit(w);
+  const scores = SLOT_SCORES, cone = SLOT_CONE;
+  const idx = (slot: number) => wrapSlot(slot) + TUNNEL_SLOTS / 2 - 1; // -3..4 -> 0..7
+  for (let i = 0; i < TUNNEL_SLOTS; i++) { scores[i] = 0; cone[i] = Infinity; }
+  scores[idx(w.slot)] = 0.5;
+  for (const e of w.entities) {
+    if (!e.alive) continue;
+    const rel = e.s - w.distance;
+    if (rel < -HIT_DEPTH || rel > AUTOPILOT_LOOKAHEAD) continue;
+    const i = idx(e.slot ?? laneToSlot(e.lane));
+    if (e.kind === 'cone') { cone[i] = Math.min(cone[i], rel); if (rel >= 0) scores[i] -= 100 / (1 + rel * 0.1); }
+    else if (rel >= 0) scores[i] += e.kind === 'coin' ? 1 : 3;
+  }
+  const stepDist = (w.speed * SLOT_ANGLE) / TUBE_TURN_SPEED; // m driven while moving one slot
+  let bestDir = 0, bestScore = scores[idx(w.slot)];
+  for (const dir of [-1, 1]) {
+    for (let n = 1; n <= TUNNEL_SLOTS / 2; n++) {
+      const slot = w.slot + dir * n;
+      // Passing through (or stopping on) a slot whose cone arrives before we're clear of it: path blocked.
+      if (cone[idx(slot)] < (n + 1) * stepDist + HIT_DEPTH * 2) break;
+      if (exit && Math.abs(slot) > 1) break;
+      const score = scores[idx(slot)] - 0.2 * n;
+      if (score > bestScore) { bestScore = score; bestDir = dir; }
+    }
+  }
+  if (bestDir) turnSlot(w, bestDir);
 }
 
 /** Returns true if this crash ends the run. */
@@ -246,7 +355,7 @@ function pickPower(w: World): PowerKind {
 function spawn(w: World): void {
   while (w.nextRowAt < w.distance + SPAWN_AHEAD) {
     const difficulty = (speedAt(w.time) - SPEED_START) / (SPEED_MAX - SPEED_START);
-    if (layBatSwarm(w)) continue;
+    if (layBatSwarm(w) || layTunnel(w)) continue;
     const powersOk = w.time > POWER_START_AFTER && !w.power;
     for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
       let kind: EntityKind;
@@ -281,8 +390,27 @@ function layBatSwarm(w: World): boolean {
   return true;
 }
 
-function add(w: World, kind: EntityKind, lane: number, s: number): void {
-  const slot = w.entities.find((e) => !e.alive);
-  if (slot) Object.assign(slot, { kind, lane, s, alive: true });
-  else w.entities.push({ kind, lane, s, alive: true });
+/** Ask for a tube tunnel at the next chunk slot (debug). */
+export function queueTunnel(w: World): void { w.tunnelQueued = true; }
+
+/** Every so often, lay a tube tunnel in place of the next chunks. Only on cone-free road. */
+function layTunnel(w: World): boolean {
+  const s0 = w.nextRowAt;
+  if (w.tunnelAt >= 0 && w.distance < w.tunnelEnd) return false; // one tunnel at a time
+  if (s0 < w.swarmEnd + SWARM_PAD) return false; // never over a Bat Swarm
+  if (!w.tunnelQueued && (s0 < w.nextTunnelAt || w.rng() >= TUNNEL_CHANCE)) return false;
+  if (conesIn(w.entities, s0, s0 + TUNNEL_LENGTH)) return false;
+  for (const it of tunnelItems(w.rng, s0)) add(w, it.kind, 1, it.s, it.slot);
+  w.tunnelAt = s0;
+  w.tunnelEnd = s0 + TUNNEL_LENGTH;
+  w.tunnelQueued = false;
+  w.nextRowAt += TUNNEL_LENGTH;
+  w.nextTunnelAt = w.nextRowAt + TUNNEL_MIN_GAP;
+  return true;
+}
+
+function add(w: World, kind: EntityKind, lane: number, s: number, slot?: number): void {
+  const free = w.entities.find((e) => !e.alive);
+  if (free) Object.assign(free, { kind, lane, s, alive: true, slot });
+  else w.entities.push({ kind, lane, s, alive: true, slot });
 }

@@ -52,3 +52,14 @@ export const SWARM_LENGTH = 30; // m of coin rain
 export const SWARM_COIN_SPACING = 2.2; // m between coin rows
 export const SWARM_CHANCE = 0.35; // per chunk slot at dusk, once the gap has passed
 export const SWARM_MIN_GAP = 350; // m between swarms
+
+// Tube tunnel: a round tunnel laid in place of chunks. Inside, the lanes become slots around the ring
+// (slot 0 at the bottom, +1 to the right) and the car can drive up the walls and upside down.
+export const TUNNEL_SLOTS = 8;
+export const TUNNEL_RADIUS = 4.5; // m from the tube's axis to its wall
+export const TUNNEL_LENGTH = 150; // m of tube
+export const TUNNEL_ENTRY = 15; // m of cone-free tube after the mouth
+export const TUNNEL_EXIT = 25; // m before the end: the car slides back down to a bottom slot, nothing laid here
+export const TUNNEL_CHANCE = 0.3; // per chunk slot once the gap has passed
+export const TUNNEL_FIRST_AT = 500; // m into a run before the first tunnel can appear
+export const TUNNEL_MIN_GAP = 600; // m between tunnels

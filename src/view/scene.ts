@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH } from '../sim/config';
+import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, TUNNEL_RADIUS } from '../sim/config';
+import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { laneX, policeClose, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
@@ -13,6 +14,7 @@ import { Buildings } from './buildings';
 import { DayNight } from './daynight';
 import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
+import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
@@ -41,6 +43,9 @@ const AIR_TIME = (2 * JUMP_VELOCITY) / GRAVITY;
 const ROLL_START = 0.12; // fraction of the airtime spent rising level before the roll
 const ROLL_END = 0.82; // roll finished, wheels down, before touchdown
 const FLIP_PIVOT = 0.5; // body centre height (m): roll around the middle so the roof never hits the road
+// Inside a tube tunnel the camera rides closer and lower, and rolls with the car around the ring.
+const TUBE_CAM = { height: 2.9, back: 7.5, lookY: 1.3 };
+const TUBE_ANGLE_EASE = 16; // 1/s: smooths the sim's steady slot-to-slot turn into a soft start and stop
 
 export class GameView {
   readonly renderer: THREE.WebGLRenderer;
@@ -48,6 +53,12 @@ export class GameView {
   private camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
   private baseFov = 62;
   private car: CarParts;
+  /** Parent of the car: placed on the tube wall (and rolled) inside a tunnel, plain lane offset outside. */
+  private carMount = new THREE.Group();
+  /** Parent of the thruster puffs: rolls around the tube axis with the car so puffs blow off the wall. */
+  private puffFrame = new THREE.Group();
+  private tunnel = new TunnelView();
+  private tubeAngle = 0; // eased angle around the ring (rad) used for the car, camera, puffs
   /** Paint, driver, hat and plate on the player car. */
   readonly style: CarStyle;
   /** Garage open: orbit the camera around the parked car. */
@@ -69,7 +80,7 @@ export class GameView {
   private flipT = -1; // seconds into a kickflip; -1 = not flipping
   private flipDir = 1; // roll direction: toward the last lane change
   private rollPuffed = false;
-  private prevX = 0; // car's sim x last frame (lean and roll direction)
+  private prevX = 0; // car's sideways position last frame (lean and roll direction); follows the ring in a tube
   private puffs = new Puffs();
   private shake = 0;
   private dayNight: DayNight;
@@ -110,7 +121,8 @@ export class GameView {
     this.scene.add(ground);
 
     this.car = buildCar('#e8344e');
-    this.scene.add(this.car.group);
+    this.carMount.add(this.car.group);
+    this.scene.add(this.carMount);
     this.style = new CarStyle(this.car);
     this.police = buildPolice();
     this.police.group.position.z = POLICE_FAR;
@@ -140,7 +152,10 @@ export class GameView {
       coneMat: this.cones.material as THREE.MeshToonMaterial,
     });
     this.landmarks = new Landmarks(this.dayNight.silhouette);
-    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffs.mesh);
+    this.puffFrame.add(this.puffs.mesh);
+    this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
+    this.puffFrame.position.y = TUBE_CY;
+    this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffFrame, this.tunnel.group);
 
     window.addEventListener('resize', () => this.resize());
     // iOS can fire resize before the new size is known after rotating; visualViewport catches up.
@@ -169,17 +184,29 @@ export class GameView {
 
   render(w: World, dt: number, time: number): void {
     const car = this.car.group;
-    const lean = THREE.MathUtils.clamp((this.prevX - w.x) * 0.5, -0.25, 0.25);
-    if (Math.abs(this.prevX - w.x) > 0.001) this.flipDir = this.prevX > w.x ? 1 : -1;
-    this.prevX = w.x;
+    // Tube tunnel: ease the ring angle (and catch the sim's full-turn wraps), blend road <-> wall at the ends.
+    if (w.tube) {
+      if (w.angle - this.tubeAngle > Math.PI) this.tubeAngle += Math.PI * 2;
+      else if (this.tubeAngle - w.angle > Math.PI) this.tubeAngle -= Math.PI * 2;
+      this.tubeAngle += (w.angle - this.tubeAngle) * Math.min(1, dt * TUBE_ANGLE_EASE);
+    } else this.tubeAngle = 0;
+    const k = tubeBlend(w);
+    const ang = this.tubeAngle * k; // roll of the car, camera and puffs around the tube axis
+    // Sideways position for lean and roll direction: in a tube, distance around the ring in lane units.
+    const lat = w.tube ? (this.tubeAngle / SLOT_ANGLE) * LANE_WIDTH : w.x;
+    const dLat = Math.abs(this.prevX - lat) < 4 ? this.prevX - lat : 0;
+    const lean = THREE.MathUtils.clamp(dLat * 0.5, -0.25, 0.25);
+    if (Math.abs(dLat) > 0.001) this.flipDir = dLat > 0 ? 1 : -1;
+    this.prevX = lat;
+    const px = w.x * (1 - k); // car's x in the rolled puff frame (0 on the wall, lane x on the road)
     // A normal jump (swipe up) is a kickflip; hovering and landing from a hover aren't.
     if (w.y <= 0) {
-      if (this.flipT >= 0) this.puffs.corners(w.x, 0, 0.5); // touchdown
+      if (this.flipT >= 0) this.puffs.corners(px, 0, 0.5); // touchdown
       this.flipT = -1;
     } else if (this.flipT < 0 && w.power !== 'hover' && w.vy > JUMP_VELOCITY * 0.9) {
       this.flipT = 0;
       this.rollPuffed = false;
-      this.puffs.corners(w.x, 0, 0.45); // lift-off blast
+      this.puffs.corners(px, 0, 0.45); // lift-off blast
     }
     let roll = 0;
     if (this.flipT >= 0) {
@@ -189,10 +216,15 @@ export class GameView {
       if (p > 0 && !this.rollPuffed) {
         // Side thrusters kick the roll off: puffs from the side that pushes up.
         this.rollPuffed = true;
-        for (const cz of [-1, 0, 1]) this.puffs.emit(w.x + this.flipDir * 0.85, w.y + 0.3, cz, this.flipDir * 3, -2, 0, 0.3, 0.4);
+        for (const cz of [-1, 0, 1]) this.puffs.emit(px + this.flipDir * 0.85, w.y + 0.3, cz, this.flipDir * 3, -2, 0, 0.3, 0.4);
       }
     }
-    car.position.set(w.x + FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
+    // Mount: lane offset on the road, a point on the tube wall (wheels to the wall) inside, blended between.
+    const wallX = TUNNEL_RADIUS * Math.sin(this.tubeAngle), wallY = TUBE_CY - TUNNEL_RADIUS * Math.cos(this.tubeAngle);
+    this.carMount.position.set(THREE.MathUtils.lerp(w.x, wallX, k), wallY * k, 0);
+    this.carMount.rotation.z = ang;
+    this.puffFrame.rotation.z = ang;
+    car.position.set(FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
     car.rotation.set(w.y > 0 && roll === 0 ? -0.06 : 0, 0, lean + roll);
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
@@ -213,6 +245,14 @@ export class GameView {
     this.policeZ += (targetZ - this.policeZ) * Math.min(1, dt * (targetZ < this.policeZ ? 2.5 : 0.8));
     this.policeX += (w.x - this.policeX) * Math.min(1, dt * 3);
     this.police.group.position.set(this.policeX, 0, this.policeZ);
+    this.police.group.rotation.z = 0;
+    if (k > 0) {
+      // In a tube the police rides the bottom of the ring too, so it never sinks into the curved wall.
+      const pa = (this.policeX / LANE_WIDTH) * SLOT_ANGLE;
+      this.police.group.position.set(
+        THREE.MathUtils.lerp(this.policeX, TUNNEL_RADIUS * Math.sin(pa), k), (TUBE_CY - TUNNEL_RADIUS * Math.cos(pa)) * k, this.policeZ);
+      this.police.group.rotation.z = pa * k;
+    }
     this.police.group.visible = this.policeZ < POLICE_FAR - 1;
     const flash = Math.floor(time * 6) % 2 === 0;
     this.police.red.color.copy(flash ? C_RED_ON : C_RED_OFF);
@@ -221,9 +261,24 @@ export class GameView {
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);
     const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
-    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + (w.power === 'hover' ? 0.6 : 0), 9.5);
-    this.camera.lookAt(w.x * 0.4, 1, -12);
-    if (this.showcase) this.turntable(w.x, time);
+    const hov = w.power === 'hover' ? 0.6 : 0;
+    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + hov, 9.5);
+    this.camTarget.set(w.x * 0.4, 1, -12);
+    this.camera.up.set(0, 1, 0);
+    if (k > 0) {
+      // Inside the tube: the camera sits behind the car in the car's rolled frame, so the car stays
+      // upright on screen and the tunnel spins around it.
+      const c = Math.cos(ang), s = Math.sin(ang);
+      const roll = (x: number, y: number, out: THREE.Vector3, z: number) =>
+        out.set(x * c - (y - TUBE_CY) * s, TUBE_CY + x * s + (y - TUBE_CY) * c, z);
+      roll(sx, TUBE_CAM.height + sy + hov, this.tmpV, TUBE_CAM.back);
+      this.camera.position.lerp(this.tmpV, k);
+      roll(0, TUBE_CAM.lookY, this.tmpV, -12);
+      this.camTarget.lerp(this.tmpV, k);
+      this.camera.up.set(-s, c, 0);
+    }
+    this.camera.lookAt(this.camTarget);
+    if (this.showcase) { this.camera.up.set(0, 1, 0); this.turntable(w.x, time); }
     else if (this.camera.view) this.camera.clearViewOffset();
     for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
     const fov = this.baseFov + (w.power === 'ludicrous' ? 10 : 0);
@@ -242,12 +297,24 @@ export class GameView {
     this.landmarks.update(w.distance);
     this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
+    this.tunnel.update(w, this.dayNight.lights, time);
 
     let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {
       if (!e.alive) continue;
       const z = -(e.s - w.distance);
       const x = laneX(e.lane);
+      if (e.slot !== undefined) {
+        // Tube contents stand on the wall at their slot's angle.
+        if (e.kind === 'coin' && nc < MAX_COINS) {
+          this.placeOnRing(e.slot * SLOT_ANGLE, 0.9 + Math.sin(time * 4 + e.s) * 0.08, z, time * 3 + e.s);
+          this.coins.setMatrixAt(nc++, this.dummy.matrix);
+        } else if (e.kind === 'cone' && nk < MAX_CONES) {
+          this.placeOnRing(e.slot * SLOT_ANGLE, 0, z, 0);
+          this.cones.setMatrixAt(nk++, this.dummy.matrix);
+        }
+        continue;
+      }
       if (e.kind === 'coin' && nc < MAX_COINS) {
         this.place(x, 0.9 + Math.sin(time * 4 + e.s) * 0.08 + coinRainLift(e.s, w), z, time * 3 + e.s);
         this.coins.setMatrixAt(nc++, this.dummy.matrix);
@@ -292,6 +359,18 @@ export class GameView {
     this.dummy.rotation.set(0, rotY, 0);
     this.dummy.updateMatrix();
   }
+
+  /** Like place, on the tube wall at angle `a` (0 = bottom), `lift` metres in from the wall, rolled to face the axis. */
+  private placeOnRing(a: number, lift: number, z: number, rotY: number): void {
+    const r = TUNNEL_RADIUS - lift;
+    this.dummy.position.set(r * Math.sin(a), TUBE_CY - r * Math.cos(a), z);
+    this.dummy.rotation.set(0, rotY, a, 'ZYX'); // spin about the wall normal, then roll onto the wall
+    this.dummy.updateMatrix();
+    this.dummy.rotation.order = 'XYZ';
+  }
+
+  private camTarget = new THREE.Vector3();
+  private tmpV = new THREE.Vector3();
 }
 
 function instanced(geo: THREE.BufferGeometry, mat: THREE.Material, max: number): THREE.InstancedMesh {
