@@ -1,9 +1,11 @@
 # Builds the game and publishes it to GitHub Pages (https://hoziel.github.io/roadster-rush/).
-# Runs by hand for now ("Run workflow" on the Actions tab); switch on `push` once the repo is public
-# and Pages is set to "GitHub Actions" (Settings → Pages). Issue #41.
+# Runs on every push to main (and by hand from the Actions tab). Needs the repo public and
+# Settings → Pages → Source set to "GitHub Actions". Issue #41.
 name: Deploy to GitHub Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
