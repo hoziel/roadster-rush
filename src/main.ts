@@ -7,7 +7,7 @@ import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, start, steer, step } from './sim/world';
+import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, queueTunnel, score, slam, start, steer, step } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
 import { HOVER_CHARGES_MAX } from './sim/config';
 
@@ -22,7 +22,8 @@ const hud = new Hud(() => {
   audio.unlock();
   audio.setMuted(storage.muted);
   hud.setMuted(storage.muted);
-}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); });
+}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); },
+() => { audio.unlock(); if (!paused && world.phase === 'running') honk(); });
 hud.setMuted(storage.muted);
 
 const garage = new Garage(document.getElementById('ui')!, {
@@ -42,11 +43,11 @@ audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
-hud.showReady(storage.best, garage.cardHtml());
+hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
 // A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
 document.getElementById('ui')!.addEventListener('click', (e) => {
   const b = (e.target as Element).closest('button');
-  if (b && b.id !== 'hoverBtn') audio.uiTap();
+  if (b && b.id !== 'hoverBtn' && b.id !== 'hornBtn') audio.uiTap();
 });
 
 const debug = new URLSearchParams(location.search).has('debug');
@@ -72,7 +73,7 @@ function finish(): void {
   if (newBest) storage.set({ best: s });
   storage.set({ shop: addCoins(storage.shop, world.coins) });
   finishedAt = performance.now();
-  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.cardHtml());
+  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.walletHtml(), garage.buttonsHtml());
   setTimeout(() => audio.finishJingle(newBest), 600);
 }
 
@@ -94,6 +95,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
+  else if (action === 'down') slam(world);
   else if (action === 'hover') { if (hover(world)) audio.hover(); }
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
@@ -102,6 +104,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
 let last = performance.now();
 let acc = 0;
 let frames = 0, fpsTime = 0;
+let airborne = false; // for the kickflip touchdown sound
 
 view.renderer.setAnimationLoop((now: number) => {
   const dt = Math.min((now - last) / 1000, 0.1);
@@ -119,6 +122,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'faster': audio.faster(); hud.toast('Faster!', '#ffd23f'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
+        case 'jump': audio.kickflip(); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
@@ -127,6 +131,9 @@ view.renderer.setAnimationLoop((now: number) => {
   }
 
   const running = world.phase === 'running' && !paused;
+  const inAir = running && world.y > world.floor + 0.05 && world.power !== 'hover';
+  if (airborne && !inAir && running) audio.land();
+  airborne = inAir;
   audio.motorUpdate(world.speed, running);
   audio.siren(running && policeClose(world), now / 1000);
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');

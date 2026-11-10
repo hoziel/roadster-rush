@@ -5,7 +5,7 @@ import { MUSIC, SAMPLES, SAMPLE_ORDER, audioUrl, findOnset, loopPoints, type Mus
 export { HORN_KINDS, type HornKind, type MusicId } from './tracks';
 
 const MASTER_VOL = 0.8;
-const MUSIC_VOL = 0.35; // music sits under the SFX
+const MUSIC_VOL = 0.22; // music sits well under the SFX (it's off by default)
 const DUCK = 0.55; // music level while an SFX plays (fraction of MUSIC_VOL)
 const FADE = 0.8; // s, crossfade between tracks
 
@@ -355,9 +355,32 @@ export class GameAudio {
     o.start(t); o.stop(t + 0.36); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
-  /** Kickflip: a soft thruster puff (band-passed noise swept up), synthesized. */
+  /** Kickflip: thruster ignition (low rumble + jet hiss), a rising zing, and a side-thruster puff as the roll starts. */
   kickflip(): void {
-    this.whoosh(0.32, 500, 2400, 0.16);
+    this.whoosh(0.4, 110, 700, 0.55, 0, 0.8); // ignition rumble
+    this.whoosh(0.55, 900, 4200, 0.3); // jet hiss
+    this.whoosh(0.3, 1600, 3200, 0.24, 0.12); // side thrusters kick the roll
+    this.sweep(260, 1500, 0.45, 0.11);
+  }
+
+  /** Touchdown after a kickflip: a soft thump and a puff of gas. */
+  land(): void {
+    this.sweep(130, 45, 0.18, 0.4, 'sine');
+    this.whoosh(0.4, 700, 1800, 0.22);
+  }
+
+  private sweep(f0: number, f1: number, dur: number, vol: number, type: OscillatorType = 'triangle'): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(this.sfxBus!);
+    o.start(t); o.stop(t + dur + 0.02); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
   /** Entering a tube tunnel: a longer, lower whoosh. */
@@ -396,7 +419,7 @@ export class GameAudio {
     if (newBest) this.fanfare();
   }
 
-  private whoosh(dur: number, f0: number, f1: number, vol: number): void {
+  private whoosh(dur: number, f0: number, f1: number, vol: number, delay = 0, q = 1.2): void {
     if (!this.ctx || !this.master) return;
     const ctx = this.ctx;
     if (!this.noise) {
@@ -404,12 +427,12 @@ export class GameAudio {
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    const t = ctx.currentTime;
+    const t = ctx.currentTime + delay;
     const src = ctx.createBufferSource();
     src.buffer = this.noise;
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.Q.value = 1.2;
+    bp.Q.value = q;
     bp.frequency.setValueAtTime(f0, t);
     bp.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.6);
     bp.frequency.exponentialRampToValueAtTime(f0 * 1.5, t + dur);

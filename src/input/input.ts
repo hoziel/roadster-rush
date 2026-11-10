@@ -1,4 +1,4 @@
-export type Action = 'left' | 'right' | 'jump' | 'tap' | 'honk' | 'hover';
+export type Action = 'left' | 'right' | 'jump' | 'down' | 'tap' | 'honk' | 'hover';
 
 const SWIPE_PX = 28; // finger travel that counts as a swipe
 const TAP_PX = 14; // a release within this distance is a tap, however long the press (kids press and hold)
@@ -30,7 +30,7 @@ export function bindInput(
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_PX) return;
     fired = true; // one action per gesture, fired mid-swipe for responsiveness
     if (Math.abs(dx) > Math.abs(dy)) onAction(dx < 0 ? 'left' : 'right');
-    else if (dy < 0) onAction('jump');
+    else onAction(dy < 0 ? 'jump' : 'down');
   });
 
   const end = (e: PointerEvent) => {
@@ -49,7 +49,7 @@ export function bindInput(
     const map: Record<string, Action> = {
       ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
       ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyH: 'honk', Enter: 'tap',
-      ArrowDown: 'hover', KeyS: 'hover', KeyF: 'hover',
+      ArrowDown: 'down', KeyS: 'down', KeyF: 'hover',
     };
     const a = map[e.code];
     if (a) { e.preventDefault(); onAction(a); }

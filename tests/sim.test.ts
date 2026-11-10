@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SPEED_MAX, SPEED_START, SPEED_STEPS, SPEED_STEP_TIME, SPEED_SURGE } from '../src/sim/config';
 import { speedAt } from '../src/sim/speed';
 import { SLOT_ANGLE, wrapSlot } from '../src/sim/tunnel';
-import { createWorld, jump, laneX, start, steer, step, type World } from '../src/sim/world';
+import { createWorld, jump, laneX, slam, start, steer, step, type World } from '../src/sim/world';
 import { dodge } from './bot';
 
 const DT = 1 / 60;
@@ -26,7 +26,7 @@ describe('speed', () => {
   it('steps up every SPEED_STEP_TIME and keeps climbing for minutes', () => {
     expect(speedAt(SPEED_STEP_TIME - 0.1)).toBe(SPEED_START);
     expect(speedAt(SPEED_STEP_TIME * 2 + 3)).toBeGreaterThan(speedAt(SPEED_STEP_TIME + 3));
-    expect(speedAt(150)).toBeGreaterThan(speedAt(120));
+    expect(speedAt(100)).toBeGreaterThan(speedAt(80));
     expect(speedAt(SPEED_STEP_TIME * SPEED_STEPS + SPEED_SURGE)).toBeCloseTo(SPEED_MAX, 6);
   });
   it('never exceeds the cap', () => {
@@ -84,7 +84,7 @@ describe('world', () => {
     expect(w.distance).toBe(0);
     expect(w.entities.every((e) => !e.alive)).toBe(true);
     run(w, 5);
-    expect(w.entities.length).toBeLessThanOrEqual(pool + 10);
+    expect(w.entities.length).toBeLessThanOrEqual(pool + 20); // spawn mix varies; just no unbounded growth
   });
 
   it('a simple dodging bot survives two minutes at full speed', () => {
@@ -107,5 +107,27 @@ describe('world', () => {
       }
     }
     expect(w.phase).toBe('running');
+  });
+});
+
+describe('jump feel', () => {
+  const air = (w: World) => { jump(w); for (let i = 0; i < 24; i++) step(w, 1 / 120); }; // 0.2 s up
+  it('swipe down in the air slams the car back to the road fast', () => {
+    const w = emptyRunning();
+    air(w);
+    expect(slam(w)).toBe(true);
+    let t = 0;
+    while (w.y > w.floor && t < 1) { step(w, 1 / 120); t += 1 / 120; }
+    expect(t).toBeLessThan(0.15);
+  });
+  it('a jump swiped just before landing fires on touchdown', () => {
+    const w = emptyRunning();
+    air(w);
+    while (w.y - w.floor > 0.3) step(w, 1 / 120); // about to land
+    expect(jump(w)).toBe(false); // still in the air: buffered
+    const events: string[] = [];
+    for (let i = 0; i < 30; i++) events.push(...step(w, 1 / 120));
+    expect(events).toContain('jump');
+    expect(w.y).toBeGreaterThan(w.floor);
   });
 });

@@ -1,6 +1,6 @@
 import {
   AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CAR_CLEAR, CHASE_TIME, COIN_VALUE,
-  DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
+  DESPAWN_BEHIND, GRAVITY, JUMP_BUFFER, SLAM_VELOCITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
   INTRO_CHASE_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
@@ -38,7 +38,7 @@ export interface Entity {
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'boing' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel'
+  | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel' | 'jump'
   | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
   | 'police-stop' | 'roadwork'; // one coming up, ZONE_WARN ahead
 export type Phase = 'ready' | 'running' | 'over';
@@ -62,6 +62,7 @@ export interface World {
   batteries: number;
   invuln: number; // s of post-crash grace left
   stumble: number; // s of post-crash slowdown left
+  jumpBuffer: number; // s left on a jump swiped while still in the air
   chase: number; // s the police stays close (a crash now ends the run)
   intro: number; // s of the harmless opening chase left (police shown close, crashes don't end the run)
   hoverCharges: number; // banked hover-button presses
@@ -103,7 +104,7 @@ export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * L
 
 const runState = () => ({
   time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, floor: 0, coins: 0, trafficRun: 0,
-  batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0, intro: INTRO_CHASE_TIME,
+  batteries: BATTERIES, invuln: 0, stumble: 0, jumpBuffer: 0, chase: 0, intro: INTRO_CHASE_TIME,
   hoverCharges: HOVER_CHARGES_START, speedLevel: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
@@ -139,6 +140,13 @@ export function steer(w: World, dir: -1 | 1): boolean {
   return true;
 }
 
+/** Swipe down: in the air, slam straight back down (Subway Surfers' quick drop). */
+export function slam(w: World): boolean {
+  if (w.phase !== 'running' || w.power === 'hover' || w.y <= w.floor + 0.05) return false;
+  w.vy = Math.min(w.vy, -SLAM_VELOCITY);
+  return true;
+}
+
 /** Hover button: spend a banked charge to hover for HOVER_TIME. */
 export function hover(w: World): boolean {
   if (w.phase !== 'running' || w.hoverCharges <= 0 || w.power === 'hover') return false;
@@ -151,7 +159,8 @@ export function hover(w: World): boolean {
 export const policeClose = (w: World): boolean => w.chase > 0 || w.intro > 0;
 
 export function jump(w: World): boolean {
-  if (w.phase !== 'running' || w.y > w.floor + 1e-6 || w.power === 'hover') return false;
+  if (w.phase !== 'running' || w.power === 'hover') return false;
+  if (w.y > w.floor + 1e-6) { w.jumpBuffer = JUMP_BUFFER; return false; } // fires on touchdown
   w.vy = JUMP_VELOCITY;
   w.y = w.floor + 0.0001;
   return true;
@@ -168,6 +177,7 @@ export function step(w: World, dt: number): SimEvent[] {
   w.time += dt;
   w.invuln = Math.max(0, w.invuln - dt);
   w.stumble = Math.max(0, w.stumble - dt);
+  w.jumpBuffer = Math.max(0, w.jumpBuffer - dt);
   w.chase = Math.max(0, w.chase - dt);
   w.intro = Math.max(0, w.intro - dt);
   if (w.power) {
@@ -207,7 +217,10 @@ export function step(w: World, dt: number): SimEvent[] {
     // Falls back down after a hover ends or off the front of a car; otherwise a normal jump arc.
     w.vy -= GRAVITY * dt;
     w.y += w.vy * dt;
-    if (w.y <= w.floor) { w.y = w.floor; w.vy = 0; }
+    if (w.y <= w.floor) {
+      w.y = w.floor; w.vy = 0;
+      if (w.jumpBuffer > 0 && jump(w)) { w.jumpBuffer = 0; events.push('jump'); }
+    }
   } else {
     w.y = w.floor; // landed on (or stepped up onto) a roof
     w.vy = 0;
