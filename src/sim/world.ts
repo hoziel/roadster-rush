@@ -5,12 +5,14 @@ import {
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
   SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
-  ROOF_COIN_HEIGHT, ROOF_COIN_REACH, TRAFFIC_CHANCE, TRAFFIC_FIRST_AT, TRAFFIC_GHOST_DIST, TRAFFIC_RUN, TRAFFIC_SLACK,
+  ROOF_COIN_REACH, TRAFFIC_CHANCE, TRAFFIC_FIRST_AT, TRAFFIC_GHOST_DIST, TRAFFIC_RUN, TRAFFIC_SLACK,
   TRAFFIC_SPEED,
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
   PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
   ZONE_WARN, LONGHORN_FIRST_AT, LONGHORN_GAP, LONGHORN_HIT_X,
+  DECK_CLIMB, DECK_STEP, DECK_HEIGHT, DUCK_TIME, HIGHROAD_FIRST_AT, HIGHROAD_GAP, OVERHEAD_TOP,
 } from './config';
+import { deckLength, deckOffset, deckSurface, isDeck, underOverhead, type DeckKind } from './highroad';
 import { herdLane } from './longhorns';
 import {
   SLOT_ANGLE, TUBE_TURN_SPEED, angleGap, exitSlot, laneToSlot, slotToLane, tunnelItems, wrapSlot,
@@ -18,8 +20,8 @@ import {
 import { SWARM_SPAN, conesIn, swarmCoins } from './batswarm';
 import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
-import { CHUNK_LENGTH, placeChunk, type PlacedItem } from './chunks';
-import { isObstacle, isPower, isProp, isStatic, isTraffic, type EntityKind, type PowerKind } from './spawner';
+import { CHUNK_LENGTH, placeChunk, type Chunk, type PlacedItem } from './chunks';
+import { isObstacle, isPower, isProp, isStatic, isTraffic, type EntityKind, type ObstacleKind, type PowerKind } from './spawner';
 import { catchTime, catchTimeAtLeast, clearHeight, hitDepth, roofHeight } from './traffic';
 import { speedAt, speedLevel } from './speed';
 
@@ -42,7 +44,7 @@ export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'boing' | 'crash' | 'caught' | 'battery'
   | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel' | 'jump'
   | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
-  | 'police-stop' | 'roadwork' | 'longhorns' // one coming up, ZONE_WARN ahead
+  | 'police-stop' | 'roadwork' | 'longhorns' | 'highroad' // one coming up, ZONE_WARN ahead
   | 'moo'; // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
 export type Phase = 'ready' | 'running' | 'over';
 
@@ -60,7 +62,8 @@ export interface World {
   x: number; // current sideways position (m), 0 = centre lane
   y: number; // height above road (m)
   vy: number;
-  floor: number; // what the car stands on: 0 = road, CAR_ROOF = riding a car's roof
+  floor: number; // what the car stands on: 0 = road, CAR_ROOF = riding a car's roof, up to DECK_HEIGHT on a trailer
+  duck: number; // s of ducking left (swipe down): squashed low, fits under an overhead beam
   coins: number;
   batteries: number;
   invuln: number; // s of post-crash grace left
@@ -101,7 +104,12 @@ export interface World {
   herdWarned: boolean; // 'longhorns' event already sent for it
   nextHerdAt: number; // no new crossing laid before this s
   herdQueued: boolean; // lay one at the next free chunk slot (debug)
-  zoneEnd: number; // s where the latest police stop, construction zone or crossing ends (-Infinity: none yet)
+  highAt: number; // s of the latest high road (trailers) chunk, -1 if none
+  highWarned: boolean; // 'highroad' event already sent for it
+  nextHighAt: number; // no new high road laid before this s
+  highQueued: boolean; // lay one at the next free chunk slot (debug)
+  overheadQueued: boolean; // make the next cone chunk one with an overhead beam (debug)
+  zoneEnd: number; // s where the latest police stop, construction zone, crossing or high road ends (-Infinity: none yet)
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
   angle: number; // current angle around the ring (rad, 0 = bottom, + = right); eases toward the slot
@@ -111,7 +119,7 @@ export interface World {
 export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * LANE_WIDTH;
 
 const runState = () => ({
-  time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, floor: 0, coins: 0, trafficRun: 0,
+  time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, floor: 0, duck: 0, coins: 0, trafficRun: 0,
   batteries: BATTERIES, invuln: 0, stumble: 0, jumpBuffer: 0, chase: 0, intro: INTRO_CHASE_TIME,
   hoverCharges: HOVER_CHARGES_START, speedLevel: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
@@ -119,7 +127,8 @@ const runState = () => ({
   tunnelAt: -1, tunnelEnd: -1, nextTunnelAt: TUNNEL_FIRST_AT, tunnelQueued: false, tube: false, slot: 0, angle: 0,
   policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
   workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
-  herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false, zoneEnd: -Infinity,
+  herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false,
+  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity,
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -149,12 +158,19 @@ export function steer(w: World, dir: -1 | 1): boolean {
   return true;
 }
 
-/** Swipe down: in the air, slam straight back down (Subway Surfers' quick drop). */
+/**
+ * Swipe down: duck low for DUCK_TIME (under an overhead beam). In the air, first slam straight back down
+ * (Subway Surfers' quick drop) and land ducked.
+ */
 export function slam(w: World): boolean {
-  if (w.phase !== 'running' || w.power === 'hover' || w.y <= w.floor + 0.05) return false;
-  w.vy = Math.min(w.vy, -SLAM_VELOCITY);
+  if (w.phase !== 'running' || w.power === 'hover') return false;
+  if (w.y > w.floor + 0.05) w.vy = Math.min(w.vy, -SLAM_VELOCITY);
+  w.duck = DUCK_TIME;
   return true;
 }
+
+/** Is the car ducking right now? */
+export const isDucking = (w: World): boolean => w.duck > 0;
 
 /** Hover button: spend a banked charge to hover for HOVER_TIME. */
 export function hover(w: World): boolean {
@@ -170,6 +186,7 @@ export const policeClose = (w: World): boolean => w.chase > 0 || w.intro > 0;
 export function jump(w: World): boolean {
   if (w.phase !== 'running' || w.power === 'hover') return false;
   if (w.y > w.floor + 1e-6) { w.jumpBuffer = JUMP_BUFFER; return false; } // fires on touchdown
+  w.duck = 0; // a jump pops the car back up out of a duck
   w.vy = JUMP_VELOCITY;
   w.y = w.floor + 0.0001;
   return true;
@@ -187,6 +204,7 @@ export function step(w: World, dt: number): SimEvent[] {
   w.invuln = Math.max(0, w.invuln - dt);
   w.stumble = Math.max(0, w.stumble - dt);
   w.jumpBuffer = Math.max(0, w.jumpBuffer - dt);
+  w.duck = Math.max(0, w.duck - dt);
   w.chase = Math.max(0, w.chase - dt);
   w.intro = Math.max(0, w.intro - dt);
   if (w.power) {
@@ -205,6 +223,7 @@ export function step(w: World, dt: number): SimEvent[] {
   if (!w.policeWarned && w.distance >= w.policeAt - ZONE_WARN) { w.policeWarned = true; events.push('police-stop'); }
   if (!w.workWarned && w.distance >= w.workAt - ZONE_WARN) { w.workWarned = true; events.push('roadwork'); }
   if (!w.herdWarned && w.distance >= w.herdAt - ZONE_WARN) { w.herdWarned = true; events.push('longhorns'); }
+  if (!w.highWarned && w.distance >= w.highAt - ZONE_WARN) { w.highWarned = true; events.push('highroad'); }
 
   if (!w.tube && w.tunnelAt >= 0 && w.distance >= w.tunnelAt && w.distance < w.tunnelEnd) {
     enterTube(w);
@@ -217,12 +236,14 @@ export function step(w: World, dt: number): SimEvent[] {
     w.x += Math.sign(dx) * Math.min(Math.abs(dx), LANE_CHANGE_SPEED * dt);
   }
 
-  // Traffic drives on; a car under us (once we're up at its roof) is the floor we ride on.
+  // Traffic drives on; a car under us (once we're up at its roof) or a ramp or deck is the floor we ride on.
   for (const e of w.entities) if (e.alive && e.v) e.s += e.v * dt;
   w.floor = roofUnder(w);
   if (w.power === 'hover') {
+    // Rise to hover height (or stay level with a deck you were riding), never down through it.
     w.vy = 0;
-    w.y = Math.min(HOVER_HEIGHT, w.y + HOVER_RISE * dt);
+    const to = Math.max(HOVER_HEIGHT, w.floor) - w.y;
+    w.y += Math.sign(to) * Math.min(Math.abs(to), HOVER_RISE * dt);
   } else if (w.y > w.floor || w.vy > 0) {
     // Falls back down after a hover ends or off the front of a car; otherwise a normal jump arc.
     w.vy -= GRAVITY * dt;
@@ -260,8 +281,8 @@ export function step(w: World, dt: number): SimEvent[] {
       }
       activate(w, e.kind);
       events.push(e.kind === 'supercharger' ? 'battery' : 'power');
-    } else if (w.y >= clearHeight(e.kind)) {
-      continue; // jumped or hovering over it, or riding a car's roof
+    } else if (clears(w, e)) {
+      continue; // jumped or hovering over it, riding a car's roof or a deck, or ducked under a beam
     } else if (e.kind === 'spikes') {
       // A spike strip stays put. Shielded (grace or a power-up), the car rolls over it unharmed.
       if (isShielded(w)) continue;
@@ -287,16 +308,47 @@ function knockAside(w: World, e: Entity): void {
   else e.alive = false;
 }
 
-/** The roof height (CAR_ROOF, or a parked police car's) if the car is up level with a roof under it, else 0 (the road). */
+/**
+ * What the car stands on: a roof (CAR_ROOF, or a parked police car's) if it's up level with one under it, the
+ * surface of a ramp or deck it's level with, else 0 (the road). Driving, it rolls up a ramp (each step rises
+ * at most DECK_CLIMB); from the air it settles onto a deck only from above (within DECK_STEP), so a jump from
+ * the road never reaches a deck.
+ */
 function roofUnder(w: World): number {
-  if (w.tube || w.y < CAR_CLEAR) return 0;
+  if (w.tube) return 0;
+  const driving = w.y <= w.floor + 1e-6 && w.vy <= 0;
   let roof = 0;
   for (const e of w.entities) {
-    if (!e.alive || (e.kind !== 'car' && e.kind !== 'police') || e.bumped !== undefined) continue;
+    if (!e.alive || e.bumped !== undefined) continue;
+    if (isDeck(e.kind)) {
+      const r = deckOffset(e.kind, e.s, w.distance);
+      if (r < 0 || r > deckLength(e.kind) || !sideOverlap(w, e)) continue;
+      const surface = deckSurface(e.kind, r);
+      if (w.y >= surface - (driving ? DECK_CLIMB : DECK_STEP)) roof = Math.max(roof, surface);
+      continue;
+    }
+    if (w.y < CAR_CLEAR || (e.kind !== 'car' && e.kind !== 'police')) continue;
     if (Math.abs(e.s - w.distance) <= hitDepth(e.kind) && sideOverlap(w, e)) roof = Math.max(roof, roofHeight(e.kind));
   }
   return roof;
 }
+
+/**
+ * Does the car get past an obstacle it's level with? Over it (a jump, a hover, a car roof); for a deck piece,
+ * up level with its surface (on the ramp or deck, or past its front); for an overhead beam, ducked under it.
+ */
+function clears(w: World, e: Entity): boolean {
+  if (isDeck(e.kind)) {
+    const r = deckOffset(e.kind, e.s, w.distance);
+    if (r > deckLength(e.kind)) return true; // driven off the front
+    return w.y >= wallHeight(e.kind, r) - DECK_STEP;
+  }
+  if (e.kind === 'overhead') return underOverhead(w.y, isDucking(w)) || w.y >= OVERHEAD_TOP;
+  return w.y >= clearHeight(e.kind as ObstacleKind);
+}
+
+/** How high a deck piece stands `r` m in front of its back end (the car's front reaches it from r = -1): the ramp, else the deck. */
+const wallHeight = (k: DeckKind, r: number): number => (k === 'flatbed' ? DECK_HEIGHT : deckSurface(k, Math.max(0, r)));
 
 /** Is the car level with `e` across the road (or around the tube's ring)? */
 function sideOverlap(w: World, e: Entity): boolean {
@@ -455,14 +507,16 @@ function spawn(w: World): void {
     if (layBatSwarm(w) || layTunnel(w) || layZone(w, difficulty)) continue;
     if (wantTraffic(w)) { layTraffic(w, placeChunk(w.rng, difficulty, w.nextRowAt, true).items); continue; }
     const powersOk = w.time > POWER_START_AFTER && !w.power;
-    for (const item of placeChunk(w.rng, difficulty, w.nextRowAt).items) {
+    const only = w.overheadQueued ? hasOverhead : undefined;
+    w.overheadQueued = false;
+    for (const item of placeChunk(w.rng, difficulty, w.nextRowAt, 'cones', only).items) {
       let kind: EntityKind;
       if (item.kind === 'power') {
         // Power slots only sometimes hold a power-up; otherwise a short coin line.
         if (powersOk && w.rng() < POWER_CHANCE * 4) kind = pickPower(w);
         else { for (let i = 0; i < 3; i++) add(w, 'coin', item.lane, item.s + i * 2.2); continue; }
       } else kind = item.kind;
-      add(w, kind, item.lane, item.s);
+      add(w, kind, item.lane, item.s, undefined, undefined, item.y);
     }
     w.nextRowAt += CHUNK_LENGTH;
   }
@@ -524,8 +578,7 @@ function layTraffic(w: World, items: PlacedItem[]): void {
   shift = Math.max(0, shift);
   for (const it of items) {
     if (it.kind === 'power') continue; // traffic chunks have none; the validator enforces it
-    const y = it.y ? ROOF_COIN_HEIGHT : undefined;
-    add(w, it.kind, it.lane, it.s - shift, undefined, v, y, isTraffic(it.kind) ? Math.floor(w.rng() * 1000) : undefined);
+    add(w, it.kind, it.lane, it.s - shift, undefined, v, it.y, isTraffic(it.kind) ? Math.floor(w.rng() * 1000) : undefined);
   }
   // Keep the road after the chunk clear of whatever the slowest car could still meet there.
   const lastZone = Math.max(...movers.map((it) => it.s + depth(it))) - shift;
@@ -543,6 +596,12 @@ export function queuePoliceStop(w: World): void { w.policeQueued = true; }
 export function queueLonghorns(w: World): void { w.herdQueued = true; }
 /** Ask for a construction zone at the next free chunk slot (debug). */
 export function queueConstruction(w: World): void { w.workQueued = true; }
+/** Ask for a high road (trailers with ramps) at the next free chunk slot (debug). */
+export function queueHighroad(w: World): void { w.highQueued = true; }
+/** Make the next cone chunk one with an overhead beam to duck under (debug). */
+export function queueOverhead(w: World): void { w.overheadQueued = true; }
+
+const hasOverhead = (c: Chunk): boolean => c.rows.some((r) => r.overheads?.length);
 
 /**
  * Now and then lay a police stop or a construction zone (one or more chunks) in place of a cone chunk. They're
@@ -554,7 +613,7 @@ function layZone(w: World, difficulty: number): boolean {
   const s0 = w.nextRowAt;
   const blockEnd = Math.max(w.tunnelAt >= 0 ? w.tunnelEnd : -Infinity, w.swarmAt >= 0 ? w.swarmEnd + SWARM_PAD : -Infinity);
   if (s0 < blockEnd + ZONE_AFTER_BLOCK) return false;
-  let pool: 'police' | 'construction' | 'longhorns';
+  let pool: 'police' | 'construction' | 'longhorns' | 'highroad';
   if (w.workRun > 0 && s0 !== w.workEnd) w.workRun = 0; // a tunnel or swarm came in between: that zone is over
   if (w.workRun > 0) { pool = 'construction'; w.workRun--; }
   else if (w.trafficRun > 0 || s0 < w.zoneEnd + ZONE_SPACING) return false;
@@ -562,9 +621,16 @@ function layZone(w: World, difficulty: number): boolean {
     // Whichever is most overdue (debug queues first); each keeps its own spacing.
     const due = (queued: boolean, at: number) => (queued ? -Infinity : at <= s0 ? at : Infinity);
     const police = due(w.policeQueued, w.nextPoliceAt), work = due(w.workQueued, w.nextWorkAt), herd = due(w.herdQueued, w.nextHerdAt);
-    const first = Math.min(police, work, herd);
+    const high = due(w.highQueued, w.nextHighAt);
+    const first = Math.min(police, work, herd, high);
     if (first === Infinity) return false;
-    if (first === police) {
+    if (first === high) {
+      pool = 'highroad';
+      w.highQueued = false;
+      w.highWarned = false;
+      w.highAt = s0;
+      w.nextHighAt = s0 + between(w, HIGHROAD_GAP);
+    } else if (first === police) {
       pool = 'police';
       w.policeQueued = false;
       w.policeWarned = false;
@@ -585,14 +651,14 @@ function layZone(w: World, difficulty: number): boolean {
       w.nextWorkAt = s0 + between(w, WORK_GAP);
     }
   }
-  const { items } = placeChunk(w.rng, difficulty, s0, pool);
+  const { items, length } = placeChunk(w.rng, difficulty, s0, pool);
   for (const it of items) {
     if (it.kind === 'power') { for (let i = 0; i < 3; i++) add(w, 'coin', it.lane, it.s + i * 2.2); continue; }
     if (it.kind === 'police') w.policeAt = it.s;
-    const variant = it.kind === 'police' || it.kind === 'longhorn' ? Math.floor(w.rng() * 1000) : undefined;
-    add(w, it.kind, it.lane, it.s, undefined, undefined, undefined, variant, it.from);
+    const variant = it.kind === 'police' || it.kind === 'longhorn' || isDeck(it.kind) ? Math.floor(w.rng() * 1000) : undefined;
+    add(w, it.kind, it.lane, it.s, undefined, undefined, it.y, variant, it.from);
   }
-  w.nextRowAt += CHUNK_LENGTH;
+  w.nextRowAt += length;
   if (pool === 'construction') w.workEnd = w.nextRowAt;
   w.zoneEnd = w.nextRowAt;
   return true;
