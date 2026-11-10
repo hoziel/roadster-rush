@@ -18,14 +18,14 @@ import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { StartLine } from './startline';
-import { HoverGlow, PolicePatrol } from './policePatrol';
+import { PolicePatrol, airBursts } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
 const MAX_POWERS = 8;
-const HOVER_PUFFS = 150; // jet + spray pairs per second while hovering
+const HOVER_PUFFS = 220; // jet + spray pairs per second at a burst's average (bursts pulse it, see airBursts)
 const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from the start-screen orbit)
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
@@ -88,11 +88,8 @@ export class GameView {
   private policeX = 0;
   private policeHover = 0; // 0..1 eased: the chase car floats while the player hovers
   private policePuffs = 0;
-  private policeGlow = new HoverGlow();
   /** The hover police car: floats at the start line, flies across the sky now and then during a run. */
   readonly patrol = new PolicePatrol((x, y, z, vx, vy, vz, size, life) => this.puffs.emit(x, y, z, vx, vy, vz, size, life));
-  private hoverPad: THREE.Mesh;
-  private hoverRings: THREE.Mesh[] = [];
   private hoverAcc = 0; // hover puffs owed (emitted at HOVER_PUFFS per second)
   private coins: THREE.InstancedMesh;
   private cones: THREE.InstancedMesh;
@@ -162,21 +159,8 @@ export class GameView {
     this.police = buildPoliceRoadster();
     this.police.group.scale.setScalar(CAR_SCALE);
     this.police.group.position.z = POLICE_FAR;
-    this.police.group.add(this.policeGlow.group);
     this.scene.add(this.police.group, this.patrol.group);
 
-    this.hoverPad = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.1, 1.3, 0.12, 24),
-      new THREE.MeshBasicMaterial({ color: POWER_COLORS.hover, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
-    );
-    this.hoverPad.visible = false;
-    const ringGeo = new THREE.RingGeometry(0.9, 1.1, 40).rotateX(-Math.PI / 2).translate(0, 0.07, 0);
-    for (let i = 0; i < 2; i++) {
-      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#e6dcff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-      this.hoverRings.push(ring);
-      this.hoverPad.add(ring);
-    }
-    this.car.group.add(this.hoverPad);
 
     const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 20).rotateX(Math.PI / 2);
     this.coins = instanced(coinGeo, new THREE.MeshToonMaterial({ color: '#ffd23f', emissive: '#7a5200' }), MAX_COINS);
@@ -301,10 +285,10 @@ export class GameView {
       if (Math.random() < k * 0.6) this.puffs.emit(px - 0.7, 0.2, -1.15, -2.5, 0.8, 0, 0.18, 0.4);
     }
     if (w.power === 'hover' && w.phase === 'running') {
-      // Hover: four air jets blast down from under the car and a skirt of spray rolls out over the road.
+      // Hover: air bursts blast down from under the car and roll out over the road in puffs.
       car.rotation.z += Math.sin(time * 3.1) * 0.035;
       car.rotation.x += Math.sin(time * 2.3) * 0.025;
-      this.hoverAcc += dt * HOVER_PUFFS;
+      this.hoverAcc += dt * HOVER_PUFFS * airBursts(time);
       for (; this.hoverAcc >= 1; this.hoverAcc--) {
         const cx = Math.random() < 0.5 ? -0.55 : 0.55, cz = Math.random() < 0.5 ? -1.1 : 1.1;
         this.puffs.emit(px + cx, w.y - 0.05, cz, cx * 2, -9, 0, 0.22, 0.25); // jet
@@ -326,15 +310,6 @@ export class GameView {
     else if (rest.glow) this.car.paint.emissive.set(rest.glow);
     else this.car.paint.emissive.copy(C_BLACK);
     this.car.paint.emissiveIntensity = w.power ? 0.35 + Math.sin(time * 10) * 0.15 : rest.glowIntensity ?? 0;
-    this.hoverPad.visible = w.power === 'hover';
-    this.hoverPad.position.y = -w.y + 0.08;
-    // Glow on the road under the car, with two shock rings rolling outward.
-    (this.hoverPad.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(time * 9) * 0.1;
-    this.hoverRings.forEach((r, i) => {
-      const t = (time * 1.6 + i * 0.5) % 1;
-      r.scale.setScalar(0.8 + t * 2.6);
-      (r.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - t);
-    });
 
     // Police: slides in close after a crash, drops back out of view otherwise. When the player hovers,
     // the police hovers too and tails them (a playful chase, no siren).
@@ -357,11 +332,8 @@ export class GameView {
     const ph = smooth(this.policeHover);
     this.police.group.position.y += ph * (POLICE_HOVER_LIFT + Math.sin(time * 2.6) * 0.1);
     this.police.group.rotation.x = ph * Math.sin(time * 1.9) * 0.04;
-    this.policeGlow.group.visible = ph > 0.02;
     if (ph > 0.02) {
-      this.policeGlow.group.position.y = (0.03 - this.police.group.position.y) / CAR_SCALE; // stays on the road
-      this.policeGlow.update(time);
-      this.policePuffs += dt * 60 * ph;
+      this.policePuffs += dt * 60 * ph * airBursts(time + 0.4);
       for (; this.policePuffs >= 1; this.policePuffs--) {
         const cx = Math.random() < 0.5 ? -0.5 : 0.5, cz = Math.random() < 0.5 ? -1 : 1;
         this.puffs.emit(this.policeX + cx, this.police.group.position.y - 0.1, this.policeZ + cz, 0, -8, 0, 0.22, 0.3);

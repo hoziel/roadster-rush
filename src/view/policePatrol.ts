@@ -15,32 +15,10 @@ const HIDE_PAST = 140; // m driven before the start-line spot is behind the came
 const SIREN_HZ = 2.5;
 const CAR_SCALE = 0.9;
 
-/** Glowing hover pad under a car: a pulsing disc and two shock rings rolling outward (2 draw calls + 1). */
-export class HoverGlow {
-  readonly group = new THREE.Group();
-  private disc: THREE.Mesh;
-  private rings: THREE.Mesh[] = [];
-
-  constructor(color = '#b18cff') {
-    const add = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false };
-    this.disc = new THREE.Mesh(new THREE.CircleGeometry(1.25, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, opacity: 0.35, ...add }));
-    this.group.add(this.disc);
-    const ringGeo = new THREE.RingGeometry(0.9, 1.1, 40).rotateX(-Math.PI / 2).translate(0, 0.01, 0);
-    for (let i = 0; i < 2; i++) {
-      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#e6dcff', ...add }));
-      this.rings.push(ring);
-      this.group.add(ring);
-    }
-  }
-
-  update(time: number): void {
-    (this.disc.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(time * 9) * 0.1;
-    this.rings.forEach((r, i) => {
-      const t = (time * 1.6 + i * 0.5) % 1;
-      r.scale.setScalar(0.8 + t * 2.6);
-      (r.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - t);
-    });
-  }
+/** Hover air comes out in bursts: 0 between puffs, up to ~2.5 at the peak of each (about 3 bursts a second). */
+export function airBursts(time: number): number {
+  const p = Math.max(0, Math.sin(time * 19));
+  return 2.5 * p * p;
 }
 
 type Emit = (x: number, y: number, z: number, vx: number, vy: number, vz: number, size?: number, life?: number) => void;
@@ -50,7 +28,6 @@ export class PolicePatrol {
   /** Called as a fly-by starts (dir: +1 left to right, -1 right to left), for its sound. */
   onFlyby: ((dir: number) => void) | null = null;
   private car: PoliceRoadsterParts;
-  private glow = new HoverGlow();
   private flyT = -1; // s into the current fly-by, -1 when none
   private dir = 1;
   private nextFly = FIRST_AFTER;
@@ -61,7 +38,7 @@ export class PolicePatrol {
     this.car = buildPoliceRoadster();
     this.car.group.scale.setScalar(CAR_SCALE);
     this.car.setLights(true);
-    this.group.add(this.car.group, this.glow.group);
+    this.group.add(this.car.group);
   }
 
   /** Debug: start a fly-by now. */
@@ -87,8 +64,7 @@ export class PolicePatrol {
       car.position.set(x, FLY.y + bob + Math.sin(p * Math.PI) * 1.5, FLY.z);
       car.rotation.set(0, -this.dir * Math.PI / 2, this.dir * FLY.bank);
       car.scale.setScalar(CAR_SCALE * FLY.scale);
-      this.glow.group.visible = false;
-      this.jets(car.position, dt);
+      this.jets(car.position, dt, time);
       this.group.visible = true;
     } else {
       this.flyT = -1;
@@ -99,17 +75,14 @@ export class PolicePatrol {
       car.position.set(HOVER_SPOT.x, HOVER_SPOT.y + bob, z);
       car.rotation.set(Math.sin(time * 1.7) * 0.03, HOVER_SPOT.rotY, Math.sin(time * 2.3) * 0.04);
       car.scale.setScalar(CAR_SCALE);
-      this.glow.group.position.set(HOVER_SPOT.x, 0.03, z);
-      this.glow.group.visible = true;
-      this.glow.update(time);
-      if (w.phase !== 'running') this.jets(car.position, dt);
+      if (w.phase !== 'running') this.jets(car.position, dt, time);
     }
     this.car.updateLights(time * SIREN_HZ);
   }
 
-  /** Air jets under the car: thin streams blasting down. */
-  private jets(at: THREE.Vector3, dt: number): void {
-    this.puffAcc += dt * 50;
+  /** Bursts of air blasting down from under the car. */
+  private jets(at: THREE.Vector3, dt: number, time: number): void {
+    this.puffAcc += dt * 50 * airBursts(time);
     for (; this.puffAcc >= 1; this.puffAcc--) {
       const cx = (Math.random() < 0.5 ? -0.5 : 0.5), cz = (Math.random() < 0.5 ? -1 : 1);
       this.emit(at.x + cx, at.y - 0.1, at.z + cz, 0, -7, 0, 0.25, 0.35);
