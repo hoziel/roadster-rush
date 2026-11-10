@@ -63,8 +63,7 @@ export function buildRoadster(color = '#e8344e', opts: RoadsterOptions = {}): Ro
   const group = new THREE.Group(); group.name = 'AustinRoadster';
   const paint = new THREE.MeshToonMaterial({ color });
   const dark = new THREE.MeshToonMaterial({ color: '#171a22' });
-  // See-through tint so the driver shows from the chase camera.
-  const glass = new THREE.MeshPhongMaterial({ color: '#3b4f6e', specular: '#9fb4cc', shininess: 85, side: THREE.DoubleSide, transparent: true, opacity: .45, depthWrite: false });
+  const glass = new THREE.MeshPhongMaterial({ color: '#202b3d', specular: '#7d92aa', shininess: 85, side: THREE.DoubleSide });
   const doorPaint = opts.doorColor ? new THREE.MeshToonMaterial({ color: opts.doorColor }) : paint;
   const metal = new THREE.MeshPhongMaterial({ color: '#aeb9c8', specular: '#8b97a5', shininess: 45 });
   const upholstery = new THREE.MeshToonMaterial({ color: '#57545b' });
@@ -215,9 +214,9 @@ export function buildRoadster(color = '#e8344e', opts: RoadsterOptions = {}): Ro
     for(const x of [-.80,.80])for(const z of [-1.12,1.1]){
     // Rounded sidewalls and a recessed wheel face replace the solid disc + bar spokes.
     const profile=[new THREE.Vector2(.275,-.105),new THREE.Vector2(.315,-.105),new THREE.Vector2(.335,-.074),new THREE.Vector2(.335,.074),new THREE.Vector2(.315,.105),new THREE.Vector2(.275,.105)];
-    add(new THREE.LatheGeometry(profile,20).rotateZ(Math.PI/2).translate(x,.335,z),dark);
+    add(new THREE.LatheGeometry(profile,28).rotateZ(Math.PI/2).translate(x,.335,z),dark);
     const sign=Math.sign(x),faceX=sign*.111;
-    add(new THREE.CylinderGeometry(.272,.272,.012,20).rotateZ(Math.PI/2).translate(x+faceX,.335,z),dark);
+    add(new THREE.CylinderGeometry(.272,.272,.012,24).rotateZ(Math.PI/2).translate(x+faceX,.335,z),dark);
     const alloy:THREE.BufferGeometry[]=[];
     alloy.push(new THREE.TorusGeometry(.251,.012,4,28).rotateY(Math.PI/2).translate(sign*.125,0,0));
     alloy.push(new THREE.CylinderGeometry(.064,.064,.018,16).rotateZ(Math.PI/2).translate(sign*.137,0,0));

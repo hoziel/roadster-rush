@@ -19,7 +19,7 @@ export interface CarLook { paint: PaintLook; driver: Driver; hat: boolean }
 
 /**
  * Dresses the player car: paint finish, driver head with hair, cowboy hat, name plate.
- * Adds ~6 draw calls (head, hair, eyes, hat, plate, accent when shown).
+ * On the car it adds only the stripe / two-tone accent (1 draw call when shown).
  */
 export class CarStyle {
   private skin = new THREE.MeshToonMaterial();
@@ -57,7 +57,8 @@ export class CarStyle {
     this.hat.scale.setScalar(HAT_SCALE);
     this.hat.position.copy(HEAD_POS).add(new THREE.Vector3(0, HEAD_R * 0.7, 0));
     this.hat.rotation.x = -0.12; // tipped back a little
-    car.group.add(head, hair, eyes, this.hat);
+    // Ofir wants Codex's car untouched: the driver, hat and plate are built but not mounted on it.
+    void head; void hair; void eyes;
 
     // Paint accents and plate (the whole car squashes for the honk bounce).
     this.stripe = new THREE.Mesh(stripeGeometry(), this.accent);
@@ -68,7 +69,8 @@ export class CarStyle {
     this.plateTex.anisotropy = 4;
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(PLATE_W, PLATE_H), new THREE.MeshBasicMaterial({ map: this.plateTex }));
     plate.position.copy(PLATE_POS); // the back of the car, facing the chase camera
-    car.group.add(this.stripe, this.lower, plate);
+    car.group.add(this.stripe, this.lower);
+    void plate;
 
     const data = new Uint8Array(METALLIC_STEPS.flatMap((v) => [v, v, v, 255]));
     this.metalMap = new THREE.DataTexture(data, METALLIC_STEPS.length, 1, THREE.RGBAFormat);
