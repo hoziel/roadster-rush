@@ -3,7 +3,7 @@
 // All prices live here. Looks (colors, sounds) live in src/ui/paints.ts and src/audio/horns.ts.
 
 export const PAINT_IDS = [
-  'white', 'cherry', 'pink', 'sky', 'sunny', 'silver', 'gold', 'neonPink', 'neonGreen', 'stripe', 'twoTone', 'sunset',
+  'white', 'cherry', 'pink', 'black', 'sky', 'sunny', 'silver', 'gold', 'neonPink', 'neonGreen', 'stripe', 'twoTone', 'sunset',
 ] as const;
 export const HORN_IDS = ['classic', 'bell', 'tune', 'clown', 'bike'] as const;
 export type PaintId = typeof PAINT_IDS[number];
@@ -11,7 +11,7 @@ export type HornId = typeof HORN_IDS[number];
 
 /** Coins per item. 0 = free (always owned). Tune after playtest. */
 export const PAINT_PRICES: Record<PaintId, number> = {
-  white: 0, cherry: 0, pink: 0, sky: 20, sunny: 20, silver: 40, gold: 60,
+  white: 0, cherry: 0, pink: 0, black: 0, sky: 20, sunny: 20, silver: 40, gold: 60,
   neonPink: 80, neonGreen: 80, stripe: 100, twoTone: 100, sunset: 120,
 };
 export const HORN_PRICES: Record<HornId, number> = { classic: 0, bell: 30, tune: 50, clown: 50, bike: 40 };

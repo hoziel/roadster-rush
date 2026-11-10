@@ -1,4 +1,4 @@
-// The driver characters: only the characters Ofir supplied (Nevo, Ori, Shiri). Add more here.
+// The driver characters: only the characters Ofir supplied (Nevo, Ori, Shiri, Ofir). Add more here.
 // To swap them in, edit only this list. Everything else (garage tiles, 3D head in the car,
 // license plate, "Great drive!" avatar) reads from here.
 // Keep names short (they go on the license plate, ~8 letters max).
@@ -24,6 +24,7 @@ export const DRIVERS: Driver[] = [
   { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg', full: 'drivers/nevo-full.jpg' },
   { id: 'ori', name: 'Ori', color: '#e8452c', skin: '#f2c7a5', hair: '#6b4226', paint: 'cherry', photo: 'drivers/ori.jpg', full: 'drivers/ori-full.jpg' },
   { id: 'shiri', name: 'Shiri', color: '#c99a3b', skin: '#f2c7a5', hair: '#c9a063', paint: 'pink', photo: 'drivers/shiri.jpg', full: 'drivers/shiri-full.jpg' },
+  { id: 'ofir', name: 'Ofir', color: '#8a96a8', skin: '#f2c7a5', hair: '#6b4226', paint: 'black', photo: 'drivers/ofir.jpg', full: 'drivers/ofir-full.jpg' },
 ];
 
 /** The saved driver, or the first one if the save is missing/unknown. */
