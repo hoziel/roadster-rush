@@ -26,5 +26,19 @@
     "finiteGeometry": true,
     "opaque": true,
     "disposalIdempotent": true
+  },
+  {
+    "model": "cybertruck",
+    "triangles": 2366,
+    "meshes": 1,
+    "materials": 1,
+    "width": 2.3399999141693115,
+    "height": 1.837856638431549,
+    "length": 5.584000110626221,
+    "forward": "-Z",
+    "groundY": 1.1920929132713809e-8,
+    "finiteGeometry": true,
+    "opaque": true,
+    "disposalIdempotent": true
   }
 ]
