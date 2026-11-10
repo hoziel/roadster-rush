@@ -145,6 +145,7 @@ view.renderer.setAnimationLoop((now: number) => {
   airborne = inAir;
   audio.motorUpdate(world.speed, running);
   audio.siren(running && policeClose(world), now / 1000);
+  audio.ambientPolice(running && !policeClose(world));
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   view.render(world, dt, now / 1000);

@@ -281,6 +281,40 @@ export class GameAudio {
     this.sirenGain!.gain.setTargetAtTime(on ? 0.035 : 0, t, 0.15);
   }
 
+  /**
+   * Distant police sirens in the background during a run: every 14-26 s a far-off wail (slow up/down sweep,
+   * muffled, panned to one side) swells in and fades away. Separate from the close chase siren above.
+   */
+  ambientPolice(running: boolean): void {
+    if (!this.ctx || !this.master) return;
+    const now = this.ctx.currentTime;
+    if (!running) { this.nextFarSiren = now + 6; return; }
+    if (now < this.nextFarSiren) return;
+    this.nextFarSiren = now + 14 + Math.random() * 12;
+    const dur = 4.5 + Math.random() * 2;
+    const o = this.ctx.createOscillator();
+    const lp = this.ctx.createBiquadFilter();
+    const pan = this.ctx.createStereoPanner();
+    const g = this.ctx.createGain();
+    o.type = 'sawtooth';
+    // US-style wail: slow sweeps between ~650 and ~1250 Hz.
+    const sweep = 1.6;
+    o.frequency.setValueAtTime(650, now);
+    for (let k = 0; k * sweep < dur; k++) {
+      o.frequency.linearRampToValueAtTime(1250, now + k * sweep + sweep * 0.55);
+      o.frequency.linearRampToValueAtTime(650, now + (k + 1) * sweep);
+    }
+    lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.5; // far away: muffled
+    pan.pan.value = (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.5);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.03, now + dur * 0.45);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    o.connect(lp).connect(pan).connect(g).connect(this.sfxBus!);
+    o.start(now); o.stop(now + dur + 0.05);
+    o.onended = () => { o.disconnect(); lp.disconnect(); pan.disconnect(); g.disconnect(); };
+  }
+  private nextFarSiren = 0;
+
   powerUp(): void {
     if (this.playSample('power', 0.5)) return;
     this.duck(0.3);
