@@ -173,7 +173,7 @@ export class Hud {
         <div class="m-chips">${wallet}${best ? `<span class="m-chip best">${ICON.star}<span>Best ${fmt(best)}</span></span>` : ''}</div>
       </div>
       <div class="m-bottom">
-        <p class="m-hint">Swipe ← → to steer · ↑ to flip · ↓ to drop · 🛸 to hover</p>
+        <p class="m-hint">Swipe ← → to steer · ↑ to flip · ↓ to duck/drop · 🛸 to hover</p>
         <div class="m-drive" aria-hidden="true">Let's drive ${ICON.play}</div>
         ${buttons}
       </div>`;

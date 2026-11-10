@@ -120,3 +120,26 @@ export const LONGHORN_WALK = 60; // m of approach over which an animal walks fro
 export const LONGHORN_DEPTH = 1.0; // m along the road (it walks sideways: this is its body's width)
 export const LONGHORN_HIT_X = 1.5; // m across: body half length (0.9) plus part of the car's half width
 export const LONGHORN_HEIGHT = 1.9; // m with the horns: higher than any jump, so steer round
+
+// The high road: parked trailers with a loading ramp at the back (austin.json, kind "highroad"). Drive up the
+// ramp to ride the deck, hop deck to deck, drive off the front back to the road. The deck is higher than any
+// jump from the road (peak 1.8 m), so the ramp (or another deck) is the only way up; side-on or front-on it's a
+// wall, like a truck. Laid now and then in place of a cone chunk; a train chunk is two chunk lengths long.
+export const DECK_HEIGHT = 2.0; // m: the deck you ride (jump peak 1.8 + DECK_STEP < 2.0: no jumping up from the side)
+export const TRAILER_LENGTH = 18; // m bumper to ramp foot: the ramp trailer...
+export const RAMP_LENGTH = 7; // m: ...whose back RAMP_LENGTH is the ramp (slope 2/7: 0.14 m a sim step even at Ludicrous)
+export const FLATBED_LENGTH = 14; // m: a flatbed with no ramp, parked nose to tail in front of another deck
+export const DECK_STEP = 0.15; // m: landing from the air, you settle onto a deck you're at most this far below
+export const DECK_CLIMB = 0.3; // m: driving (not in the air), you roll up a slope that rises at most this far a step
+export const HIGHROAD_GAP = [380, 560]; // m from one high road to the next (min, max)
+export const HIGHROAD_FIRST_AT = 240; // m into a run before the first high road
+export const TRAIN_CHUNKS = 2; // a train chunk is this many chunk lengths
+
+// Ducking: swipe down on the ground squashes the car low for DUCK_TIME (in the air it slams down and lands ducked).
+export const DUCK_TIME = 0.6; // s
+export const CAR_HEIGHT = 1.15; // m: the roadster's roof
+export const DUCK_HEIGHT = 0.55; // m: its roof while ducking
+// Overhead barrier: a striped beam with a LOW CLEARANCE board above it, on posts across 1-3 lanes. Duck under it;
+// it's too tall to jump (the board reaches above a jump's peak), so the rule is always the same: duck.
+export const OVERHEAD_BOTTOM = 0.85; // m: underside of the beam (ducked roof 0.55 fits, the 1.15 m roof doesn't)
+export const OVERHEAD_TOP = 2.45; // m: top of the board, above a jump's 1.8 m peak plus the car

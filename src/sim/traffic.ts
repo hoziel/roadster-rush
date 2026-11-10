@@ -4,8 +4,9 @@
 import {
   BARRIER_HEIGHT, CAR_CLEAR, LONGHORN_DEPTH, LONGHORN_HEIGHT, CAR_LENGTH, CAR_ROOF, CONE_HEIGHT, DIGGER_HEIGHT, DIGGER_LENGTH, FENCE_HEIGHT, HIT_DEPTH,
   PARKED_POLICE_CLEAR, PARKED_POLICE_LENGTH, PARKED_POLICE_ROOF, PLAYER_HALF_LENGTH, SPIKES_HEIGHT, TRUCK_HEIGHT,
-  TRUCK_LENGTH,
+  TRUCK_LENGTH, DECK_HEIGHT, OVERHEAD_TOP,
 } from './config';
+import { deckLength, isDeck } from './highroad';
 import type { ObstacleKind } from './spawner';
 import { speedAt } from './speed';
 
@@ -16,7 +17,8 @@ export function hitDepth(kind: ObstacleKind): number {
   if (kind === 'police') return PARKED_POLICE_LENGTH / 2 + PLAYER_HALF_LENGTH;
   if (kind === 'digger') return DIGGER_LENGTH / 2 + PLAYER_HALF_LENGTH;
   if (kind === 'longhorn') return LONGHORN_DEPTH / 2 + PLAYER_HALF_LENGTH;
-  return HIT_DEPTH; // cones and the thin ones: spike strip, barrier, fence
+  if (isDeck(kind)) return deckLength(kind) / 2 + PLAYER_HALF_LENGTH;
+  return HIT_DEPTH; // cones and the thin ones: spike strip, barrier, fence, overhead beam
 }
 
 /** Height of a roof the car can land on and ride (0: none). */
@@ -36,6 +38,8 @@ export function clearHeight(kind: ObstacleKind): number {
   if (kind === 'fence') return FENCE_HEIGHT;
   if (kind === 'digger') return DIGGER_HEIGHT;
   if (kind === 'longhorn') return LONGHORN_HEIGHT;
+  if (kind === 'trailer' || kind === 'flatbed') return DECK_HEIGHT; // up on the deck (world.ts rides the ramp)
+  if (kind === 'overhead') return OVERHEAD_TOP; // never in a jump: duck under it
   return CONE_HEIGHT;
 }
 
