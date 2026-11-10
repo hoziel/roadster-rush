@@ -10,7 +10,7 @@ import { Scenery } from './scenery';
 import { createSky } from './sky';
 import { dayPhase } from '../sim/daycycle';
 import { BatSwarm, coinRainLift } from './bats';
-import { Puffs } from './puffs';
+import { HoverJets, Puffs } from './puffs';
 import { Buildings } from './buildings';
 import { DayNight } from './daynight';
 import { Landmarks } from './landmarks';
@@ -18,14 +18,13 @@ import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { StartLine } from './startline';
-import { PolicePatrol, airBursts } from './policePatrol';
+import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
 const MAX_POWERS = 8;
-const HOVER_PUFFS = 220; // jet + spray pairs per second at a burst's average (bursts pulse it, see airBursts)
 const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from the start-screen orbit)
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
@@ -87,10 +86,6 @@ export class GameView {
   private policeZ = POLICE_FAR;
   private policeX = 0;
   private policeHover = 0; // 0..1 eased: the chase car floats while the player hovers
-  private policePuffs = 0;
-  /** The hover police car: floats at the start line, flies across the sky now and then during a run. */
-  readonly patrol = new PolicePatrol((x, y, z, vx, vy, vz, size, life) => this.puffs.emit(x, y, z, vx, vy, vz, size, life));
-  private hoverAcc = 0; // hover puffs owed (emitted at HOVER_PUFFS per second)
   private coins: THREE.InstancedMesh;
   private cones: THREE.InstancedMesh;
   private powers: THREE.InstancedMesh;
@@ -106,6 +101,10 @@ export class GameView {
   private rollPuffed = false;
   private prevX = 0; // car's sideways position last frame (lean and roll direction); follows the ring in a tube
   private puffs = new Puffs();
+  /** The hover police car: floats at the start line, flies across the sky now and then during a run. */
+  readonly patrol = new PolicePatrol(this.puffs);
+  private hoverJets = new HoverJets(this.puffs, CAR_SCALE);
+  private policeJets = new HoverJets(this.puffs, CAR_SCALE);
   private shake = 0;
   private flatT = 0; // s left of the flat-tyre wobble after a puncture
   private hazards = new HazardView();
@@ -288,14 +287,8 @@ export class GameView {
       // Hover: air bursts blast down from under the car and roll out over the road in puffs.
       car.rotation.z += Math.sin(time * 3.1) * 0.035;
       car.rotation.x += Math.sin(time * 2.3) * 0.025;
-      this.hoverAcc += dt * HOVER_PUFFS * airBursts(time);
-      for (; this.hoverAcc >= 1; this.hoverAcc--) {
-        const cx = Math.random() < 0.5 ? -0.55 : 0.55, cz = Math.random() < 0.5 ? -1.1 : 1.1;
-        this.puffs.emit(px + cx, w.y - 0.05, cz, cx * 2, -9, 0, 0.22, 0.25); // jet
-        const a = Math.random() * Math.PI * 2, sp = 5 + Math.random() * 4;
-        this.puffs.emit(px + cx, 0.15, cz, Math.cos(a) * sp, 0.6, Math.sin(a) * sp * 0.6, 0.6, 0.75); // spray
-      }
-    } else this.hoverAcc = 0;
+      this.hoverJets.update(px, w.y, 0, w.speed, dt, time);
+    }
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
     // Ducking (swipe down): squash flat and a little wider, then pop back up.
@@ -333,11 +326,7 @@ export class GameView {
     this.police.group.position.y += ph * (POLICE_HOVER_LIFT + Math.sin(time * 2.6) * 0.1);
     this.police.group.rotation.x = ph * Math.sin(time * 1.9) * 0.04;
     if (ph > 0.02) {
-      this.policePuffs += dt * 60 * ph * airBursts(time + 0.4);
-      for (; this.policePuffs >= 1; this.policePuffs--) {
-        const cx = Math.random() < 0.5 ? -0.5 : 0.5, cz = Math.random() < 0.5 ? -1 : 1;
-        this.puffs.emit(this.policeX + cx, this.police.group.position.y - 0.1, this.policeZ + cz, 0, -8, 0, 0.22, 0.3);
-      }
+      this.policeJets.update(this.policeX, this.police.group.position.y, this.policeZ, w.speed, dt, time, ph); // same bursts as the player
     }
     this.police.group.visible = this.policeZ < POLICE_FAR - 1;
     if (this.police.group.visible) this.police.updateLights(time * SIREN_HZ);

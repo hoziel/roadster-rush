@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { World } from '../sim/world';
 import { buildPoliceRoadster, type PoliceRoadsterParts } from './policeRoadster';
+import { HoverJets, type Puffs } from './puffs';
 
 // The hover police car. Before a run it floats beside the start line, next to the parked patrol cars.
 // During a run it now and then sweeps across the sky above the road (a fly-by, view only: no gameplay).
@@ -15,13 +16,6 @@ const HIDE_PAST = 140; // m driven before the start-line spot is behind the came
 const SIREN_HZ = 2.5;
 const CAR_SCALE = 0.9;
 
-/** Hover air comes out in bursts: 0 between puffs, up to ~2.5 at the peak of each (about 3 bursts a second). */
-export function airBursts(time: number): number {
-  const p = Math.max(0, Math.sin(time * 19));
-  return 2.5 * p * p;
-}
-
-type Emit = (x: number, y: number, z: number, vx: number, vy: number, vz: number, size?: number, life?: number) => void;
 
 export class PolicePatrol {
   readonly group = new THREE.Group();
@@ -32,9 +26,10 @@ export class PolicePatrol {
   private dir = 1;
   private nextFly = FIRST_AFTER;
   private lastRunTime = 0;
-  private puffAcc = 0;
+  private jets: HoverJets;
 
-  constructor(private emit: Emit) {
+  constructor(puffs: Puffs) {
+    this.jets = new HoverJets(puffs, CAR_SCALE);
     this.car = buildPoliceRoadster();
     this.car.group.scale.setScalar(CAR_SCALE);
     this.car.setLights(true);
@@ -64,7 +59,7 @@ export class PolicePatrol {
       car.position.set(x, FLY.y + bob + Math.sin(p * Math.PI) * 1.5, FLY.z);
       car.rotation.set(0, -this.dir * Math.PI / 2, this.dir * FLY.bank);
       car.scale.setScalar(CAR_SCALE * FLY.scale);
-      this.jets(car.position, dt, time);
+      this.jets.update(car.position.x, car.position.y, car.position.z, 0, dt, time);
       this.group.visible = true;
     } else {
       this.flyT = -1;
@@ -75,17 +70,8 @@ export class PolicePatrol {
       car.position.set(HOVER_SPOT.x, HOVER_SPOT.y + bob, z);
       car.rotation.set(Math.sin(time * 1.7) * 0.03, HOVER_SPOT.rotY, Math.sin(time * 2.3) * 0.04);
       car.scale.setScalar(CAR_SCALE);
-      if (w.phase !== 'running') this.jets(car.position, dt, time);
+      if (w.phase !== 'running') this.jets.update(car.position.x, car.position.y, car.position.z, 0, dt, time, 0.5);
     }
     this.car.updateLights(time * SIREN_HZ);
-  }
-
-  /** Bursts of air blasting down from under the car. */
-  private jets(at: THREE.Vector3, dt: number, time: number): void {
-    this.puffAcc += dt * 50 * airBursts(time);
-    for (; this.puffAcc >= 1; this.puffAcc--) {
-      const cx = (Math.random() < 0.5 ? -0.5 : 0.5), cz = (Math.random() < 0.5 ? -1 : 1);
-      this.emit(at.x + cx, at.y - 0.1, at.z + cz, 0, -7, 0, 0.25, 0.35);
-    }
   }
 }

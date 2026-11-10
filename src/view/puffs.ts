@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const MAX = 400; // enough for the hover's steady jets plus a kickflip blast
+const MAX = 640; // enough for two hovering cars' plumes and clouds plus a kickflip blast
 
 /**
  * Thruster vapor for the kickflip and landings: a pooled, single-draw-call cloud of soft round billboards
@@ -89,5 +89,51 @@ export class Puffs {
     this.mesh.count = top;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.alpha.needsUpdate = true;
+  }
+}
+
+/** Hover air comes out in bursts: 0 between puffs, up to 1 at the peak of each (about 3 bursts a second). */
+export function airBursts(time: number): number {
+  const p = Math.max(0, Math.sin(time * 19));
+  return p * p;
+}
+
+const THRUSTERS: [number, number][] = [[-0.55, -1.1], [0.55, -1.1], [-0.55, 1.1], [0.55, 1.1]];
+
+/**
+ * Hover thrusters, after the cold-gas hover renders: four thick white columns blasting straight down,
+ * pooling into a big billowing cloud on the road, and side plumes fanning out on every burst.
+ * One per hovering car; call every frame it hovers.
+ */
+export class HoverJets {
+  private column = 0;
+  private cloud = 0;
+  private side = 0;
+  constructor(private puffs: Puffs, private scale = 1) {}
+
+  /** x, z: the car on the road; y: its height; speed: road speed (the air starts out moving with the car). */
+  update(x: number, y: number, z: number, speed: number, dt: number, time: number, amount = 1): void {
+    const b = airBursts(time), k = this.scale, carry = -speed * 0.85;
+    const P = this.puffs;
+    this.column += dt * amount * 170 * (0.6 + 0.8 * b);
+    for (; this.column >= 1; this.column--) {
+      const [cx, cz] = THRUSTERS[Math.floor(Math.random() * 4)];
+      P.emit(x + cx * k, y - 0.05, z + cz * k, cx * 0.6, -11, carry, 0.36 * k, 0.24);
+    }
+    // The ground cloud only when the road is close enough for the jets to hit it.
+    this.cloud += y < 3 ? dt * amount * 90 * (0.4 + 1.2 * b) : 0;
+    for (; this.cloud >= 1; this.cloud--) {
+      const [cx, cz] = THRUSTERS[Math.floor(Math.random() * 4)];
+      const a = Math.atan2(cz, cx) + (Math.random() - 0.5) * 1.6, sp = 6 + Math.random() * 6;
+      P.emit(x + cx * k, 0.25, z + cz * k, Math.cos(a) * sp, 1 + Math.random() * 1.5, Math.sin(a) * sp + carry * 0.7, 0.85 * k, 1.1);
+    }
+    // Side plumes: big puffs fanning out and up, only near the peak of each burst.
+    if (b > 0.6) {
+      this.side += dt * amount * 200;
+      for (; this.side >= 1; this.side--) {
+        const s = Math.random() < 0.5 ? -1 : 1;
+        P.emit(x + s * 1.0 * k, y + 0.1, z + (Math.random() - 0.5) * 2 * k, s * (8 + Math.random() * 5), 2 + Math.random() * 2, carry * 0.8, 0.7 * k, 0.7);
+      }
+    }
   }
 }
