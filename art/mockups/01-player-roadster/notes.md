@@ -1,6 +1,6 @@
 # Player roadster — procedural object study
 
-**Current version: Revision 2 below. Revision 1 details are historical.**
+**Current version: Revision 3 below. Earlier revision details are historical.**
 
 ## Revision 1 — November 9, 2026
 
@@ -67,3 +67,30 @@ Current geometry: **3,264 triangles / 18 meshes / 6 shared materials**. Native T
 Replaced front/side/back/three-quarter/gameplay PNGs with actual renders of Revision 2. `detail.png` is a tighter screenshot of the silver model; `red.png` shows the project's red paint. Gameplay image is 450×975. All images remain under 2 MB.
 
 Preview has a lower front three-quarter camera, updated paint cycle, and vapor that spreads along the ground. Strict TypeScript check passed. Visually inspected front, side, rear, three-quarter and gameplay views; exercised paint change and jump. Full-game integration/performance are still untested. CarStyle overlays/plate and honk transform concerns from Revision 1 still apply. The opaque canopy means an interior driver head will no longer be visible: resolve this in the asset review rather than silently cutting a hole into the chosen silhouette.
+
+
+## Revision 3 — closer proportions, opening doors, stronger thruster vapor
+
+Ofir asked to improve resemblance, add opening doors, and make the thrusters emit much more visible air. Retained the approved specific photo as the silhouette reference. Lengthened the body, broadened the canopy, lowered the apparent nose, replaced the patchy fender/deck joins with continuous crowned surfaces, added a slim continuous running light and recessed dark front fascia, enlarged the aero wheel faces, and used more neutral preview lighting for comparison. This is a simplified interpretation pending visual approval.
+
+### Moving doors
+
+`RoadsterParts` now exposes `doors: THREE.Group[]` and `setDoorOpen(amount)` with amount clamped to 0–1. Two separate butterfly-style hinge groups carry the painted outer door, inner trim, side glass, roof-edge rail, handle and mirror. The center roof stays fixed. Both sides animate upward/outward; the preview's **Open doors / Close doors** toggle eases to the requested position. Added a simple two-seat cabin, floor, dashboard, console and steering wheel visible through the open sides. Door geometry shares the car paint so recoloring also recolors the doors.
+
+### Vapor
+
+`thruster-vapor.ts` exports `ThrusterVapor`, a reusable effect independent of the preview. It owns a bounded 640-particle pool, rendered as one instanced draw call with procedural soft billboards (no downloaded textures). Dense ground bursts at takeoff and landing, repeated directional jets during lift/roll/descent, expanding clouds, upward drift, and gradual fade replace the former tiny polygon puffs. Shader and CPU buffers are allocated once. Call `jet(worldPosition, worldDirection)`, `burst(worldPosition, landing)` and `update(dt)`; call `dispose()` when releasing the effect. This heavier transparent effect needs mobile profiling before game integration.
+
+### Current specs and palette
+
+- Car: **4,120 triangles / 27 meshes / 7 shared materials**, including both doors and cabin. Wheels remain separate; four named downward thruster sockets remain.
+- Closed bounding size: approximately **1.876 × 1.084 × 3.674** (X/Y/Z). Recheck collision and lane clearance during integration; this is longer than the grey-box car.
+- Vapor pool: up to 640 quads (1,280 triangles), one additional draw call; opacity and scale fall to zero for expired particles.
+- Paint #e8344e (builder default), #d7dbe2 (silver preview); dark trim #171a22; canopy #161d2c; wheel metal #98a2b2; cabin #57545b; lamps #f4e9d8 and #ff4860. Vapor shades range from approximately #bac9d9 at edges to white.
+- Updated fixed-view, red and gameplay screenshots. `doors-open.png` shows the actual opened model; `vapor.png` captures the enlarged takeoff clouds.
+
+### Validation and integration
+
+Strict TypeScript check passed for model, preview and effect. Runtime geometry check confirmed finite vertex/normal buffers, 2 doors/4 wheels/4 sockets, and exact closed → open → closed rotations. Browser inspected front/side/rear/gameplay, door movement, paint change, airborne vapor and return to ground. Browser error log was empty. Replaced obsolete preview PCFSoftShadowMap with PCFShadowMap after observing the installed Three.js warning.
+
+Still an isolated object/effect study, not integrated into the live game. Existing CarStyle overlays, plate placement and honk transform need adaptation. Closed canopy continues to obscure an interior driver; doors reveal the cabin, but gameplay driver visibility remains an art/integration decision. Doors add draw calls; whole-game phone performance is unmeasured. Screenshots are rendered from the model and not image-generated.

@@ -31,3 +31,13 @@
 - Rebuilt owned `01-player-roadster` object: integrated fenders, tapered wedge nose, closed dark canopy, aero wheels. 3,264 triangles / 18 meshes / 6 materials; silver preview, red default builder. Refreshed screenshots, added red and tight detail views.
 - Current user preference is the approved canopy silhouette; old open-top/visible-driver brief needs reconciliation by Claude. No claim of final art approval or full-game integration.
 - Strict TypeScript and browser inspection passed; source is still an isolated object study under art/mockups. Existing unrelated changes remain untouched.
+
+
+## November 9, 2026 — Revision 3, doors and vapor
+
+- Ofir requested closer resemblance, opening doors, and much more thruster air graphics.
+- Rebuilt longer/wider body-canopy proportions, front light/fascia and fender joins. Added 2 actual butterfly door pivots carrying windows/trim/mirrors and exposed cabin. API: doors + setDoorOpen(0..1).
+- Added reusable `thruster-vapor.ts`: 640 pooled soft billboards, one draw call, dense takeoff/landing clouds and repeated roll/lift jets. Preview has Open/Close doors alongside kickflip.
+- Model now 4,120 triangles / 27 meshes / 7 materials, closed bounds ~1.876×1.084×3.674. Integration needs lane/collision and mobile overdraw checks.
+- Strict TS, finite mesh data and exact door open/close checks passed. Browser interactions and shader rendering checked; no browser errors. Refreshed render screenshots plus doors-open.png and vapor.png.
+- No visual approval yet; handoff to Claude on #14 is for review/integration planning, not a direction sign-off.
