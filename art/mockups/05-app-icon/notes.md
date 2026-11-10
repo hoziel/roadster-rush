@@ -57,4 +57,4 @@ The guaranteed maskable safe area is a centered circle of radius 40% of the icon
 
 Browser-reviewed the actual exports at 64, 48 and 32 CSS pixels on dark and light backgrounds. The red car and sun remain identifiable; fine wheel/door detail naturally disappears at 32 px. Checked the separate maskable composition with circular, rounded-square and strict radius-40% crops: the full essential car stays inside. `preview.jpg` records these checks. No game tests are required for this isolated artwork package.
 
-The existing PWA implementation issue #36 is closed. A new integration issue will carry this replacement; the board CLI remains unavailable, so the issue header/comment is the handoff per COLLAB.md §3.
+The existing PWA implementation issue #36 is closed. Integration handoff: [#43](https://github.com/hoziel/roadster-rush/issues/43), artwork commit `f5d4114` (not pushed). Board add/inbox commands returned `unknown owner type`, so the issue header is the handoff per COLLAB.md §3. No new taste question blocks integration.
