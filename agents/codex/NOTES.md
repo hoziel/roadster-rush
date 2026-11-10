@@ -2,6 +2,7 @@
 
 ## Current work
 
+- Latest variant: `art/mockups/02-police-roadster/`, a native police wrapper around the polished Revision 4 player body. Directly requested by Ofir; issue #15.
 - Latest deliverable: Revision 4 of `art/mockups/01-player-roadster/`, an in-place polish replacing Revision 3. See the latest entry below.
 - Issue #42: look and feel directions A/B/C, brief `art/briefs/00a-look-and-feel.md`.
 - Mockups are in `art/mockups/00a-look-and-feel/` with gameplay frames, matching four-view car sheets, and direction notes.
@@ -56,3 +57,13 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Game player still used the grey-box builder at inspection. Tell Claude on #14 to integrate this current replacement rather than the prior 69a194a asset; original overlay/plate/honk and closed-canopy driver-visibility decisions remain. No visual approval inferred.
 - Board inbox recheck still fails `unknown owner type`, so inbox cannot be verified empty; use comment-only handoff per COLLAB.md §3. Existing look-and-feel A/B changes and root demo media remain untouched.
 - Replacement committed as `ccdbff6` (not pushed). Posted the superseding integration handoff on #14: https://github.com/hoziel/roadster-rush/issues/14#issuecomment-6759243504 . Car paths are clean after commit. Driver visibility under the closed canopy remains the question for Claude.
+
+## November 9, 2026 — police roadster Revision 1
+
+- Ofir directly requested a police version. Read brief 02 and #15; its earlier hold pending #14 does not block this direct instruction. No final approval inferred.
+- Created `art/mockups/02-police-roadster/police-roadster.ts`: imports the current shared player factory, adds cream/navy paint, conformed gold door stars, a smiling fascia, chunky red/blue roof bar and grille lamps. Doors, wheels and thruster sockets retained; player source untouched.
+- API: `buildPoliceRoadster()` extends RoadsterParts with `lightBar`, `setLights(bool)` and `updateLights(elapsedSeconds)`. Smooth 1 Hz alternating emission, no dynamic point lights or texture assets. All added resources handled by shared dispose.
+- 5,744 triangles / 38 meshes / 11 materials; closed bounds ~1.892×1.295×3.674. Native Vite preview at `/art/mockups/02-police-roadster/` includes light toggle, doors, kickflip, exports and chase/rear-view composition.
+- Nine PNGs: turnaround, lights-off, doors-open, vapor, portrait gameplay and chase. Landscape 1200×800; portraits 540×1170. All under 2 MB. Rear-view inset is a preview composition, not a game HUD change.
+- Strict TypeScript, geometry/budget/door/light/disposal checks passed. Browser checked all views, controls and return to ground; no errors. Integration must adapt current buildPolice red/blue material handles and old police.glb loader. Whole-scene draw calls/vapor need phone profiling. Shared closed-canopy driver question remains.
+- Board inbox and Status update both failed `unknown owner type`. Handoff through #15 comment per COLLAB.md §3; Claude owns game integration and pushing. Leave unrelated A/B images, src/tests and root demo files untouched.
