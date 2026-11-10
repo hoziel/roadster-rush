@@ -21,8 +21,9 @@
 .g-open:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--plum-edge); }
 
 /* The garage overlay: top part is see-through for the turntable car. */
-.garage { position: absolute; inset: 0; display: none; pointer-events: auto; flex-direction: column; justify-content: space-between; }
+.garage { position: absolute; inset: 0; display: none; pointer-events: none; /* the 3D view shows through: drag to spin, tap the car */ flex-direction: column; justify-content: space-between; }
 .garage.show { display: flex; }
+.g-top > *, .g-panel { pointer-events: auto; }
 .g-top { display: flex; justify-content: space-between; align-items: center;
   padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 12px) 0 calc(env(safe-area-inset-left) + 12px); }
 .g-top .g-wallet { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px 0 6px; border-radius: 999px; box-sizing: border-box;

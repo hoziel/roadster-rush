@@ -33,7 +33,10 @@ const BILLBOARD = { x: 5.8, z: -14, rotY: -0.3, scale: 2.1, hideZ: 26 };
 // Garage Driver tab: behind-left of the car, looking past its open driver's door at the billboard.
 const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.3, lookY: 0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
 const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
-const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
+const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.35, lookY: 0.7, lift: 0.22, idle: 2.5 }; // garage orbit; auto-spins after `idle` s
+// Start screen: the same orbit, a bit higher and further back so the billboard is in view; drag to spin it.
+const START_ORBIT = { radius: 9, height: 3.6, lookY: 1.2 };
+const DRAG_TURN = 0.012; // rad per pixel of horizontal drag
 
 const C_BLACK = new THREE.Color('#000000');
 const CAR_SCALE = 0.9; // both roadsters: ~1.7 m wide in 2.5 m lanes
@@ -141,7 +144,7 @@ export class GameView {
     ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 25);
     this.scene.add(ground);
 
-    this.car = buildRoadster('#e8344e', { driverDoor: true });
+    this.car = buildRoadster('#e8344e', { liveDoors: true });
     this.car.group.scale.setScalar(CAR_SCALE);
     this.carMount.add(this.car.group);
     this.scene.add(this.carMount);
@@ -222,6 +225,7 @@ export class GameView {
   }
 
   render(w: World, dt: number, time: number): void {
+    this.clock = time;
     const car = this.car.group;
     // Tube tunnel: ease the ring angle (and catch the sim's full-turn wraps), blend road <-> wall at the ends.
     if (w.tube) {
@@ -334,28 +338,39 @@ export class GameView {
       this.camTarget.lerp(this.tmpV, k);
       this.camera.up.set(-s, c, 0);
     }
-    // Garage: glide (not cut) from the run camera to the orbit, or to the driver view; and back again on Done.
+    // Start screen and garage: an orbit round the car you can drag; the Driver tab frames car + billboard.
+    // Every switch glides (not cuts), including back to the run camera when the run starts.
     const ease = Math.min(1, dt * CAM_EASE);
-    this.camBlend += ((this.showcase ? 1 : 0) - this.camBlend) * ease;
+    const orbiting = this.showcase || w.phase === 'ready';
+    this.camBlend += ((orbiting ? 1 : 0) - this.camBlend) * ease;
     this.focusBlend += ((this.showcase && this.driverFocus ? 1 : 0) - this.focusBlend) * ease;
-    const e = smooth(this.camBlend), f = smooth(this.focusBlend);
+    this.garageBlend += ((this.showcase ? 1 : 0) - this.garageBlend) * ease;
+    const e = smooth(this.camBlend), f = smooth(this.focusBlend), g = smooth(this.garageBlend);
+    if (this.showcase && !this.driverFocus && time - this.lastDrag > TURNTABLE.idle) this.orbitA += dt * TURNTABLE.spin;
     if (e > 0.001) {
-      const a = time * TURNTABLE.spin;
-      this.tmpV.set(w.x + Math.sin(a) * TURNTABLE.radius, TURNTABLE.height, Math.cos(a) * TURNTABLE.radius);
+      const a = this.orbitA;
+      const r = THREE.MathUtils.lerp(START_ORBIT.radius, TURNTABLE.radius, g), h = THREE.MathUtils.lerp(START_ORBIT.height, TURNTABLE.height, g);
+      this.tmpV.set(w.x + Math.sin(a) * r, h, Math.cos(a) * r);
       this.tmpV.lerp(this.tmpV2.set(w.x + DRIVER_CAM.dx, DRIVER_CAM.y, DRIVER_CAM.z), f);
       this.camera.position.lerp(this.tmpV, e);
-      this.tmpV.set(w.x, TURNTABLE.lookY, 0).lerp(this.tmpV2.set(w.x + DRIVER_CAM.lookDx, DRIVER_CAM.lookY, DRIVER_CAM.lookZ), f);
+      this.tmpV.set(w.x, THREE.MathUtils.lerp(START_ORBIT.lookY, TURNTABLE.lookY, g), 0).lerp(this.tmpV2.set(w.x + DRIVER_CAM.lookDx, DRIVER_CAM.lookY, DRIVER_CAM.lookZ), f);
       this.camTarget.lerp(this.tmpV, e);
       this.camera.up.set(0, 1, 0);
     }
     this.camera.lookAt(this.camTarget);
     if (e > 0.001) {
       const vw = window.innerWidth, vh = window.innerHeight;
-      this.camera.setViewOffset(vw, vh, 0, vh * THREE.MathUtils.lerp(TURNTABLE.lift, DRIVER_CAM.lift, f) * e, vw, vh); // keep the car above the garage panel
+      this.camera.setViewOffset(vw, vh, 0, vh * THREE.MathUtils.lerp(TURNTABLE.lift, DRIVER_CAM.lift, f) * g * e, vw, vh); // keep the car above the garage panel
     } else if (this.camera.view) this.camera.clearViewOffset();
-    // Driver's door swings open while the Driver tab shows the car.
-    this.doorT += ((this.showcase && this.driverFocus ? 1 : 0) - this.doorT) * Math.min(1, dt * 2.5);
-    this.car.setDoorOpen(smooth(this.doorT));
+    // Doors: tap the car to open/close both (start screen, garage); the Driver tab opens the driver's door.
+    // They always close for the run.
+    const parked = w.phase !== 'running';
+    const wantL = parked && (this.doorsOpen || (this.showcase && this.driverFocus)) ? 1 : 0;
+    const wantR = parked && this.doorsOpen ? 1 : 0;
+    this.doorL += (wantL - this.doorL) * Math.min(1, dt * 2.5);
+    this.doorR += (wantR - this.doorR) * Math.min(1, dt * 2.5);
+    if (!parked) this.doorsOpen = false;
+    this.car.setDoorOpen(smooth(this.doorL), smooth(this.doorR));
     // The billboard is part of the road: it stays at the start line and the car drives past it.
     const bz = BILLBOARD.z + w.distance;
     this.billboard.group.position.set(BILLBOARD.x, 0, bz);
@@ -432,7 +447,17 @@ export class GameView {
   private driverFocus = false;
   private camBlend = 0;
   private focusBlend = 0;
-  private doorT = 0;
+  private doorL = 0;
+  private doorR = 0;
+  private doorsOpen = false;
+  private garageBlend = 0;
+  private orbitA = 0;
+  private lastDrag = -100;
+  private clock = 0;
+  /** Drag on the start screen or in the garage: spin the camera round the car. */
+  orbitBy(dxPixels: number): void { this.orbitA -= dxPixels * DRAG_TURN; this.lastDrag = this.clock; }
+  /** Tap the parked car: open or close its doors. */
+  toggleDoors(): void { this.doorsOpen = !this.doorsOpen; }
   private tmpV2 = new THREE.Vector3();
 
   private powerColors = new Map<PowerKind, THREE.Color>();

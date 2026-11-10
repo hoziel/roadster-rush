@@ -4,10 +4,10 @@ import type { CarParts } from './cars';
 
 export interface RoadsterParts extends CarParts {
   thrusters: THREE.Object3D[];
-  /** Door hinge groups. Merged into the body (empty groups) unless `driverDoor` kept the left one live. */
+  /** Door hinge groups. Merged into the body (empty groups) unless built with `liveDoors`. */
   doors: THREE.Group[];
-  /** Swing the driver's (left) butterfly door, 0 = closed, 1 = open. No-op unless built with `driverDoor`. */
-  setDoorOpen(amount: number): void;
+  /** Swing the butterfly doors, 0 = closed, 1 = open (left = driver's). No-op unless built with `liveDoors`. */
+  setDoorOpen(left: number, right?: number): void;
   /** Seat a driver's head centre here (left seat, under the canopy). */
   seat: THREE.Vector3;
   dispose(): void;
@@ -16,8 +16,8 @@ export interface RoadsterParts extends CarParts {
 export interface RoadsterOptions {
   /** Door skin colour (the police car's cream doors). Defaults to the body paint. */
   doorColor?: string;
-  /** Keep the driver's (left) door as its own hinged piece so it can open (garage driver showcase; ~4 more draw calls). */
-  driverDoor?: boolean;
+  /** Keep both doors as hinged pieces so they can open (player car showcase; ~8 more draw calls). */
+  liveDoors?: boolean;
 }
 
 type Row = [number, number, number];
@@ -81,7 +81,7 @@ export function buildRoadster(color = '#e8344e', opts: RoadsterOptions = {}): Ro
   function add(g: THREE.BufferGeometry, material: THREE.Material, target = group) {
     // Doors are drawn in body space and merged into the body; their skin may be a different colour.
     if (target !== group) {
-      if (opts.driverDoor && target === doors[0]) g.translate(-target.position.x, -target.position.y, -target.position.z);
+      if (opts.liveDoors) g.translate(-target.position.x, -target.position.y, -target.position.z);
       else { if (material === paint) material = doorPaint; target = group; }
     }
     const flat = g.index ? g.toNonIndexed() : g;
@@ -249,10 +249,10 @@ export function buildRoadster(color = '#e8344e', opts: RoadsterOptions = {}): Ro
     mesh.name=`${target===group?'fixed':target.name}_${material===paint?'paint':material.id}`;
     target.add(mesh);if(target===group&&material===paint)body=mesh;
   }
-  return {group,body,paint,thrusters,doors,seat:new THREE.Vector3(-.33,.80,.30),setDoorOpen(amount){
-    if(!opts.driverDoor)return;
-    const t=THREE.MathUtils.clamp(amount,0,1);
-    doors[0].rotation.set(-t*1.16,-t*.34,-t*.13); // Codex's butterfly swing (art/mockups/01-player-roadster)
+  return {group,body,paint,thrusters,doors,seat:new THREE.Vector3(-.33,.80,.30),setDoorOpen(left,right=left){
+    if(!opts.liveDoors)return;
+    // Codex's butterfly swing (art/mockups/01-player-roadster).
+    [left,right].forEach((amount,i)=>{const t=THREE.MathUtils.clamp(amount,0,1),s=i===0?-1:1;doors[i].rotation.set(-t*1.16,s*t*.34,s*t*.13);});
   },dispose(){
     const geos=new Set<THREE.BufferGeometry>(),mats=new Set<THREE.Material>();
     group.traverse(o=>{if(o instanceof THREE.Mesh){geos.add(o.geometry);(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>mats.add(m));}});

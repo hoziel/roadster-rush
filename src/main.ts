@@ -87,6 +87,12 @@ function finish(): void {
 
 bindInput(view.renderer.domElement, (action, x, y) => {
   audio.unlock();
+  // Parked car (start screen, garage): tapping it opens or closes the doors instead of starting the run.
+  if (action === 'tap' && (world.phase === 'ready' || garage.isOpen) && !sound.isOpen && x !== undefined && y !== undefined && view.hitsCar(x, y)) {
+    view.toggleDoors();
+    audio.uiTap();
+    return;
+  }
   if (garage.isOpen || sound.isOpen) return; // keys and stray taps never start a run from these screens
   if (paused) {
     if (action === 'tap' || action === 'jump') { paused = false; hud.hideCard(); }
@@ -109,6 +115,21 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
 }, () => audio.unlock()); // raw pointerdown/up/keydown: real gestures, so iOS lets audio start
+
+// Start screen and garage: drag sideways on the 3D view to spin round the car.
+{
+  const el = view.renderer.domElement;
+  let id: number | null = null, lastX = 0;
+  el.addEventListener('pointerdown', (e) => { if (id === null) { id = e.pointerId; lastX = e.clientX; } });
+  el.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== id) return;
+    if ((world.phase === 'ready' || garage.isOpen) && !sound.isOpen) view.orbitBy(e.clientX - lastX);
+    lastX = e.clientX;
+  });
+  const up = (e: PointerEvent) => { if (e.pointerId === id) id = null; };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
 
 let last = performance.now();
 let acc = 0;
