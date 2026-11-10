@@ -11,6 +11,8 @@ interface PropSpec {
   height: number; // m, model is scaled to this height
   x: [number, number]; // distance from road centre (m), mirrored to both sides
   faceRoad?: boolean;
+  turn?: number; // extra yaw (rad) on top of faceRoad, e.g. to swing a lamp arm over the road
+  lambert?: boolean; // swap the glTF's PBR material for a cheaper Lambert (keeps map / vertex colors)
 }
 
 // Roadside props. Instanced so each model part is one draw call however many copies there are.
@@ -18,6 +20,11 @@ const PROPS: PropSpec[] = [
   { file: 'cactus.glb', count: 16, height: 2.2, x: [7, 16] },
   { file: 'cactus-flowers.glb', count: 10, height: 1.4, x: [6.5, 12] },
   { file: 'food-truck.glb', count: 2, height: 3.0, x: [8.5, 9.5], faceRoad: true },
+  // Kenney Nature Kit and City Kit Roads (CC0).
+  { file: 'tree-oak.glb', count: 8, height: 5.5, x: [10.5, 15], lambert: true },
+  { file: 'tree-palm.glb', count: 4, height: 7.5, x: [11, 15], lambert: true },
+  { file: 'rock-tall.glb', count: 6, height: 1.3, x: [7.5, 14], lambert: true },
+  { file: 'street-light.glb', count: 6, height: 6.5, x: [8.2, 8.4], faceRoad: true, turn: Math.PI, lambert: true },
 ];
 
 interface Slot { t: number; x: number; rotY: number; scale: number }
@@ -55,7 +62,7 @@ export class Scenery {
       slots.push({
         t: ((i + hash(i * 3.3 + spec.height)) / spec.count) * SPAN,
         x,
-        rotY: spec.faceRoad ? (side < 0 ? Math.PI / 2 : -Math.PI / 2) : hash(i * 1.7) * Math.PI * 2,
+        rotY: spec.faceRoad ? (side < 0 ? Math.PI / 2 : -Math.PI / 2) + (spec.turn ?? 0) : hash(i * 1.7) * Math.PI * 2,
         scale: unit * (spec.faceRoad ? 1 : 0.8 + hash(i * 5.9) * 0.4),
       });
     }
@@ -65,7 +72,7 @@ export class Scenery {
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, spec.count);
+      const inst = new THREE.InstancedMesh(mesh.geometry, spec.lambert ? toLambert(mesh.material as THREE.MeshStandardMaterial) : mesh.material, spec.count);
       inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       inst.frustumCulled = false;
       meshes.push(inst);
@@ -91,6 +98,12 @@ export class Scenery {
   }
 
   private tmp = new THREE.Matrix4();
+}
+
+function toLambert(m: THREE.MeshStandardMaterial): THREE.MeshLambertMaterial {
+  const out = new THREE.MeshLambertMaterial({ map: m.map, color: m.color, vertexColors: m.vertexColors });
+  m.dispose();
+  return out;
 }
 
 /** Deterministic 0..1 noise so the layout is the same every run. */

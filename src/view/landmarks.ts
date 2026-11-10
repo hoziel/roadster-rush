@@ -1,11 +1,15 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { loadModel, modelGeometry } from './models';
 
-// Code-built Austin landmark silhouettes on their own side track (not per chunk).
-// Unlit, fog off, colored from the sky (daynight.ts) so they read as silhouettes.
+// Austin landmark silhouettes: the Capitol (model) at the road's end, code-built side landmarks
+// on their own side track (not per chunk). Unlit, fog off, colored from the sky (daynight.ts) so they
+// read as silhouettes.
 const CAPITOL_Z = -285; // fixed far vista at the end of the road
 const CAPITOL_Y = -2; // sink the base a little into the horizon
-const CAPITOL_SCALE = 1;
+const CAPITOL_HEIGHT = 52; // m, ground to the top of the statue
+// Texas State Capitol by 85 edgecroft, CC-BY 4.0 (shape only; see scripts/optimize-assets.mjs).
+const CAPITOL_FILE = 'capitol.glb';
 
 const SIDE_START_Z = -330; // where a side landmark appears (beyond the fog, against the sky)
 const SIDE_END_Z = 40; // where it is retired (behind the camera)
@@ -28,10 +32,7 @@ export class Landmarks {
 
   constructor(silhouette: THREE.Color) {
     this.mat.color = silhouette; // share the live color from DayNight
-    const capitol = new THREE.Mesh(buildCapitol(), this.mat);
-    capitol.position.set(0, CAPITOL_Y, CAPITOL_Z);
-    capitol.scale.setScalar(CAPITOL_SCALE);
-    this.group.add(capitol);
+    void this.loadCapitol();
 
     const builders: [Builder, number][] = [[buildFrostTower, SIDE_X], [buildBridge360, BRIDGE_X], [buildAustonian, SIDE_X]];
     this.side = builders.map(([b, x]) => {
@@ -42,6 +43,24 @@ export class Landmarks {
       this.group.add(m);
       return m;
     });
+  }
+
+  private async loadCapitol(): Promise<void> {
+    try {
+      const { geometry, material } = modelGeometry(await loadModel(CAPITOL_FILE));
+      material.dispose();
+      geometry.deleteAttribute('normal');
+      geometry.computeBoundingBox();
+      const b = geometry.boundingBox!;
+      // Centre the front on the road, base at y = 0, facing the camera (+z).
+      geometry.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+      const capitol = new THREE.Mesh(geometry, this.mat);
+      capitol.position.set(0, CAPITOL_Y, CAPITOL_Z);
+      capitol.scale.setScalar(CAPITOL_HEIGHT / (b.max.y - b.min.y));
+      this.group.add(capitol);
+    } catch (err) {
+      console.warn(`landmarks: failed to load ${CAPITOL_FILE}`, err);
+    }
   }
 
   update(distance: number): void {
@@ -85,23 +104,6 @@ const merge = (parts: THREE.BufferGeometry[]) => {
   for (const p of parts) p.dispose();
   return g;
 };
-
-/** Texas Capitol: wings, central block, drum, dome, lantern. */
-function buildCapitol(): THREE.BufferGeometry {
-  const dome = new THREE.SphereGeometry(8, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 31, 0);
-  return merge([
-    box(78, 5, 22), // terrace
-    box(30, 13, 16, -24, 5), box(30, 13, 16, 24, 5), // wings
-    box(8, 16, 18, -40, 3), box(8, 16, 18, 40, 3), // wing ends
-    box(22, 17, 20, 0, 5), // centre block
-    box(14, 4, 3, 0, 18, 9), // portico pediment base
-    cyl(9, 9, 2, 22), cyl(8, 8, 7, 24), // drum
-    dome,
-    cyl(1.6, 1.8, 4.5, 38.5, 10), // lantern
-    new THREE.ConeGeometry(1.9, 2, 10).translate(0, 44, 0),
-    new THREE.SphereGeometry(0.6, 8, 6).translate(0, 45.6, 0), // star
-  ]);
-}
 
 /** Frost Bank tower: tall, stepped crown with two "owl ear" points and a spire. */
 function buildFrostTower(): THREE.BufferGeometry {
