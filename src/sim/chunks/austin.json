@@ -1,6 +1,6 @@
 {
   "length": 40,
-  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard. Traffic chunks (traffic: true): cars = low cars (jump onto/over), trucks = tall trucks (change lanes), roof = car lanes with coins over the roof; everything in them drives at TRAFFIC_SPEED. Police stops (kind: \"police\"): police = the parked police roadster (one per chunk), spikes = spike strips (jump or steer round). Construction zones (kind: \"construction\"): barriers = low barriers (jump), fences and diggers = tall (steer round); cones allowed.",
+  "_format": "rows: at = metres into the chunk; cones = blocked lanes (0 left, 1 middle, 2 right); coins = {lane, count}; power = lane where a power-up may appear. difficulty 0 easy, 1 medium, 2 hard. Traffic chunks (traffic: true): cars = low cars (jump onto/over), trucks = tall trucks (change lanes), roof = car lanes with coins over the roof; everything in them drives at TRAFFIC_SPEED. Police stops (kind: \"police\"): police = the parked police roadster (one per chunk), spikes = spike strips (jump or steer round). Construction zones (kind: \"construction\"): barriers = low barriers (jump), fences and diggers = tall (steer round); cones allowed. Longhorns crossings (kind: \"longhorns\"): longhorns = [{from, to}] animals that walk from lane `from` (-1 or 3: the verge) to lane `to` as the car closes the last LONGHORN_WALK m (1-3 per chunk, too tall to jump).",
   "chunks": [
     {"id": "warmup-straight", "difficulty": 0, "rows": [{"at": 10, "coins": {"lane": 1, "count": 6}}, {"at": 30, "cones": [0]}]},
     {"id": "single-left", "difficulty": 0, "rows": [{"at": 8, "cones": [0], "coins": {"lane": 1, "count": 4}}, {"at": 28, "cones": [2], "coins": {"lane": 0, "count": 4}}]},
@@ -40,6 +40,10 @@
     {"id": "work-barrier-hop", "difficulty": 0, "kind": "construction", "rows": [{"at": 4, "coins": {"lane": 2, "count": 4}}, {"at": 13, "barriers": [0, 1]}, {"at": 24, "coins": {"lane": 0, "count": 4}}, {"at": 30, "fences": [2]}]},
     {"id": "work-digger", "difficulty": 1, "kind": "construction", "rows": [{"at": 6, "coins": {"lane": 2, "count": 5}}, {"at": 13, "diggers": [0], "barriers": [1]}, {"at": 21, "coins": {"lane": 0, "count": 3}}, {"at": 30, "fences": [1, 2]}]},
     {"id": "work-fence-slalom", "difficulty": 2, "kind": "construction", "rows": [{"at": 3, "coins": {"lane": 2, "count": 2}}, {"at": 9, "fences": [0], "barriers": [1]}, {"at": 21, "fences": [2], "cones": [1]}, {"at": 33, "barriers": [0, 1]}]},
-    {"id": "work-dig-jump", "difficulty": 2, "kind": "construction", "rows": [{"at": 12, "diggers": [1], "fences": [2]}, {"at": 16, "coins": {"lane": 0, "count": 3}}, {"at": 26, "barriers": [0, 1]}, {"at": 30, "coins": {"lane": 2, "count": 3}}]}
+    {"id": "work-dig-jump", "difficulty": 2, "kind": "construction", "rows": [{"at": 12, "diggers": [1], "fences": [2]}, {"at": 16, "coins": {"lane": 0, "count": 3}}, {"at": 26, "barriers": [0, 1]}, {"at": 30, "coins": {"lane": 2, "count": 3}}]},
+    {"id": "herd-one", "difficulty": 0, "kind": "longhorns", "rows": [{"at": 12, "coins": {"lane": 2, "count": 4}}, {"at": 20, "longhorns": [{"from": -1, "to": 0}]}]},
+    {"id": "herd-pair", "difficulty": 1, "kind": "longhorns", "rows": [{"at": 14, "longhorns": [{"from": 0, "to": 1}]}, {"at": 16, "coins": {"lane": 0, "count": 3}}, {"at": 28, "longhorns": [{"from": 1, "to": 2}]}]},
+    {"id": "herd-wander", "difficulty": 1, "kind": "longhorns", "rows": [{"at": 10, "longhorns": [{"from": 3, "to": 2}]}, {"at": 12, "coins": {"lane": 0, "count": 4}}, {"at": 24, "longhorns": [{"from": 2, "to": 1}]}]},
+    {"id": "herd-three", "difficulty": 2, "kind": "longhorns", "rows": [{"at": 10, "longhorns": [{"from": -1, "to": 0}, {"from": 1, "to": 2}]}, {"at": 26, "longhorns": [{"from": 0, "to": 1}]}, {"at": 29, "coins": {"lane": 2, "count": 3}}]}
   ]
 }

@@ -9,8 +9,9 @@ import {
   TRAFFIC_SPEED,
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
   PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
-  ZONE_WARN,
+  ZONE_WARN, LONGHORN_FIRST_AT, LONGHORN_GAP, LONGHORN_HIT_X,
 } from './config';
+import { herdLane } from './longhorns';
 import {
   SLOT_ANGLE, TUBE_TURN_SPEED, angleGap, exitSlot, laneToSlot, slotToLane, tunnelItems, wrapSlot,
 } from './tunnel';
@@ -33,6 +34,7 @@ export interface Entity {
   v?: number; // m/s along the road: traffic (and the coins of a traffic chunk) drive at TRAFFIC_SPEED
   y?: number; // coins floating over a car roof: height (m); collected only when the car is up there too
   variant?: number; // traffic: which model the view draws; parked police car: which way it's angled (any non-negative integer)
+  from?: number; // longhorns: the lane it walks from while the car closes in (lane: where it ends up); see longhorns.ts
   bumped?: number; // traffic or a big prop knocked aside by a crash or a shield: run time it happened (no more collisions)
 }
 
@@ -40,7 +42,8 @@ export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'boing' | 'crash' | 'caught' | 'battery'
   | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel' | 'jump'
   | 'puncture' // drove over a spike strip: a flat tyre (costs a battery like a hit; 'crash'/'caught' follow if it ends the run)
-  | 'police-stop' | 'roadwork'; // one coming up, ZONE_WARN ahead
+  | 'police-stop' | 'roadwork' | 'longhorns' // one coming up, ZONE_WARN ahead
+  | 'moo'; // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -94,6 +97,11 @@ export interface World {
   nextWorkAt: number; // no new construction zone laid before this s
   workRun: number; // construction chunks still to lay in the current zone
   workQueued: boolean; // lay one at the next free chunk slot (debug)
+  herdAt: number; // s of the latest longhorns crossing's chunk, -1 if none
+  herdWarned: boolean; // 'longhorns' event already sent for it
+  nextHerdAt: number; // no new crossing laid before this s
+  herdQueued: boolean; // lay one at the next free chunk slot (debug)
+  zoneEnd: number; // s where the latest police stop, construction zone or crossing ends (-Infinity: none yet)
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
   angle: number; // current angle around the ring (rad, 0 = bottom, + = right); eases toward the slot
@@ -111,6 +119,7 @@ const runState = () => ({
   tunnelAt: -1, tunnelEnd: -1, nextTunnelAt: TUNNEL_FIRST_AT, tunnelQueued: false, tube: false, slot: 0, angle: 0,
   policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
   workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
+  herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false, zoneEnd: -Infinity,
 });
 
 export function createWorld(seed = Date.now()): World {
@@ -195,6 +204,7 @@ export function step(w: World, dt: number): SimEvent[] {
   if (!w.swarmSeen && w.swarmAt >= 0 && w.distance >= w.swarmAt) { w.swarmSeen = true; events.push('swarm'); }
   if (!w.policeWarned && w.distance >= w.policeAt - ZONE_WARN) { w.policeWarned = true; events.push('police-stop'); }
   if (!w.workWarned && w.distance >= w.workAt - ZONE_WARN) { w.workWarned = true; events.push('roadwork'); }
+  if (!w.herdWarned && w.distance >= w.herdAt - ZONE_WARN) { w.herdWarned = true; events.push('longhorns'); }
 
   if (!w.tube && w.tunnelAt >= 0 && w.distance >= w.tunnelAt && w.distance < w.tunnelEnd) {
     enterTube(w);
@@ -260,8 +270,10 @@ export function step(w: World, dt: number): SimEvent[] {
     } else if (isShielded(w)) {
       knockAside(w, e);
       events.push(isTraffic(e.kind) || isProp(e.kind) ? 'boing' : 'smash');
+      if (e.kind === 'longhorn') events.push('moo');
     } else {
       knockAside(w, e);
+      if (e.kind === 'longhorn') events.push('moo');
       if (crash(w)) { events.push(w.caught ? 'caught' : 'crash'); break; }
       events.push('hit');
     }
@@ -298,8 +310,13 @@ function sideOverlap(w: World, e: Entity): boolean {
     if (Math.abs(e.slot) > 1) return false;
     return Math.abs(laneX(slotToLane(e.slot)) - w.x) <= HIT_HALF_WIDTH;
   }
+  if (e.from !== undefined) return Math.abs(laneX(entityLane(w, e)) - w.x) < LONGHORN_HIT_X;
   return Math.abs(laneX(e.lane) - w.x) <= HIT_HALF_WIDTH;
 }
+
+/** The (fractional) lane an entity is in right now: its lane, or for a walking longhorn, where its walk has got to. */
+export const entityLane = (w: World, e: Entity): number =>
+  e.from === undefined ? e.lane : herdLane(e.from, e.lane, e.s - w.distance);
 
 /** In the exit stretch, only the bottom slots are allowed: the car slides back down to leave in a lane. */
 const inTubeExit = (w: World): boolean => w.distance >= w.tunnelEnd - TUNNEL_EXIT;
@@ -494,7 +511,9 @@ function layTraffic(w: World, items: PlacedItem[]): void {
   const p = speedAt(w.time);
   for (const it of movers) {
     for (const e of w.entities) {
-      if (!e.alive || !isStatic(e.kind) || e.lane !== it.lane || e.slot !== undefined || e.s >= it.s) continue;
+      if (!e.alive || !isStatic(e.kind) || e.slot !== undefined || e.s >= it.s) continue;
+      // Same lane (a longhorn: any lane on its walk).
+      if (e.from === undefined ? e.lane !== it.lane : it.lane < Math.min(e.from, e.lane) - 0.5 || it.lane > Math.max(e.from, e.lane) + 0.5) continue;
       // Bodies must not overlap: a truck's half length plus the obstacle's (a cone's fits inside `clear`).
       const gap = Math.max(clear, hitDepth('truck') + hitDepth(e.kind as 'cone') - 2 * PLAYER_HALF_LENGTH + 0.5);
       const seen = e.s - w.distance - TRAFFIC_GHOST_DIST; // > 0: still deep in the fog when traffic reaches it
@@ -520,6 +539,8 @@ const between = (w: World, [lo, hi]: number[]): number => lo + w.rng() * (hi - l
 
 /** Ask for a police stop at the next free chunk slot (debug). */
 export function queuePoliceStop(w: World): void { w.policeQueued = true; }
+/** Ask for a longhorns crossing at the next free chunk slot (debug). */
+export function queueLonghorns(w: World): void { w.herdQueued = true; }
 /** Ask for a construction zone at the next free chunk slot (debug). */
 export function queueConstruction(w: World): void { w.workQueued = true; }
 
@@ -532,36 +553,47 @@ export function queueConstruction(w: World): void { w.workQueued = true; }
 function layZone(w: World, difficulty: number): boolean {
   const s0 = w.nextRowAt;
   if (s0 < Math.max(w.tunnelEnd, w.swarmEnd + SWARM_PAD) + ZONE_AFTER_BLOCK) return false;
-  let pool: 'police' | 'construction';
+  let pool: 'police' | 'construction' | 'longhorns';
   if (w.workRun > 0 && s0 !== w.workEnd) w.workRun = 0; // a tunnel or swarm came in between: that zone is over
   if (w.workRun > 0) { pool = 'construction'; w.workRun--; }
-  else if (w.trafficRun > 0) return false;
-  else if (w.policeQueued || s0 >= w.nextPoliceAt) {
-    pool = 'police';
-    w.policeQueued = false;
-    w.policeWarned = false;
-    w.nextPoliceAt = s0 + between(w, POLICE_GAP);
-    w.nextWorkAt = Math.max(w.nextWorkAt, s0 + CHUNK_LENGTH + ZONE_SPACING);
-  } else if (w.workQueued || s0 >= w.nextWorkAt) {
-    pool = 'construction';
-    w.workQueued = false;
-    w.workWarned = false;
-    const [lo, hi] = WORK_RUN;
-    w.workRun = lo + Math.floor(w.rng() * (hi - lo + 1)) - 1;
-    w.workAt = s0;
-    w.nextWorkAt = s0 + between(w, WORK_GAP);
-  } else return false;
+  else if (w.trafficRun > 0 || s0 < w.zoneEnd + ZONE_SPACING) return false;
+  else {
+    // Whichever is most overdue (debug queues first); each keeps its own spacing.
+    const due = (queued: boolean, at: number) => (queued ? -Infinity : at <= s0 ? at : Infinity);
+    const police = due(w.policeQueued, w.nextPoliceAt), work = due(w.workQueued, w.nextWorkAt), herd = due(w.herdQueued, w.nextHerdAt);
+    const first = Math.min(police, work, herd);
+    if (first === Infinity) return false;
+    if (first === police) {
+      pool = 'police';
+      w.policeQueued = false;
+      w.policeWarned = false;
+      w.nextPoliceAt = s0 + between(w, POLICE_GAP);
+    } else if (first === herd) {
+      pool = 'longhorns';
+      w.herdQueued = false;
+      w.herdWarned = false;
+      w.herdAt = s0;
+      w.nextHerdAt = s0 + between(w, LONGHORN_GAP);
+    } else {
+      pool = 'construction';
+      w.workQueued = false;
+      w.workWarned = false;
+      const [lo, hi] = WORK_RUN;
+      w.workRun = lo + Math.floor(w.rng() * (hi - lo + 1)) - 1;
+      w.workAt = s0;
+      w.nextWorkAt = s0 + between(w, WORK_GAP);
+    }
+  }
   const { items } = placeChunk(w.rng, difficulty, s0, pool);
   for (const it of items) {
     if (it.kind === 'power') { for (let i = 0; i < 3; i++) add(w, 'coin', it.lane, it.s + i * 2.2); continue; }
     if (it.kind === 'police') w.policeAt = it.s;
-    add(w, it.kind, it.lane, it.s, undefined, undefined, undefined, it.kind === 'police' ? Math.floor(w.rng() * 1000) : undefined);
+    const variant = it.kind === 'police' || it.kind === 'longhorn' ? Math.floor(w.rng() * 1000) : undefined;
+    add(w, it.kind, it.lane, it.s, undefined, undefined, undefined, variant, it.from);
   }
   w.nextRowAt += CHUNK_LENGTH;
-  if (pool === 'construction') {
-    w.workEnd = w.nextRowAt;
-    if (w.workRun === 0) w.nextPoliceAt = Math.max(w.nextPoliceAt, w.nextRowAt + ZONE_SPACING);
-  }
+  if (pool === 'construction') w.workEnd = w.nextRowAt;
+  w.zoneEnd = w.nextRowAt;
   return true;
 }
 
@@ -605,9 +637,9 @@ function layTunnel(w: World): boolean {
 }
 
 function add(
-  w: World, kind: EntityKind, lane: number, s: number, slot?: number, v?: number, y?: number, variant?: number,
+  w: World, kind: EntityKind, lane: number, s: number, slot?: number, v?: number, y?: number, variant?: number, from?: number,
 ): void {
-  const e: Entity = { kind, lane, s, alive: true, slot, v, y, variant, bumped: undefined };
+  const e: Entity = { kind, lane, s, alive: true, slot, v, y, variant, from, bumped: undefined };
   const free = w.entities.find((x) => !x.alive);
   if (free) Object.assign(free, e);
   else w.entities.push(e);

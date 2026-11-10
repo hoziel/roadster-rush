@@ -2,7 +2,7 @@
 // TRAFFIC_SPEED. This file holds their sizes and the timing maths that keeps moving traffic fair next to
 // static cones; world.ts lays it (layTraffic) and runs the collisions.
 import {
-  BARRIER_HEIGHT, CAR_CLEAR, CAR_LENGTH, CAR_ROOF, CONE_HEIGHT, DIGGER_HEIGHT, DIGGER_LENGTH, FENCE_HEIGHT, HIT_DEPTH,
+  BARRIER_HEIGHT, CAR_CLEAR, LONGHORN_DEPTH, LONGHORN_HEIGHT, CAR_LENGTH, CAR_ROOF, CONE_HEIGHT, DIGGER_HEIGHT, DIGGER_LENGTH, FENCE_HEIGHT, HIT_DEPTH,
   PARKED_POLICE_CLEAR, PARKED_POLICE_LENGTH, PARKED_POLICE_ROOF, PLAYER_HALF_LENGTH, SPIKES_HEIGHT, TRUCK_HEIGHT,
   TRUCK_LENGTH,
 } from './config';
@@ -15,6 +15,7 @@ export function hitDepth(kind: ObstacleKind): number {
   if (kind === 'truck') return TRUCK_LENGTH / 2 + PLAYER_HALF_LENGTH;
   if (kind === 'police') return PARKED_POLICE_LENGTH / 2 + PLAYER_HALF_LENGTH;
   if (kind === 'digger') return DIGGER_LENGTH / 2 + PLAYER_HALF_LENGTH;
+  if (kind === 'longhorn') return LONGHORN_DEPTH / 2 + PLAYER_HALF_LENGTH;
   return HIT_DEPTH; // cones and the thin ones: spike strip, barrier, fence
 }
 
@@ -34,6 +35,7 @@ export function clearHeight(kind: ObstacleKind): number {
   if (kind === 'barrier') return BARRIER_HEIGHT;
   if (kind === 'fence') return FENCE_HEIGHT;
   if (kind === 'digger') return DIGGER_HEIGHT;
+  if (kind === 'longhorn') return LONGHORN_HEIGHT;
   return CONE_HEIGHT;
 }
 

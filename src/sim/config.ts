@@ -109,3 +109,14 @@ export const BARRIER_HEIGHT = 0.75; // m: the low striped barrier, as high as a 
 export const FENCE_HEIGHT = 2.1; // m: the tall construction fence, higher than any jump
 export const DIGGER_LENGTH = 3.6; // m: the parked digger (tractor shovel)
 export const DIGGER_HEIGHT = 2.2; // m: higher than any jump
+
+// Longhorns crossing: a small herd (1-3) walking across the road, laid now and then in place of a cone chunk
+// (austin.json, kind "longhorns"). Each animal walks one lane over while the car closes the last LONGHORN_WALK
+// metres, so where it stands when the car gets there is fixed in advance: the validator checks those lanes like
+// cones, and the walk (one lane per LONGHORN_WALK m, ~0.9-1.7 m/s at our speeds) reads as a slow amble.
+export const LONGHORN_GAP = [450, 700]; // m from one crossing to the next (min, max)
+export const LONGHORN_FIRST_AT = 400; // m into a run before the first crossing
+export const LONGHORN_WALK = 60; // m of approach over which an animal walks from its `from` lane to its `to` lane
+export const LONGHORN_DEPTH = 1.0; // m along the road (it walks sideways: this is its body's width)
+export const LONGHORN_HIT_X = 1.5; // m across: body half length (0.9) plus part of the car's half width
+export const LONGHORN_HEIGHT = 1.9; // m with the horns: higher than any jump, so steer round
