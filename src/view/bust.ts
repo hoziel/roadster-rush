@@ -108,7 +108,7 @@ export class BustScene {
       this.q.setFromEuler(this.e);
       this.car.compose(this.v, this.q, this.one);
       for (const part of this.parts) part.mesh.setMatrixAt(i, this.m.multiplyMatrices(this.car, part.base));
-      this.jets[i].update(this.v.x, this.v.y, this.v.z, speed, dt, time, k);
+      this.jets[i].update(this.v.x, this.v.y, this.v.z, speed, dt, time, k * 0.35); // light: they fly alongside for seconds
     }
     for (const part of this.parts) { part.mesh.count = 2; part.mesh.instanceMatrix.needsUpdate = true; }
   }

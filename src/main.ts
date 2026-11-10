@@ -40,7 +40,7 @@ const garage = new Garage(document.getElementById('ui')!, {
   showLook: (look) => view.style.set(look),
   playHorn: (id) => { audio.unlock(); audio.honk(id); },
   setOpen: (open) => { view.showcase = open; },
-  pickDriver: (url, name) => view.setDriver(url, name),
+  pickDriver: (url, name, id) => view.setDriver(url, name, id),
   focusDriver: (on) => view.focusDriver(on),
 });
 const sound = new SoundPanel(document.getElementById('ui')!, {
@@ -51,7 +51,7 @@ const sound = new SoundPanel(document.getElementById('ui')!, {
 });
 audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
-view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name);
+view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name, storage.shop.driver);
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);

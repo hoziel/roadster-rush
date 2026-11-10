@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { DriverBillboard } from './billboard';
 import { buildPoliceRoadster, type PoliceRoadsterParts } from './policeRoadster';
+import { DEFAULT_THEME, themeFor, type FanTheme } from './fanThemes';
 
 // The start line: two giant billboards of the chosen driver, a cheering crowd with name signs,
 // and police cars parked in the distance with their lights going (plus one hovering: policePatrol.ts). It sits on the road at the
@@ -24,11 +25,7 @@ const CAR_SCALE = 0.9;
 const CROWD = { perSide: 12, zFrom: -4, zTo: -26, x: [6.1, 7.4], barrierX: 5.4, signEvery: 2 };
 const FAN_FACING = 0.6; // rad turned from facing the road toward the oncoming car
 const SIGN_W = 1.6, SIGN_H = 0.8, SIGN_Y = 2.05;
-const SHIRTS = ['#e8452c', '#2f7de1', '#ffd23f', '#3fbf7f', '#ff69b4', '#8a5bd6', '#f4e9d8', '#ff8a3d'];
 const SKINS = ['#f2c7a5', '#e0a77e', '#b9774f', '#8a5434', '#f7d7bd'];
-const SIGN_INKS = ['#3a1440', '#c0392b', '#1f2d6b', '#3a1440'];
-const SIGN_BGS = ['#fff6e0', '#ffd23f', '#ffb3d1', '#a8dcff'];
-const MESSAGES = (n: string) => [`GO ${n}!`, `${n} ROCKS!`, `WE ♥ ${n}`, `GO GO ${n}!`];
 const HIDE_PAST = 140; // m driven before the whole start line is behind the camera
 
 interface Fan { x: number; z: number; rotY: number; scale: number; phase: number; hop: number; sign: number }
@@ -45,6 +42,10 @@ export class StartLine {
   private signCanvas = document.createElement('canvas');
   private signTex: THREE.CanvasTexture;
   private name = '';
+  private theme: FanTheme = DEFAULT_THEME;
+  private tmpColor = new THREE.Color();
+  /** Start-line props (Nevo's hoop, Ori's net): the sideline players play round them. */
+  props!: { hoop: THREE.Group; net: THREE.Group };
   private hasDriver = false;
   private m = new THREE.Matrix4();
   private q = new THREE.Quaternion();
@@ -93,9 +94,6 @@ export class StartLine {
     };
     this.arms = new THREE.InstancedMesh(mergeGeometries([arm(1), arm(-1)]), toon(), n);
     this.fans.forEach((_f, i) => {
-      const shirt = new THREE.Color(SHIRTS[i % SHIRTS.length]);
-      this.bodies.setColorAt(i, shirt);
-      this.arms.setColorAt(i, shirt);
       this.heads.setColorAt(i, new THREE.Color(SKINS[(i * 3) % SKINS.length]));
     });
 
@@ -120,12 +118,21 @@ export class StartLine {
       this.group.add(mesh);
     }
     this.group.add(barriers());
+    this.paintShirts();
+    this.props = { hoop: hoop(), net: net() };
+    this.props.hoop.position.set(-6.4, 0, -40); this.props.hoop.rotation.y = 0.75; // past the crowd, under the billboard's line of sight
+    this.props.net.position.set(7.6, 0, -40); this.props.net.rotation.y = -0.5;
+    this.group.add(this.props.hoop, this.props.net);
     this.drawSigns('');
     void document.fonts?.ready.then(() => this.drawSigns(this.name, true));
   }
 
   /** The chosen driver: picture on both billboards, name on the fans' signs ('' hides the billboards). */
-  setDriver(url: string, name: string): void {
+  setDriver(url: string, name: string, id = ''): void {
+    const theme = themeFor(id);
+    if (theme !== this.theme) { this.theme = theme; this.paintShirts(); this.name = '\u0000'; }
+    this.props.hoop.visible = theme.prop === 'hoop';
+    this.props.net.visible = theme.prop === 'net';
     this.hasDriver = !!url;
     for (const b of this.billboards) b.show(url || null);
     this.drawSigns(name);
@@ -159,10 +166,23 @@ export class StartLine {
     for (const mesh of [this.bodies, this.heads, this.arms, ...this.signs]) mesh.instanceMatrix.needsUpdate = true;
   }
 
+  /** Crowd shirts in the driver's theme colours (arms match). */
+  private paintShirts(): void {
+    const shirts = this.theme.shirts;
+    this.fans.forEach((_f, i) => {
+      const c = this.tmpColor.set(shirts[i % shirts.length]);
+      this.bodies.setColorAt(i, c);
+      this.arms.setColorAt(i, c);
+    });
+    if (this.bodies.instanceColor) this.bodies.instanceColor.needsUpdate = true;
+    if (this.arms.instanceColor) this.arms.instanceColor.needsUpdate = true;
+  }
+
   private drawSigns(name: string, force = false): void {
     if (name === this.name && !force && name) return;
     this.name = name;
-    const msgs = MESSAGES((name || 'Austin').toUpperCase());
+    const msgs = this.theme.signs((name || 'Austin').toUpperCase());
+    const SIGN_BGS = this.theme.signBgs, SIGN_INKS = this.theme.signInks;
     const c = this.signCanvas, g = c.getContext('2d')!;
     const rowH = c.height / 4;
     msgs.forEach((text, k) => {
@@ -210,6 +230,38 @@ function parkedPolice(): PoliceRoadsterParts {
   });
   for (const { meshes } of cars) for (const m of meshes) m.geometry.dispose();
   return { ...first.car, group };
+}
+
+/** Nevo's basketball hoop by the start line: pole, backboard, orange rim, a net (1 group, 4 draw calls). */
+function hoop(): THREE.Group {
+  const g = new THREE.Group();
+  const toon = (c: string) => new THREE.MeshToonMaterial({ color: c });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 3.6, 10).translate(0, 1.8, 0), toon('#3a3f52'));
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.15, 0.08).translate(0, 3.75, 0.25), toon('#ffffff'));
+  const square = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.45, 0.02).translate(0, 3.55, 0.3), toon('#111214'));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.035, 8, 20).rotateX(Math.PI / 2).translate(0, 3.25, 0.6), toon('#f08a24'));
+  const net = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 0.42, 12, 1, true).translate(0, 3.03, 0.6), new THREE.MeshToonMaterial({ color: '#ffffff', wireframe: true }));
+  g.add(pole, board, square, rim, net);
+  g.scale.setScalar(1.3);
+  g.visible = false;
+  return g;
+}
+
+/** Ori's volleyball net by the start line: two posts, a blue-trimmed net, a ball on top of a post. */
+function net(): THREE.Group {
+  const g = new THREE.Group();
+  const toon = (c: string) => new THREE.MeshToonMaterial({ color: c });
+  const posts = new THREE.Mesh(mergeGeometries([
+    new THREE.CylinderGeometry(0.07, 0.07, 2.6, 8).translate(-2.6, 1.3, 0),
+    new THREE.CylinderGeometry(0.07, 0.07, 2.6, 8).translate(2.6, 1.3, 0),
+  ]), toon('#2f6fdc'));
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.9, 16, 4).translate(0, 2.0, 0), new THREE.MeshBasicMaterial({ color: '#f4f4f4', wireframe: true }));
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.1, 0.03).translate(0, 2.45, 0), toon('#ffffff'));
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10).translate(-2.6, 2.84, 0), toon('#ffd23f'));
+  g.add(posts, mesh, tape, ball);
+  g.scale.setScalar(1.25);
+  g.visible = false;
+  return g;
 }
 
 /** Low cream-and-red crowd barriers along both shoulders (one draw call). */

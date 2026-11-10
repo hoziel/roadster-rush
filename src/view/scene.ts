@@ -20,6 +20,9 @@ import { TrafficView } from './traffic';
 import { StartLine } from './startline';
 import { SkyLanes } from './skyLanes';
 import { BustScene } from './bust';
+import { FanBoards } from './fanBoards';
+import { themeFor } from './fanThemes';
+import { Sideline } from './sideline';
 import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
@@ -196,7 +199,8 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
-    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group);
+    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.sideline.group);
+    void document.fonts?.ready.then(() => this.fanBoards.refresh());
     this.scene.add(this.traffic.group);
     void this.traffic.load();
     this.scene.add(this.hazards.group, this.highroad.group);
@@ -457,6 +461,8 @@ export class GameView {
     this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
     this.skyLanes.update(w, this.skyK, time);
+    this.fanBoards.update(w.distance, !w.tube);
+    this.sideline.update(time);
     this.tunnel.update(w, this.dayNight.lights, time);
     this.traffic.update(w, this.dayNight.lights, time, !this.showcase);
     this.hazards.update(w, this.dayNight.lights, time, !this.showcase);
@@ -502,10 +508,21 @@ export class GameView {
   }
 
   /** The chosen driver: picture on the start-line billboards, name on the fans' signs ('' hides the billboards). */
-  setDriver(url: string, name = ''): void { this.startLine.setDriver(url, name); }
+  setDriver(url: string, name = '', id = ''): void {
+    this.startLine.setDriver(url, name, id);
+    const theme = themeFor(id);
+    this.fanBoards.setTheme(theme.ads);
+    const prop = theme.prop ? this.startLine.props[theme.prop] : null;
+    this.sideline.setScenes([
+      ...(prop ? [{ anchor: prop, players: theme.startPlayers }] : []),
+      ...this.fanBoards.anchors.map((anchor, i) => ({ anchor, players: theme.boardPlayers[i % Math.max(1, theme.boardPlayers.length)] ?? [] })),
+    ]);
+  }
   /** Garage Driver tab: frame the car (driver's door open) in front of the billboard. */
   focusDriver(on: boolean): void { this.driverFocus = on; }
   private startLine = new StartLine();
+  private fanBoards = new FanBoards();
+  private sideline = new Sideline();
   private driverFocus = false;
   private camBlend = 0;
   private focusBlend = 0;
