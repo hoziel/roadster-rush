@@ -45,9 +45,11 @@ export function buildPolice(): CarParts & { red: THREE.MeshBasicMaterial; blue: 
   const greyBox = [...car.group.children, stripe];
   car.group.add(l, r, stripe);
 
+  const POLICE_SCALE = 0.9; // the kit car is bulkier than ours; keep it from filling the screen up close
   void loadModel('police.glb').then((root) => {
     const { geometry, material } = modelGeometry(root);
     geometry.rotateY(Math.PI); // the kit's cars face +z; ours drive toward -z
+    geometry.scale(POLICE_SCALE, POLICE_SCALE, POLICE_SCALE);
     const map = (material as THREE.MeshStandardMaterial).map ?? null;
     material.dispose();
     const model = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ map }));
