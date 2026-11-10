@@ -3,7 +3,7 @@ import {
   HAT_ID, HORN_IDS, PAINT_IDS, buy, canBuy, equip, isOwned, priceOf, removeHat, setDriver,
   type HornId, type ItemId, type PaintId, type ShopState,
 } from '../sim/shop';
-import { DRIVERS, avatarHtml, driverById, type Driver } from './drivers';
+import { DRIVERS, avatarHtml, driverById, fullUrl, type Driver } from './drivers';
 import './garage.css';
 import { ICON } from './icons';
 import { PAINTS, swatchCss, type PaintLook } from './paints';
@@ -135,6 +135,8 @@ export class Garage {
         c.querySelector('.g-check')?.remove();
         if (on) c.insertAdjacentHTML('beforeend', '<span class="g-check">✓</span>');
       }
+      const hero = this.el.querySelector<HTMLImageElement>('.g-hero img');
+      if (hero) { hero.src = fullUrl(driverById(id)); hero.parentElement!.classList.remove('pop'); void hero.offsetWidth; hero.parentElement!.classList.add('pop'); }
       this.deps.showLook(lookOf(this.deps.getShop(), this.preview));
       return;
     }
@@ -170,6 +172,7 @@ export class Garage {
         <span class="g-wallet">${coin(s.wallet)}</span>
         <button class="g-done" data-act="close">✓ Done</button>
       </div>
+      ${this.tab === 'driver' && fullUrl(driverById(s.driver)) ? `<div class="g-hero pop"><img src="${fullUrl(driverById(s.driver))}" alt=""></div>` : ''}
       <div class="g-panel">
         <div class="g-tabs">${tabs}</div>
         <div class="g-grid ${this.tab === 'driver' ? 'drivers' : ''}">${this.tiles(s)}</div>

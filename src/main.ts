@@ -1,6 +1,7 @@
 import { GameAudio } from './audio/audio';
 import { bindInput } from './input/input';
 import { storage } from './storage';
+import { driverById, fullUrl } from './ui/drivers';
 import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
@@ -93,6 +94,8 @@ bindInput(view.renderer.domElement, (action, x, y) => {
       start(world);
       audio.runStart();
       hud.hideCard();
+      const d = driverById(storage.shop.driver);
+      hud.driverIntro(d.name, fullUrl(d));
     }
     return;
   }

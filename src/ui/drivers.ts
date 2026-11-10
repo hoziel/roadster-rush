@@ -14,12 +14,16 @@ export interface Driver {
   hair: string; // 3D hair/cap blob
   paint?: PaintId; // their car colour: picking the driver paints the car (free)
   photo?: string; // avatar picture, relative to the site root
+  full?: string; // full-body picture (driver select hero, run intro), relative to the site root
 }
 
+/** URL for a driver's full-body picture, or '' when there is none. */
+export function fullUrl(d: Driver): string { return d.full ? `${import.meta.env.BASE_URL}${d.full}` : ''; }
+
 export const DRIVERS: Driver[] = [
-  { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg' },
-  { id: 'ori', name: 'Ori', color: '#e8452c', skin: '#f2c7a5', hair: '#6b4226', paint: 'cherry', photo: 'drivers/ori.jpg' },
-  { id: 'shiri', name: 'Shiri', color: '#c99a3b', skin: '#f2c7a5', hair: '#c9a063', paint: 'pink', photo: 'drivers/shiri.jpg' },
+  { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg', full: 'drivers/nevo-full.jpg' },
+  { id: 'ori', name: 'Ori', color: '#e8452c', skin: '#f2c7a5', hair: '#6b4226', paint: 'cherry', photo: 'drivers/ori.jpg', full: 'drivers/ori-full.jpg' },
+  { id: 'shiri', name: 'Shiri', color: '#c99a3b', skin: '#f2c7a5', hair: '#c9a063', paint: 'pink', photo: 'drivers/shiri.jpg', full: 'drivers/shiri-full.jpg' },
 ];
 
 /** The saved driver, or the first one if the save is missing/unknown. */

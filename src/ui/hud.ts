@@ -42,6 +42,7 @@ export class Hud {
       <div class="batteries" id="batteries"></div>
       <div class="power" id="power"><span id="powerLabel"></span><div class="bar"><div id="powerBar"></div></div></div>
       <div class="toast" id="toast"></div>
+      <div class="driver-intro" id="driverIntro"></div>
       <div class="card" id="card"></div>
       <div class="confetti" id="confetti"></div>
       <button class="credits-btn" id="creditsBtn">Credits</button>
@@ -155,6 +156,17 @@ export class Hud {
     t.classList.remove('show');
     void t.offsetWidth; // restart the animation
     t.classList.add('show');
+  }
+
+  /** Run start: the driver's full-body picture pops in with "<name> is ready!" for a moment (stopgap until #44 art). */
+  driverIntro(name: string, url: string): void {
+    const el = document.getElementById('driverIntro');
+    if (!el || !url) return;
+    el.innerHTML = `<img src="${url}" alt=""><span></span>`;
+    el.querySelector('span')!.textContent = `${name} is ready!`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
   }
 
   powerToast(kind: PowerKind): void { this.toast(POWER_LABEL[kind], POWER_COLOR[kind]); }
