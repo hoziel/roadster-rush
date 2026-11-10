@@ -52,4 +52,4 @@ Kenney UI Pack and Game Icons (CC0): only their licenses are in `assets-src/kenn
 ## Drivers
 | Asset | File | Author | License |
 |---|---|---|---|
-| Nevo | `public/drivers/nevo.jpg` (cropped) | Supplied by Ofir | Ofir's own; published with his OK (Nov 10, 2026). The racing-suit sponsor logos are trademarks: review before publishing (SCOPE.md → Risks). |
+| Nevo, Ori | `public/drivers/nevo.jpg`, `ori.jpg` (cropped) | Supplied by Ofir | Ofir's own; published with his OK (Nov 10, 2026). The racing-suit sponsor logos are trademarks: review before publishing (SCOPE.md → Risks). |
