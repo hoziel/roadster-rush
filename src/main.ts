@@ -22,7 +22,7 @@ const hud = new Hud(() => {
   audio.unlock();
   audio.setMuted(storage.muted);
   hud.setMuted(storage.muted);
-}, () => { audio.unlock(); if (!paused) hover(world); });
+}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); });
 hud.setMuted(storage.muted);
 
 const garage = new Garage(document.getElementById('ui')!, {
@@ -43,6 +43,11 @@ view.style.set(lookOf(storage.shop));
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 hud.showReady(storage.best, garage.cardHtml());
+// A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
+document.getElementById('ui')!.addEventListener('click', (e) => {
+  const b = (e.target as Element).closest('button');
+  if (b && b.id !== 'hoverBtn') audio.uiTap();
+});
 
 const debug = new URLSearchParams(location.search).has('debug');
 let finishedAt = 0;
@@ -68,7 +73,7 @@ function finish(): void {
   storage.set({ shop: addCoins(storage.shop, world.coins) });
   finishedAt = performance.now();
   hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.cardHtml());
-  if (newBest) setTimeout(() => audio.fanfare(), 500);
+  setTimeout(() => audio.finishJingle(newBest), 600);
 }
 
 bindInput(view.renderer.domElement, (action, x, y) => {
@@ -81,14 +86,15 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (world.phase !== 'running') {
     if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
       start(world);
+      audio.runStart();
       hud.hideCard();
     }
     return;
   }
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
-  else if (action === 'jump') jump(world);
-  else if (action === 'hover') hover(world);
+  else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
+  else if (action === 'hover') { if (hover(world)) audio.hover(); }
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
 }, () => audio.unlock()); // raw pointerdown/up/keydown: real gestures, so iOS lets audio start
@@ -107,11 +113,11 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'coin': audio.coin(); break;
         case 'smash': audio.smash(); break;
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
-        case 'power': audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
-        case 'battery': audio.powerUp(); hud.powerToast('supercharger'); break;
+        case 'power': if (world.lastPower === 'ludicrous') audio.ludicrous(); else audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
+        case 'battery': audio.battery(); hud.powerToast('supercharger'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
-        case 'tunnel': hud.toast('Tube tunnel!', '#ff4fd8'); break;
+        case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
     }

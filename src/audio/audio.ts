@@ -1,6 +1,6 @@
 import { HORN_IDS, type HornId } from '../sim/shop';
 import { playHorn } from './horns';
-import { MUSIC, SAMPLES, audioUrl, findOnset, loopPoints, type MusicId, type SampleId } from './tracks';
+import { MUSIC, SAMPLES, SAMPLE_ORDER, audioUrl, findOnset, loopPoints, type MusicId, type SampleId } from './tracks';
 
 export { HORN_KINDS, type HornKind, type MusicId } from './tracks';
 
@@ -12,13 +12,15 @@ const FADE = 0.8; // s, crossfade between tracks
 interface Decoded { buffer: AudioBuffer; onset: number } // onset in seconds
 interface Playing { id: MusicId; src: AudioBufferSourceNode; gain: GainNode }
 
-// SFX are synthesized with Web Audio. Music and sample SFX are small .m4a files, loaded after the
-// first tap; if they fail to load the game just plays without them.
+// Music and most SFX are small .m4a files, loaded after the first tap. Every sampled SFX has a
+// synthesized fallback that plays until (or if never) its file loads. All SFX go through sfxBus, so
+// the Sound panel's effects switch mutes them; the finish/new-best jingles count as effects too
+// (they celebrate an event), so they sit on sfxBus, not musicBus.
 export class GameAudio {
   private ctx?: AudioContext;
   private master?: GainNode;
   private musicBus?: GainNode;
-  private sfxBus?: GainNode; // every sound that isn't music (motor, siren, horns, pickups)
+  private sfxBus?: GainNode; // every sound that isn't looping music (motor, siren, horns, pickups, jingles)
   private musicOn = true;
   private sfxOn = true;
   private motor?: { osc: OscillatorNode; sub: OscillatorNode; gain: GainNode; filter: BiquadFilterNode };
@@ -28,6 +30,8 @@ export class GameAudio {
   private buffers = new Map<MusicId | SampleId, Decoded>();
   private wantMusic: MusicId | null = null;
   private playing: Playing[] = []; // newest last; others are fading out, or the run track parked under climax
+  private noise?: AudioBuffer; // 1 s of white noise for the synth whooshes
+  private evSrc?: AudioBufferSourceNode; // the EV acceleration clip, so a new run restarts it
 
   constructor(muted: boolean) { this.muted = muted; }
 
@@ -81,7 +85,9 @@ export class GameAudio {
   /** Fetch and decode every file, menu music first. A failure just leaves that sound out. */
   private async loadAll(): Promise<void> {
     const order: [MusicId | SampleId, string][] = [
-      ['menu', MUSIC.menu.file], ['run', MUSIC.run.file], ['bike-horn', SAMPLES['bike-horn']], ['climax', MUSIC.climax.file],
+      ['menu', MUSIC.menu.file],
+      ...SAMPLE_ORDER.map((id): [SampleId, string] => [id, SAMPLES[id]]), // ~100 KB in all
+      ['run', MUSIC.run.file], ['climax', MUSIC.climax.file],
     ];
     for (const [id, file] of order) {
       try {
@@ -165,18 +171,25 @@ export class GameAudio {
     g.setTargetAtTime(MUSIC_VOL, t + Math.max(len, 0.2), 0.25);
   }
 
-  /** Play a loaded sample through the master gain. Returns false if it isn't loaded (yet). */
-  playSample(id: SampleId, vol = 0.5): boolean {
+  /**
+   * Play a loaded sample through the SFX bus. Returns false if it isn't loaded (yet), so the caller
+   * can fall back to a synth. `from`: seconds into the sound; `rate`: playback speed (also pitch).
+   */
+  playSample(id: SampleId, vol = 0.5, opts: { from?: number; rate?: number; duck?: boolean; at?: number } = {}): AudioBufferSourceNode | null {
     const d = this.buffers.get(id);
-    if (!this.ctx || !this.master || !d) return false;
+    if (!this.ctx || !this.master || !d) return null;
     const src = this.ctx.createBufferSource();
     src.buffer = d.buffer;
+    const rate = opts.rate ?? 1;
+    src.playbackRate.value = rate;
     const g = this.ctx.createGain();
     g.gain.value = vol;
     src.connect(g).connect(this.sfxBus!);
-    src.start(this.ctx.currentTime, d.onset);
-    this.duck(d.buffer.duration - d.onset);
-    return true;
+    const from = d.onset + (opts.from ?? 0);
+    src.start(opts.at ?? this.ctx.currentTime, from);
+    src.onended = () => { src.disconnect(); g.disconnect(); };
+    if (opts.duck !== false) this.duck((d.buffer.duration - from) / rate);
+    return src;
   }
 
   /** Music and sound effects can be switched off separately (Sound panel). */
@@ -230,10 +243,12 @@ export class GameAudio {
     o.start(t); o.stop(t + 0.2); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
+  /** Run-ending crash: a soft wooden thunk (synth noise burst until it loads) and a gentle "aww". */
   crash(): void {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
     this.duck(0.5);
+    if (this.playSample('crash', 0.7)) { this.tone([330, 262], 'triangle', 0.4, 0.07, t + 0.12); return; }
     const len = Math.floor(this.ctx.sampleRate * 0.35);
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const data = buf.getChannelData(0);
@@ -267,6 +282,7 @@ export class GameAudio {
   }
 
   powerUp(): void {
+    if (this.playSample('power', 0.5)) return;
     this.duck(0.3);
     [523, 659, 784, 1046].forEach((f, i) => this.tone([f], 'square', 0.09, 0.07, this.now() + i * 0.06));
   }
@@ -274,6 +290,7 @@ export class GameAudio {
   /** Soft kid-friendly bonk when a crash costs a battery. */
   bonk(): void {
     if (!this.ctx || !this.master) return;
+    if (this.playSample('bonk', 0.75)) return;
     const t = this.ctx.currentTime;
     this.duck(0.3);
     const o = this.ctx.createOscillator();
@@ -287,8 +304,93 @@ export class GameAudio {
     o.start(t); o.stop(t + 0.32); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
 
+  /** Cone knocked over: a light plastic tock plus a little sparkle. */
   smash(): void {
-    this.tone([880, 1320], 'triangle', 0.08, 0.08);
+    this.playSample('smash', 0.45, { duck: false });
+    this.tone([880, 1320], 'triangle', 0.08, 0.06);
+  }
+
+  /** Supercharger battery picked up. */
+  battery(): void {
+    if (!this.playSample('battery', 0.5)) this.powerUp();
+  }
+
+  /** Hover button pressed: a rising UFO phaser. */
+  hover(): void {
+    if (this.playSample('hover', 0.45)) return;
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(1200, t + 0.3);
+    g.gain.setValueAtTime(0.1, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    o.connect(g).connect(this.sfxBus!);
+    o.start(t); o.stop(t + 0.36); o.onended = () => { o.disconnect(); g.disconnect(); };
+  }
+
+  /** Kickflip: a soft thruster puff (band-passed noise swept up), synthesized. */
+  kickflip(): void {
+    this.whoosh(0.32, 500, 2400, 0.16);
+  }
+
+  /** Entering a tube tunnel: a longer, lower whoosh. */
+  tunnel(): void {
+    this.whoosh(0.9, 250, 1600, 0.2);
+  }
+
+  /** Taps on menu buttons (start card, garage, sound panel). */
+  uiTap(): void {
+    if (this.playSample('ui', 0.5, { duck: false })) return;
+    this.tone([1320], 'sine', 0.05, 0.06);
+  }
+
+  /** Run start: the EV acceleration clip (justVova, CC0) over the synth motor whine. */
+  runStart(): void {
+    this.evSrc?.stop();
+    this.evSrc = this.playSample('ev-accel', 0.55, { duck: false }) ?? undefined;
+  }
+
+  /** Ludicrous: the top of the acceleration clip, sped up, with the power-up chime. */
+  ludicrous(): void {
+    this.powerUp();
+    this.evSrc?.stop();
+    this.evSrc = this.playSample('ev-accel', 0.45, { from: 1.4, rate: 1.3, duck: false }) ?? undefined;
+  }
+
+  /** End-of-run jingle: a cheerful pizzicato, or the steel-drum one for a new best (synth fanfare fallback). */
+  finishJingle(newBest: boolean): void {
+    if (this.playSample(newBest ? 'jingle-best' : 'jingle-finish', 0.6)) return;
+    if (newBest) this.fanfare();
+  }
+
+  private whoosh(dur: number, f0: number, f1: number, vol: number): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    if (!this.noise) {
+      this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = this.noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.2;
+    bp.frequency.setValueAtTime(f0, t);
+    bp.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.6);
+    bp.frequency.exponentialRampToValueAtTime(f0 * 1.5, t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(bp).connect(g).connect(this.sfxBus!);
+    src.start(t, Math.random() * 0.4);
+    src.stop(t + dur + 0.02);
+    src.onended = () => { src.disconnect(); bp.disconnect(); g.disconnect(); };
   }
 
   fanfare(): void {

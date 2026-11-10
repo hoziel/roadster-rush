@@ -38,4 +38,28 @@ for n in music-run music-climax music-menu; do aac "$n"; done
 ffmpeg -v error -y -i "$SRC/sfx/bicycle-horn.wav" -ac 1 -ar 44100 -c:a pcm_s16le "$TMP/horn-bike.wav"
 BITRATE=64000 aac horn-bike
 
+# Short SFX from the Kenney CC0 packs (assets-src/kenney/), already peak-normalized and tightly cut:
+# just downmix to mono. Their volumes are set in src/audio/audio.ts. Ids match SAMPLES in tracks.ts.
+KEN=assets-src/kenney
+sfx() { # name, source, [extra ffmpeg filter]
+  ffmpeg -v error -y -i "$2" -af "${3:-anull}" -ac 1 -ar 44100 -c:a pcm_s16le "$TMP/$1.wav"
+}
+sfx sfx-bonk      "$KEN/impact-sounds/impactSoft_heavy_000.ogg"
+sfx sfx-crash     "$KEN/impact-sounds/impactPlank_medium_001.ogg" "afade=t=out:st=0.45:d=0.3"
+sfx sfx-smash     "$KEN/impact-sounds/impactGeneric_light_001.ogg"
+sfx sfx-power     "$KEN/digital-audio/powerUp2.ogg"
+sfx sfx-battery   "$KEN/digital-audio/powerUp7.ogg"
+sfx sfx-hover     "$KEN/digital-audio/phaserUp6.ogg"
+sfx sfx-ui        "$KEN/interface-sounds/select_001.ogg"
+sfx jingle-finish "$KEN/music-jingles/Pizzicato jingles/jingles_PIZZI10.ogg"
+sfx jingle-best   "$KEN/music-jingles/Steel jingles/jingles_STEEL10.ogg"
+for n in sfx-bonk sfx-crash sfx-smash sfx-power sfx-battery sfx-hover sfx-ui; do BITRATE=64000 aac "$n"; done
+for n in jingle-finish jingle-best; do BITRATE=80000 aac "$n"; done
+
+# EV acceleration (justVova, CC0): the quiet first second is cut; keep the rising 3.6 s, high-pass the
+# rumble, fade both ends and normalize loudness. Played at run start (and a faster slice for Ludicrous).
+sfx ev-accel "$SRC/sfx/ev-acceleration-justvova.wav" \
+  "atrim=start=1.0:end=4.6,asetpts=PTS-STARTPTS,highpass=f=70,afade=t=in:d=0.12,afade=t=out:st=3.0:d=0.6,loudnorm=I=-16:TP=-1.5"
+BITRATE=64000 aac ev-accel
+
 ls -l "$OUT"

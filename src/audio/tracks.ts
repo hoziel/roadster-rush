@@ -2,7 +2,9 @@
 // The files are made by scripts/convert-audio.sh; keep the loop points in sync with its trims.
 
 export type MusicId = 'menu' | 'run' | 'climax';
-export type SampleId = 'bike-horn';
+export type SampleId =
+  | 'bike-horn' | 'bonk' | 'crash' | 'smash' | 'power' | 'battery' | 'hover' | 'ui'
+  | 'ev-accel' | 'jingle-finish' | 'jingle-best';
 
 export interface TrackDef {
   file: string;
@@ -20,9 +22,25 @@ export const MUSIC: Record<MusicId, TrackDef> = {
   menu: { file: 'music-menu.m4a', loopStart: MENU_BAR, loopEnd: 7 * MENU_BAR },
 };
 
+/** Sample SFX (CC0; sources listed in scripts/convert-audio.sh). Each has a synth fallback in audio.ts. */
 export const SAMPLES: Record<SampleId, string> = {
   'bike-horn': 'horn-bike.m4a',
+  bonk: 'sfx-bonk.m4a',
+  crash: 'sfx-crash.m4a',
+  smash: 'sfx-smash.m4a',
+  power: 'sfx-power.m4a',
+  battery: 'sfx-battery.m4a',
+  hover: 'sfx-hover.m4a',
+  ui: 'sfx-ui.m4a',
+  'ev-accel': 'ev-accel.m4a',
+  'jingle-finish': 'jingle-finish.m4a',
+  'jingle-best': 'jingle-best.m4a',
 };
+
+/** Samples needed first (menu taps, run start) load right after the menu music; the rest follow. */
+export const SAMPLE_ORDER: SampleId[] = [
+  'ui', 'ev-accel', 'bonk', 'crash', 'smash', 'power', 'battery', 'hover', 'jingle-finish', 'jingle-best', 'bike-horn',
+];
 
 /** Horn sounds the shop can offer. 'classic' is synthesized, the others are samples. */
 export const HORN_KINDS = ['classic', 'bike'] as const;
