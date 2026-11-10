@@ -26,6 +26,10 @@ export interface GarageDeps {
   playHorn(id: HornId): void;
   /** Garage opened/closed: turntable camera on/off. */
   setOpen(open: boolean): void;
+  /** The chosen driver's full picture for the start-line billboard. */
+  pickDriver(url: string): void;
+  /** Driver tab shown (true) or not: the 3D view frames the car and billboard. */
+  focusDriver(on: boolean): void;
 }
 
 /** The current saved look, for dressing the car outside the garage. */
@@ -109,6 +113,7 @@ export class Garage {
     this.el.classList.remove('show');
     this.deps.showLook(lookOf(this.deps.getShop()));
     this.deps.setOpen(false);
+    this.deps.focusDriver(false);
     for (const w of this.root.querySelectorAll<HTMLElement>('[data-wallet]')) w.innerHTML = coin(this.deps.getShop().wallet);
     for (const a of this.root.querySelectorAll<HTMLElement>('[data-driver-avatar]')) a.innerHTML = this.driverAvatar();
   }
@@ -135,8 +140,7 @@ export class Garage {
         c.querySelector('.g-check')?.remove();
         if (on) c.insertAdjacentHTML('beforeend', '<span class="g-check">✓</span>');
       }
-      const hero = this.el.querySelector<HTMLImageElement>('.g-hero img');
-      if (hero) { hero.src = fullUrl(driverById(id)); hero.parentElement!.classList.remove('pop'); void hero.offsetWidth; hero.parentElement!.classList.add('pop'); }
+      this.deps.pickDriver(fullUrl(driverById(id)));
       this.deps.showLook(lookOf(this.deps.getShop(), this.preview));
       return;
     }
@@ -164,6 +168,7 @@ export class Garage {
   private render(): void {
     const s = this.deps.getShop();
     this.deps.showLook(lookOf(s, this.preview));
+    this.deps.focusDriver(this.tab === 'driver');
     const scroll = this.el.querySelector('.g-grid')?.scrollTop ?? 0;
     const tabs = TABS.map((t) => `<button class="g-tab ${t.id === this.tab ? 'on' : ''}" data-act="tab" data-id="${t.id}">
       <span class="g-icon">${t.icon}</span>${t.label}</button>`).join('');
@@ -172,7 +177,7 @@ export class Garage {
         <span class="g-wallet">${coin(s.wallet)}</span>
         <button class="g-done" data-act="close">✓ Done</button>
       </div>
-      ${this.tab === 'driver' && fullUrl(driverById(s.driver)) ? `<div class="g-hero pop"><img src="${fullUrl(driverById(s.driver))}" alt=""></div>` : ''}
+
       <div class="g-panel">
         <div class="g-tabs">${tabs}</div>
         <div class="g-grid ${this.tab === 'driver' ? 'drivers' : ''}">${this.tiles(s)}</div>

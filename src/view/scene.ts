@@ -17,6 +17,7 @@ import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
+import { DriverBillboard } from './billboard';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
@@ -27,6 +28,11 @@ const ROAD_LENGTH = 220;
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
+// The chosen driver's billboard stands at the start line, right of the road, a few metres ahead of the parked car.
+const BILLBOARD = { x: 5.4, z: -14, rotY: -0.3, scale: 1.5, hideZ: 24 };
+// Garage Driver tab: behind-left of the car, looking past its open driver's door at the billboard.
+const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.1, lookY: -0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
+const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
 const C_BLACK = new THREE.Color('#000000');
@@ -135,7 +141,7 @@ export class GameView {
     ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 25);
     this.scene.add(ground);
 
-    this.car = buildRoadster('#e8344e');
+    this.car = buildRoadster('#e8344e', { driverDoor: true });
     this.car.group.scale.setScalar(CAR_SCALE);
     this.carMount.add(this.car.group);
     this.scene.add(this.carMount);
@@ -172,6 +178,9 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
+    this.billboard.group.rotation.y = BILLBOARD.rotY;
+    this.billboard.group.scale.setScalar(BILLBOARD.scale);
+    this.scene.add(this.billboard.group);
     this.scene.add(this.traffic.group);
     void this.traffic.load();
     this.scene.add(this.hazards.group, this.highroad.group);
@@ -325,9 +334,32 @@ export class GameView {
       this.camTarget.lerp(this.tmpV, k);
       this.camera.up.set(-s, c, 0);
     }
+    // Garage: glide (not cut) from the run camera to the orbit, or to the driver view; and back again on Done.
+    const ease = Math.min(1, dt * CAM_EASE);
+    this.camBlend += ((this.showcase ? 1 : 0) - this.camBlend) * ease;
+    this.focusBlend += ((this.showcase && this.driverFocus ? 1 : 0) - this.focusBlend) * ease;
+    const e = smooth(this.camBlend), f = smooth(this.focusBlend);
+    if (e > 0.001) {
+      const a = time * TURNTABLE.spin;
+      this.tmpV.set(w.x + Math.sin(a) * TURNTABLE.radius, TURNTABLE.height, Math.cos(a) * TURNTABLE.radius);
+      this.tmpV.lerp(this.tmpV2.set(w.x + DRIVER_CAM.dx, DRIVER_CAM.y, DRIVER_CAM.z), f);
+      this.camera.position.lerp(this.tmpV, e);
+      this.tmpV.set(w.x, TURNTABLE.lookY, 0).lerp(this.tmpV2.set(w.x + DRIVER_CAM.lookDx, DRIVER_CAM.lookY, DRIVER_CAM.lookZ), f);
+      this.camTarget.lerp(this.tmpV, e);
+      this.camera.up.set(0, 1, 0);
+    }
     this.camera.lookAt(this.camTarget);
-    if (this.showcase) { this.camera.up.set(0, 1, 0); this.turntable(w.x, time); }
-    else if (this.camera.view) this.camera.clearViewOffset();
+    if (e > 0.001) {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      this.camera.setViewOffset(vw, vh, 0, vh * THREE.MathUtils.lerp(TURNTABLE.lift, DRIVER_CAM.lift, f) * e, vw, vh); // keep the car above the garage panel
+    } else if (this.camera.view) this.camera.clearViewOffset();
+    // Driver's door swings open while the Driver tab shows the car.
+    this.doorT += ((this.showcase && this.driverFocus ? 1 : 0) - this.doorT) * Math.min(1, dt * 2.5);
+    this.car.setDoorOpen(smooth(this.doorT));
+    // The billboard is part of the road: it stays at the start line and the car drives past it.
+    const bz = BILLBOARD.z + w.distance;
+    this.billboard.group.position.set(BILLBOARD.x, 0, bz);
+    this.billboard.group.visible = this.hasDriver && bz < BILLBOARD.hideZ;
     for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
     // Widen the view as speed builds (more road rushing past the edges reads as faster), plus a kick for Ludicrous.
     const speedK = w.phase === 'running' ? THREE.MathUtils.clamp((w.speed - SPEED_START) / (SPEED_MAX - SPEED_START), 0, 1.5) : 0;
@@ -391,14 +423,17 @@ export class GameView {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /** Orbit the car; shift the view so it sits in the top part of the screen above the garage panel. */
-  private turntable(x: number, time: number): void {
-    const a = time * TURNTABLE.spin;
-    this.camera.position.set(x + Math.sin(a) * TURNTABLE.radius, TURNTABLE.height, Math.cos(a) * TURNTABLE.radius);
-    this.camera.lookAt(x, TURNTABLE.lookY, 0);
-    const w = window.innerWidth, h = window.innerHeight;
-    this.camera.setViewOffset(w, h, 0, h * TURNTABLE.lift, w, h);
-  }
+  /** The chosen driver's picture on the start-line billboard ('' hides it). */
+  setDriver(url: string): void { this.hasDriver = !!url; this.billboard.show(url || null); }
+  /** Garage Driver tab: frame the car (driver's door open) in front of the billboard. */
+  focusDriver(on: boolean): void { this.driverFocus = on; }
+  private billboard = new DriverBillboard();
+  private hasDriver = false;
+  private driverFocus = false;
+  private camBlend = 0;
+  private focusBlend = 0;
+  private doorT = 0;
+  private tmpV2 = new THREE.Vector3();
 
   private powerColors = new Map<PowerKind, THREE.Color>();
   private powerColor(k: PowerKind): THREE.Color {
@@ -469,3 +504,5 @@ function makeSideTexture(): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+
+function smooth(k: number): number { return k * k * (3 - 2 * k); }

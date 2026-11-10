@@ -37,6 +37,8 @@ const garage = new Garage(document.getElementById('ui')!, {
   showLook: (look) => view.style.set(look),
   playHorn: (id) => { audio.unlock(); audio.honk(id); },
   setOpen: (open) => { view.showcase = open; },
+  pickDriver: (url) => view.setDriver(url),
+  focusDriver: (on) => view.focusDriver(on),
 });
 const sound = new SoundPanel(document.getElementById('ui')!, {
   get: () => ({ music: storage.music, sfx: storage.sfx }),
@@ -46,6 +48,7 @@ const sound = new SoundPanel(document.getElementById('ui')!, {
 });
 audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
+view.setDriver(fullUrl(driverById(storage.shop.driver)));
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
@@ -95,8 +98,6 @@ bindInput(view.renderer.domElement, (action, x, y) => {
       view.newRun();
       audio.runStart();
       hud.hideCard();
-      const d = driverById(storage.shop.driver);
-      hud.driverIntro(d.name, fullUrl(d));
     }
     return;
   }
@@ -172,6 +173,7 @@ view.renderer.setAnimationLoop((now: number) => {
 if (debug) {
   (window as unknown as { rr: unknown }).rr = {
     world,
+    view,
     honk: (kind?: string) => audio.honk(kind),
     /** Jump the sunset-to-night cycle: 0 sunset, 0.3 dusk, 0.6 night. */
     timeOfDay: (phase: number) => { world.dayOffset = offsetFor(world, phase); },
