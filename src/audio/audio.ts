@@ -5,8 +5,15 @@ import { MUSIC, SAMPLES, SAMPLE_ORDER, audioUrl, findOnset, loopPoints, type Mus
 export { HORN_KINDS, type HornKind, type MusicId } from './tracks';
 
 const MASTER_VOL = 0.8;
-const MUSIC_VOL = 0.22; // music sits well under the SFX (it's off by default)
-const DUCK = 0.55; // music level while an SFX plays (fraction of MUSIC_VOL)
+const MUSIC_VOL = 0.17; // music sits well under the SFX (it's off by default)
+const DUCK = 0.6; // music level while a big moment plays (fraction of MUSIC_VOL); small sounds never duck
+// Anti-fatigue rules (Nov 10 sound pass): every repeated sample varies a little in pitch and level, the same
+// sample can't retrigger faster than SAMPLE_GAP, a limiter caps the mix, and harsh highs are shelved down.
+const VARY_SEMITONES = 1.5;
+const VARY_LEVEL = 0.12;
+const SAMPLE_GAP = 0.06; // s
+const MUSIC_LOWPASS = 4200; // Hz: takes the chiptune edge off the music
+const SFX_HIGH_SHELF = -6; // dB above 6 kHz on effects
 const FADE = 0.8; // s, crossfade between tracks
 
 interface Decoded { buffer: AudioBuffer; onset: number } // onset in seconds
@@ -16,6 +23,9 @@ interface Playing { id: MusicId; src: AudioBufferSourceNode; gain: GainNode }
 // synthesized fallback that plays until (or if never) its file loads. All SFX go through sfxBus, so
 // the Sound panel's effects switch mutes them; the finish/new-best jingles count as effects too
 // (they celebrate an event), so they sit on sfxBus, not musicBus.
+/** Semitones above G5 for successive coins in a streak (major pentatonic, two octaves). */
+const COIN_SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+
 export class GameAudio {
   private ctx?: AudioContext;
   private master?: GainNode;
@@ -27,10 +37,12 @@ export class GameAudio {
   private muted: boolean;
   private sirenOsc?: OscillatorNode;
   private sirenGain?: GainNode;
+  private sirenSince = -1;
   private buffers = new Map<MusicId | SampleId, Decoded>();
   private wantMusic: MusicId | null = null;
   private playing: Playing[] = []; // newest last; others are fading out, or the run track parked under climax
   private noise?: AudioBuffer; // 1 s of white noise for the synth whooshes
+  private lastPlayed = new Map<SampleId, number>();
   private evSrc?: AudioBufferSourceNode; // the EV acceleration clip, so a new run restarts it
 
   constructor(muted: boolean) { this.muted = muted; }
@@ -43,13 +55,21 @@ export class GameAudio {
     this.ctx = ctx;
     this.master = ctx.createGain();
     this.master.gain.value = this.muted ? 0 : MASTER_VOL;
-    this.master.connect(ctx.destination);
+    // Limiter on the whole mix: stacked sounds can't spike.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -14; limiter.knee.value = 6; limiter.ratio.value = 12;
+    limiter.attack.value = 0.003; limiter.release.value = 0.25;
+    this.master.connect(limiter).connect(ctx.destination);
     this.musicBus = ctx.createGain();
     this.musicBus.gain.value = this.musicOn ? MUSIC_VOL : 0;
-    this.musicBus.connect(this.master);
+    const musicTone = ctx.createBiquadFilter();
+    musicTone.type = 'lowpass'; musicTone.frequency.value = MUSIC_LOWPASS; musicTone.Q.value = 0.5;
+    this.musicBus.connect(musicTone).connect(this.master);
     this.sfxBus = ctx.createGain();
     this.sfxBus.gain.value = this.sfxOn ? 1 : 0;
-    this.sfxBus.connect(this.master);
+    const shelf = ctx.createBiquadFilter();
+    shelf.type = 'highshelf'; shelf.frequency.value = 6000; shelf.gain.value = SFX_HIGH_SHELF;
+    this.sfxBus.connect(shelf).connect(this.master);
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
@@ -57,7 +77,7 @@ export class GameAudio {
     const gain = ctx.createGain();
     gain.gain.value = 0;
     const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
+    osc.type = 'triangle'; // a soft hum, not a buzzy saw
     const sub = ctx.createOscillator();
     sub.type = 'sine';
     osc.connect(filter); sub.connect(filter);
@@ -139,7 +159,8 @@ export class GameAudio {
       if (!d) return; // not loaded yet: loadAll() starts it when it arrives
       const src = ctx.createBufferSource();
       src.buffer = d.buffer;
-      src.loop = true;
+      // The menu tune's loop is only a few bars, so it plays once and then leaves the menu quiet.
+      src.loop = id !== 'menu';
       const lp = loopPoints(MUSIC[id], d.onset, d.buffer.duration);
       if (lp) { src.loopStart = lp.start; src.loopEnd = lp.end; }
       const gain = ctx.createGain();
@@ -175,20 +196,25 @@ export class GameAudio {
    * Play a loaded sample through the SFX bus. Returns false if it isn't loaded (yet), so the caller
    * can fall back to a synth. `from`: seconds into the sound; `rate`: playback speed (also pitch).
    */
-  playSample(id: SampleId, vol = 0.5, opts: { from?: number; rate?: number; duck?: boolean; at?: number } = {}): AudioBufferSourceNode | null {
+  playSample(id: SampleId, vol = 0.5, opts: { from?: number; rate?: number; duck?: boolean; at?: number; exact?: boolean } = {}): AudioBufferSourceNode | null {
     const d = this.buffers.get(id);
     if (!this.ctx || !this.master || !d) return null;
+    const now = this.ctx.currentTime;
+    const last = this.lastPlayed.get(id) ?? -1;
+    if (opts.at === undefined && now - last < SAMPLE_GAP) return null; // too soon: skip, don't stack
+    this.lastPlayed.set(id, now);
     const src = this.ctx.createBufferSource();
     src.buffer = d.buffer;
-    const rate = opts.rate ?? 1;
+    const vary = opts.exact ? 1 : Math.pow(2, ((Math.random() * 2 - 1) * VARY_SEMITONES) / 12);
+    const rate = (opts.rate ?? 1) * vary;
     src.playbackRate.value = rate;
     const g = this.ctx.createGain();
-    g.gain.value = vol;
+    g.gain.value = vol * (opts.exact ? 1 : 1 + (Math.random() * 2 - 1) * VARY_LEVEL);
     src.connect(g).connect(this.sfxBus!);
     const from = d.onset + (opts.from ?? 0);
     src.start(opts.at ?? this.ctx.currentTime, from);
     src.onended = () => { src.disconnect(); g.disconnect(); };
-    if (opts.duck !== false) this.duck((d.buffer.duration - from) / rate);
+    if (opts.duck === true) this.duck((d.buffer.duration - from) / rate); // only big moments ask to duck
     return src;
   }
 
@@ -211,12 +237,18 @@ export class GameAudio {
   motorUpdate(speed: number, on: boolean): void {
     if (!this.ctx || !this.motor) return;
     const t = this.ctx.currentTime;
-    const f = 140 + speed * 18;
+    const f = 110 + speed * 9;
     this.motor.osc.frequency.setTargetAtTime(f, t, 0.1);
     this.motor.sub.frequency.setTargetAtTime(f / 2, t, 0.1);
-    this.motor.filter.frequency.setTargetAtTime(600 + speed * 40, t, 0.1);
-    this.motor.gain.gain.setTargetAtTime(on ? 0.05 : 0, t, on ? 0.2 : 0.08);
+    this.motor.filter.frequency.setTargetAtTime(350 + speed * 12, t, 0.1);
+    // Not a drone: a faint bed that swells only while the car is speeding up, then settles back.
+    const accel = Math.max(0, speed - this.lastSpeed);
+    this.lastSpeed = speed;
+    this.motorSwell = Math.max(this.motorSwell * 0.985, Math.min(1, accel * 25));
+    this.motor.gain.gain.setTargetAtTime(on ? 0.008 + this.motorSwell * 0.03 : 0, t, on ? 0.25 : 0.08);
   }
+  private lastSpeed = 0;
+  private motorSwell = 0;
 
   /** The equipped horn (set from the garage). */
   horn: HornId = 'classic';
@@ -228,20 +260,25 @@ export class GameAudio {
     if (this.ctx && this.master) playHorn(horn, this.ctx, this.sfxBus!);
   }
 
+  /** Coin: a soft bell. Coins in a line climb a pentatonic scale, so a line plays a little tune, not a stutter. */
   coin(): void {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
-    this.duck(0.15);
+    this.coinStep = t - this.lastCoin < 0.5 ? Math.min(this.coinStep + 1, COIN_SCALE.length - 1) : 0;
+    this.lastCoin = t;
+    const f = 784 * Math.pow(2, COIN_SCALE[this.coinStep] / 12);
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(1046, t);
-    o.frequency.setValueAtTime(1568, t + 0.06);
-    g.gain.setValueAtTime(0.15, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.type = 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + 0.22);
     o.connect(g).connect(this.sfxBus!);
-    o.start(t); o.stop(t + 0.2); o.onended = () => { o.disconnect(); g.disconnect(); };
+    o.start(t); o.stop(t + 0.24); o.onended = () => { o.disconnect(); g.disconnect(); };
   }
+  private coinStep = 0;
+  private lastCoin = -1;
 
   /** Run-ending crash: a soft wooden thunk (synth noise burst until it loads) and a gentle "aww". */
   crash(): void {
@@ -269,20 +306,26 @@ export class GameAudio {
     if (!this.sirenOsc) {
       const o = this.ctx.createOscillator();
       o.type = 'triangle';
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1400; // muffled, not shrill
       const g = this.ctx.createGain();
       g.gain.value = 0;
-      o.connect(g).connect(this.sfxBus!);
+      o.connect(lp).connect(g).connect(this.sfxBus!);
       o.start();
       this.sirenOsc = o;
       this.sirenGain = g;
     }
     const t = this.ctx.currentTime;
-    this.sirenOsc.frequency.setTargetAtTime(Math.floor(time * 2.5) % 2 ? 660 : 880, t, 0.02);
-    this.sirenGain!.gain.setTargetAtTime(on ? 0.035 : 0, t, 0.15);
+    if (on && this.sirenSince < 0) this.sirenSince = t;
+    if (!on) this.sirenSince = -1;
+    // Gliding two-tone (soft edges) that says "police!" for a few seconds, then backs off to a faint hint.
+    this.sirenOsc.frequency.setTargetAtTime(Math.floor(time * 1.6) % 2 ? 620 : 830, t, 0.06);
+    const loud = on && t - this.sirenSince < 2.5;
+    this.sirenGain!.gain.setTargetAtTime(on ? (loud ? 0.022 : 0.006) : 0, t, loud ? 0.15 : 0.6);
   }
 
   /**
-   * Distant police sirens in the background during a run: every 14-26 s a far-off wail (slow up/down sweep,
+   * Distant police sirens in the background during a run: every 35-60 s a far-off wail (slow up/down sweep,
    * muffled, panned to one side) swells in and fades away. Separate from the close chase siren above.
    */
   ambientPolice(running: boolean): void {
@@ -290,7 +333,7 @@ export class GameAudio {
     const now = this.ctx.currentTime;
     if (!running) { this.nextFarSiren = now + 6; return; }
     if (now < this.nextFarSiren) return;
-    this.nextFarSiren = now + 14 + Math.random() * 12;
+    this.nextFarSiren = now + 35 + Math.random() * 25; // rare: a hint of the city, not a pattern
     const dur = 4.5 + Math.random() * 2;
     const o = this.ctx.createOscillator();
     const lp = this.ctx.createBiquadFilter();
@@ -307,7 +350,7 @@ export class GameAudio {
     lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.5; // far away: muffled
     pan.pan.value = (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.5);
     g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(0.03, now + dur * 0.45);
+    g.gain.exponentialRampToValueAtTime(0.016, now + dur * 0.45);
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
     o.connect(lp).connect(pan).connect(g).connect(this.sfxBus!);
     o.start(now); o.stop(now + dur + 0.05);
@@ -586,7 +629,6 @@ export class GameAudio {
   private tone(freqs: number[], type: OscillatorType, dur: number, vol: number, at?: number): void {
     if (!this.ctx || !this.master) return;
     const t = at ?? this.ctx.currentTime;
-    if (at === undefined) this.duck(dur);
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.01);

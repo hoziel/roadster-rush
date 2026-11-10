@@ -148,7 +148,8 @@ view.renderer.setAnimationLoop((now: number) => {
   audio.motorUpdate(world.speed, running);
   audio.siren(running && policeClose(world), now / 1000);
   audio.ambientPolice(running && !policeClose(world));
-  audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
+  // One steady run track (no jarring switch to the climax track during Ludicrous).
+  audio.music(running ? 'run' : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   view.render(world, dt, now / 1000);
   if (stampDraws) { const r = view.renderer.info.render; hud.debug(`${r.calls} draws · ${r.triangles} tris`); }
