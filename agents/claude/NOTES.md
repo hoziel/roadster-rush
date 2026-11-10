@@ -14,3 +14,9 @@ Claude's long-term memory is outside the repo (~/.claude). This file holds orche
 ## Next for Claude
 - After #42 is decided: update the style guide, unblock #14/#16, then #19 (hero car) and #20 (postcard).
 - Bull and bat models are optimized but not placed in the game yet (longhorn crossing, bat GLB vs code bats).
+
+## Nov 9 evening (Ofir's requests, all merged on main)
+- Kickflip jump (roll along the length + thruster puffs), hover button (pickups bank ≤3 charges, 8 s), harmless 4 s police chase at run start.
+- Kenney buildings/police (90%)/street lights/trees, real Capitol (CC-BY, credited), tube tunnels (camera rolls), Driver + Sound buttons (music/effects switches), Kenney SFX + jingles + EV clip.
+- Decisions (Claude's call, Ofir delegated): police 0.9 scale, keep palms, keep green roofs; every run ends with a jingle (unanswered, default).
+- Open: offline play needs https hosting (Ofir choosing: Cloudflare/Netlify/Tailscale/Capacitor). Codex has committed #42 mockups but hasn't handed the turn back. Phone playtest of everything pending; triangles ~100k.
