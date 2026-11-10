@@ -19,7 +19,7 @@ export interface Driver {
 export const DRIVERS: Driver[] = [
   { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg' },
   { id: 'ori', name: 'Ori', color: '#e8452c', skin: '#f2c7a5', hair: '#6b4226', paint: 'cherry', photo: 'drivers/ori.jpg' },
-  { id: 'shiri', name: 'Shiri', color: '#c99a3b', skin: '#f2c7a5', hair: '#c9a063', paint: 'midnight', photo: 'drivers/shiri.jpg' },
+  { id: 'shiri', name: 'Shiri', color: '#c99a3b', skin: '#f2c7a5', hair: '#c9a063', paint: 'pink', photo: 'drivers/shiri.jpg' },
 ];
 
 /** The saved driver, or the first one if the save is missing/unknown. */
@@ -29,6 +29,7 @@ export function driverById(id: string): Driver {
 
 /** DOM avatar: the driver's picture, or a colored circle with the initial when there's none. `size` in px. */
 export function avatarHtml(d: Driver, size = 64): string {
-  const img = d.photo ? `<img src="${import.meta.env.BASE_URL}${d.photo}" alt="" onerror="this.remove()">` : '';
-  return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.5)}px;background:${d.color}">${d.name[0]}${img}</span>`;
+  // With a picture, no initial underneath: it would flash while the picture decodes. A broken picture brings it back.
+  const img = d.photo ? `<img src="${import.meta.env.BASE_URL}${d.photo}" alt="" onerror="this.parentNode.textContent='${d.name[0]}'">` : '';
+  return `<span class="avatar" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.5)}px;background:${d.color}">${img || d.name[0]}</span>`;
 }

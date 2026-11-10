@@ -58,17 +58,19 @@
 .g-check { position: absolute; top: 4px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: var(--gold); color: var(--plum);
   font-size: 16px; font-weight: 700; line-height: 26px; box-shadow: 0 2px 0 var(--plum-edge); }
 
-/* Driver tab: two big cards side by side */
-.g-grid.drivers { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-content: center; }
-.g-dcard { position: relative; cursor: pointer; border: 4px solid transparent; border-radius: 26px; padding: 14px 8px 12px; min-height: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--cream-face); color: var(--plum);
-  font: 700 30px 'Fredoka', ui-rounded, system-ui, sans-serif; box-shadow: 0 6px 0 #160a2e, 0 10px 18px rgba(0, 0, 0, .3); }
-.g-dcard .avatar { width: min(132px, 32vw, 26vh) !important; height: min(132px, 32vw, 26vh) !important; border: 5px solid var(--cream-hi);
+/* Driver tab: one big full-width card per driver (picture + name), stacked, never overlapping; the panel grows */
+.g-panel:has(.g-grid.drivers) { height: 74%; }
+.g-panel:has(.g-grid.drivers) .g-buybar { display: none; }
+.g-grid.drivers { grid-template-columns: 1fr; grid-auto-rows: max-content; gap: 12px; }
+.g-dcard { position: relative; cursor: pointer; border: 4px solid transparent; border-radius: 26px; padding: 8px 18px; flex-shrink: 0;
+  display: flex; flex-direction: row; align-items: center; gap: 20px; background: var(--cream-face); color: var(--plum);
+  font: 700 40px 'Fredoka', ui-rounded, system-ui, sans-serif; box-shadow: 0 6px 0 #160a2e, 0 10px 18px rgba(0, 0, 0, .3); }
+.g-dcard .avatar { width: min(104px, 28vw, 13vh) !important; height: min(104px, 28vw, 13vh) !important; border: 5px solid var(--cream-hi);
   box-shadow: 0 0 0 3px rgba(42, 22, 80, .18), 0 4px 0 rgba(42, 22, 80, .25); }
 .g-dname { line-height: 1; }
 .g-dcard.on { border-color: var(--gold); box-shadow: 0 6px 0 #160a2e, 0 0 0 3px var(--plum), 0 0 22px rgba(255, 210, 63, .6); }
 .g-dcard.on .avatar { border-color: var(--gold); box-shadow: 0 0 0 3px var(--plum), 0 0 16px rgba(255, 210, 63, .7); }
-.g-dcard .g-check { top: 10px; right: 10px; width: 34px; height: 34px; line-height: 34px; font-size: 20px; }
+.g-dcard .g-check { top: 50%; right: 18px; margin-top: -20px; width: 40px; height: 40px; line-height: 40px; font-size: 24px; }
 .g-dcard:active { transform: translateY(3px); }
 
 .g-buybar { min-height: 60px; display: flex; justify-content: center; }
@@ -98,6 +100,9 @@
   .g-panel { height: 64%; }
   .g-tab { min-height: 48px; flex-direction: row; gap: 6px; }
   .g-icon { font-size: 20px; }
-  .g-dcard { flex-direction: row; justify-content: center; padding: 6px 12px; }
-  .g-dcard .avatar { width: 18vh !important; height: 18vh !important; }
+  .g-panel:has(.g-grid.drivers) { height: 78%; }
+  .g-grid.drivers { grid-template-columns: repeat(3, 1fr); }
+  .g-dcard { flex-direction: column; justify-content: center; gap: 4px; padding: 6px 8px; font-size: 26px; }
+  .g-dcard .avatar { width: 22vh !important; height: 22vh !important; }
+  .g-dcard .g-check { top: 8px; right: 8px; margin-top: 0; }
 }

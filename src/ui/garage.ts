@@ -128,6 +128,15 @@ export class Garage {
       // Each driver has their own car colour; picking them paints the car.
       const paint = driverById(id).paint;
       this.save(paint ? equip(setDriver(s, id), `paint:${paint}`) : setDriver(s, id));
+      // Update the cards in place: re-rendering would reload every picture and flash for a frame.
+      for (const c of this.el.querySelectorAll<HTMLElement>('.g-dcard')) {
+        const on = c.dataset.id === id;
+        c.classList.toggle('on', on);
+        c.querySelector('.g-check')?.remove();
+        if (on) c.insertAdjacentHTML('beforeend', '<span class="g-check">✓</span>');
+      }
+      this.deps.showLook(lookOf(this.deps.getShop(), this.preview));
+      return;
     }
     else if (act === 'nohat') { this.save(removeHat(s)); this.preview = null; }
     else if (act === 'item') {

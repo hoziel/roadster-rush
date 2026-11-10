@@ -137,7 +137,7 @@
 @keyframes fall { to { top: 110%; transform: rotate(720deg) translateX(40px); } }
 .debug { position: absolute; left: calc(env(safe-area-inset-left) + 12px); bottom: calc(env(safe-area-inset-bottom) + 2px); font: 11px ui-monospace, monospace; opacity: .85;
   text-shadow: 0 1px 2px #000; }
-.credits-btn { position: absolute; right: calc(env(safe-area-inset-right) + 14px); bottom: calc(env(safe-area-inset-bottom) + 14px); display: none; pointer-events: auto; cursor: pointer;
+.credits-btn { position: absolute; left: calc(env(safe-area-inset-left) + 14px); top: calc(env(safe-area-inset-top) + 18px); display: none; pointer-events: auto; cursor: pointer;
   border: 0; border-radius: 999px; padding: 6px 12px; background: rgba(42, 22, 80, .6); color: var(--cream); font-size: 14px; font-weight: 600; }
 .credits-btn.show { display: block; }
 .credits { position: absolute; inset: 0; background: rgba(42, 22, 80, .95); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; pointer-events: auto; color: var(--cream); }
