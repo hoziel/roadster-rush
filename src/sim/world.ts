@@ -15,7 +15,7 @@ import { dayPhase, isDusk } from './daycycle';
 import { createRng, type Rng } from './rng';
 import { CHUNK_LENGTH, placeChunk } from './chunks';
 import { isPower, type EntityKind, type PowerKind } from './spawner';
-import { speedAt } from './speed';
+import { speedAt, speedLevel } from './speed';
 
 export type { PowerKind } from './spawner';
 
@@ -29,7 +29,7 @@ export interface Entity {
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end' | 'swarm' | 'charge' | 'tunnel';
+  | 'power' | 'power-end' | 'swarm' | 'charge' | 'faster' | 'tunnel';
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -53,6 +53,7 @@ export interface World {
   chase: number; // s the police stays close (a crash now ends the run)
   intro: number; // s of the harmless opening chase left (police shown close, crashes don't end the run)
   hoverCharges: number; // banked hover-button presses
+  speedLevel: number; // speed-up steps reached this run ('faster' fires on each)
   power: PowerKind | null; // timed power-up in effect
   powerTime: number; // s left on it
   lastPower: PowerKind | null; // last picked up (for UI events)
@@ -80,7 +81,7 @@ export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * L
 const runState = () => ({
   time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, coins: 0,
   batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0, intro: INTRO_CHASE_TIME,
-  hoverCharges: HOVER_CHARGES_START,
+  hoverCharges: HOVER_CHARGES_START, speedLevel: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
   tunnelAt: -1, tunnelEnd: -1, nextTunnelAt: TUNNEL_FIRST_AT, tunnelQueued: false, tube: false, slot: 0, angle: 0,
@@ -149,6 +150,8 @@ export function step(w: World, dt: number): SimEvent[] {
     if (w.powerTime <= 0) { w.power = null; w.powerTime = 0; events.push('power-end'); }
   }
 
+  const level = speedLevel(w.time);
+  if (level > w.speedLevel) { w.speedLevel = level; events.push('faster'); }
   let speed = speedAt(w.time);
   if (w.stumble > 0) speed *= 1 - STUMBLE_SLOWDOWN * (w.stumble / STUMBLE_TIME);
   if (w.power === 'ludicrous') speed *= LUDICROUS_BOOST;

@@ -20,6 +20,8 @@ export class Hud {
 
   private hoverBtn: HTMLButtonElement;
   private lastHover = '';
+  private speedo!: HTMLElement;
+  private lastKmh = -1;
 
   constructor(onMute: () => void, onHover: () => void) {
     this.root = document.getElementById('ui')!;
@@ -36,6 +38,7 @@ export class Hud {
       <div class="confetti" id="confetti"></div>
       <button class="pill credits-btn" id="creditsBtn">Credits</button>
       <div class="credits" id="credits"></div>
+      <div class="pill speedo" id="speedo"></div>
       <button class="hover-btn" id="hoverBtn" aria-label="Hover"><span class="ufo">🛸</span><span class="pips" id="hoverPips"></span></button>
       <div class="debug" id="debug"></div>`;
     const q = (id: string) => this.root.querySelector<HTMLElement>('#' + id)!;
@@ -51,6 +54,7 @@ export class Hud {
     this.muteBtn.addEventListener('click', onMute);
 
     // Hover button: fire on pointerdown (fast for kids), and keep the press away from the game's swipe/tap.
+    this.speedo = q('speedo');
     this.hoverBtn = q('hoverBtn') as HTMLButtonElement;
     this.hoverBtn.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); onHover(); });
     this.hoverBtn.addEventListener('pointerup', (e) => e.stopPropagation());
@@ -87,6 +91,13 @@ export class Hud {
       this.el.batteries.innerHTML = Array.from({ length: BATTERIES }, (_, i) =>
         `<span class="cell ${i < w.batteries ? 'full' : 'empty'}"></span>`).join('');
       if (lost) this.flash(this.el.batteries);
+    }
+    // Speedometer (km/h), shown during a run; rounded to 5 so it doesn't flicker.
+    const kmh = w.phase === 'running' ? Math.round((w.speed * 3.6) / 5) * 5 : -1;
+    if (kmh !== this.lastKmh) {
+      this.lastKmh = kmh;
+      this.speedo.classList.toggle('show', kmh >= 0);
+      if (kmh >= 0) this.speedo.textContent = `${kmh} km/h`;
     }
     // Hover button: shown during a run, pips = banked charges, dim when empty, glowing while hovering.
     const hv = `${w.phase === 'running'}|${w.hoverCharges}|${w.power === 'hover'}`;

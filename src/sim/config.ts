@@ -5,7 +5,11 @@ export const LANE_CHANGE_SPEED = 22; // m/s sideways (one lane in ~0.11 s: snapp
 
 export const SPEED_START = 18; // m/s (was 12: felt slow next to Subway Surfers, which starts at ~half its top speed)
 export const SPEED_MAX = 36; // m/s (~130 km/h), the cap; Subway Surfers' top is estimated ~150 km/h
-export const SPEED_TAU = 55; // s; ~95% of the way to the cap after 3 * TAU (~2.75 min)
+// Speed climbs in gear-like steps, like Subway Surfers' steady per-minute increases, so a kid feels each one:
+// every SPEED_STEP_TIME s it surges up over SPEED_SURGE s, until SPEED_MAX after SPEED_STEPS steps (~3 min).
+export const SPEED_STEP_TIME = 20; // s between speed-ups
+export const SPEED_STEPS = 9; // steps from start to cap ((36-18)/9 = +2 m/s each)
+export const SPEED_SURGE = 2; // s to ease into the next step
 
 export const JUMP_VELOCITY = 10; // m/s (snappier arc: 0.71 s airtime, 1.8 m peak)
 export const GRAVITY = 28; // m/s²

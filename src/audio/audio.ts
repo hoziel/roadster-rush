@@ -353,6 +353,12 @@ export class GameAudio {
     this.evSrc = this.playSample('ev-accel', 0.55, { duck: false }) ?? undefined;
   }
 
+  /** Speed-up step: a short surge from the middle of the acceleration clip. */
+  faster(): void {
+    this.evSrc?.stop();
+    this.evSrc = this.playSample('ev-accel', 0.4, { from: 0.8, rate: 1.1, duck: false }) ?? undefined;
+  }
+
   /** Ludicrous: the top of the acceleration clip, sped up, with the power-up chime. */
   ludicrous(): void {
     this.powerUp();

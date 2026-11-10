@@ -54,3 +54,7 @@
 .hover-btn.empty { filter: grayscale(1) brightness(.8); opacity: .6; }
 .hover-btn.active { animation: hover-pulse .5s ease-in-out infinite alternate; }
 @keyframes hover-pulse { to { box-shadow: 0 6px 0 #4b2a9e, 0 0 34px #d9c4ff; } }
+
+/* Speedometer, bottom-left (the hover button is bottom-right). */
+.speedo { position: absolute; left: calc(env(safe-area-inset-left) + 16px); bottom: calc(env(safe-area-inset-bottom) + 34px); font-size: 20px; font-weight: 700; display: none; font-variant-numeric: tabular-nums; }
+.speedo.show { display: block; }

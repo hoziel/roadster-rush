@@ -115,6 +115,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
         case 'power': if (world.lastPower === 'ludicrous') audio.ludicrous(); else audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
         case 'battery': audio.battery(); hud.powerToast('supercharger'); break;
+        case 'faster': audio.faster(); hud.toast('Faster!', '#ffd23f'); break;
         case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
         case 'tunnel': audio.tunnel(); hud.toast('Tube tunnel!', '#ff4fd8'); break;

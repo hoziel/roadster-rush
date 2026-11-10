@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SPEED_MAX, SPEED_START } from '../src/sim/config';
+import { SPEED_MAX, SPEED_START, SPEED_STEPS, SPEED_STEP_TIME, SPEED_SURGE } from '../src/sim/config';
 import { speedAt } from '../src/sim/speed';
 import { SLOT_ANGLE, wrapSlot } from '../src/sim/tunnel';
 import { createWorld, jump, laneX, start, steer, step, type World } from '../src/sim/world';
@@ -21,6 +21,12 @@ describe('speed', () => {
   it('starts at SPEED_START and climbs', () => {
     expect(speedAt(0)).toBe(SPEED_START);
     expect(speedAt(60)).toBeGreaterThan(speedAt(30));
+  });
+  it('steps up every SPEED_STEP_TIME and keeps climbing for minutes', () => {
+    expect(speedAt(SPEED_STEP_TIME - 0.1)).toBe(SPEED_START);
+    expect(speedAt(SPEED_STEP_TIME * 2 + 3)).toBeGreaterThan(speedAt(SPEED_STEP_TIME + 3));
+    expect(speedAt(150)).toBeGreaterThan(speedAt(120));
+    expect(speedAt(SPEED_STEP_TIME * SPEED_STEPS + SPEED_SURGE)).toBeCloseTo(SPEED_MAX, 6);
   });
   it('never exceeds the cap', () => {
     expect(speedAt(100000)).toBeLessThanOrEqual(SPEED_MAX);
