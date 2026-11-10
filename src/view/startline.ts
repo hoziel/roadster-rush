@@ -9,10 +9,10 @@ import { buildPoliceRoadster, type PoliceRoadsterParts } from './policeRoadster'
 
 /** Billboards, one each side of the road (start-line metres: z < 0 is ahead of the parked car). */
 const BILLBOARDS = [
-  { x: 11, z: -30, rotY: -0.35 },
-  { x: -11, z: -30, rotY: 0.35 },
+  { x: 7.6, z: -21, rotY: -0.6 },
+  { x: -7.6, z: -21, rotY: 0.6 },
 ];
-const BILLBOARD_SCALE = 3.2; // ~7.7 x 10 m picture, top ~15 m up
+const BILLBOARD_SCALE = 2.8; // ~6.7 x 9 m picture, top ~13 m up
 const POLICE = [
   { x: 7.2, z: -52, rotY: -0.6 },
   // (-7.4, -60) is the hover police car's spot: policePatrol.ts.
