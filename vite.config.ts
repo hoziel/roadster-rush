@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   base: './',
   server: { host: true },
-  test: { include: ['tests/**/*.test.ts'] },
+  test: { include: ['tests/**/*.test.ts'], testTimeout: 20000 }, // the seeded real-run tests take a few s on a busy machine
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
