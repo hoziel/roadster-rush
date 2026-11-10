@@ -1,0 +1,16 @@
+/* "Save to Home Screen" pill (menus only) and the iOS how-to sheet. */
+.install-pill { display: none; align-self: center; align-items: center; gap: 2px; margin: 0 auto 8px; width: max-content;
+  pointer-events: auto; background: rgba(42, 22, 80, .82); border-radius: 999px; padding: 4px 4px 4px 6px; box-shadow: 0 3px 10px rgba(20, 8, 40, .35); }
+.install-pill.show { display: flex; }
+.install-pill button { border: 0; background: none; color: #fff6e0; font: 600 14px 'Fredoka', ui-rounded, system-ui, sans-serif; cursor: pointer; padding: 6px 8px; }
+.install-pill .ip-x { opacity: .7; font-size: 13px; }
+.install-sheet { position: absolute; inset: 0; display: none; align-items: flex-end; justify-content: center; background: rgba(20, 8, 40, .45); pointer-events: auto; z-index: 20; }
+.install-sheet.show { display: flex; }
+.is-card { width: min(380px, calc(100% - 24px)); margin-bottom: calc(env(safe-area-inset-bottom) + 14px); background: #fff9ee; color: #3a1440; border-radius: 24px; padding: 18px 20px 16px;
+  font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; box-shadow: 0 6px 0 #c9a37a, 0 10px 24px rgba(20, 8, 40, .35); }
+.is-card h2 { margin: 0 0 8px; font-size: 22px; }
+.is-card ol { margin: 0 0 8px; padding-left: 22px; font-size: 17px; line-height: 1.5; }
+.is-card p { margin: 0 0 12px; font-size: 14px; opacity: .8; }
+.is-card .is-ico { display: inline-block; min-width: 1.2em; text-align: center; font-weight: 700; color: #2f7de1; }
+.is-card button { width: 100%; min-height: 48px; border: 0; border-radius: 16px; background: linear-gradient(180deg, #ffd23f, #f5b81c); color: #3a1440;
+  font: 700 20px 'Fredoka', ui-rounded, system-ui, sans-serif; box-shadow: 0 4px 0 #c98f12; cursor: pointer; }

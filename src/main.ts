@@ -4,6 +4,7 @@ import { storage } from './storage';
 import { driverById, fullUrl } from './ui/drivers';
 import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
+import { InstallNudge } from './ui/install';
 import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
@@ -54,6 +55,7 @@ view.style.set(lookOf(storage.shop));
 view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name, storage.shop.driver);
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
+new InstallNudge(document.getElementById('ui')!);
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
 // A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
 document.getElementById('ui')!.addEventListener('click', (e) => {
