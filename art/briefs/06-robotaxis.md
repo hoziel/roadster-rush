@@ -1,4 +1,4 @@
-# Brief 06: Austin robotaxis, Cybercab and Waymo (issue #45)
+# Brief 06: Austin robotaxis, Cybercab and Waymo, plus the Cybertruck (issue #45)
 
 Read `00-style-guide.md` and look at your `01` player roadster and `02` police roadster first. These two cars join the traffic, so they need the same toy-like, chunky, readable finish.
 
@@ -16,11 +16,17 @@ Read `00-style-guide.md` and look at your `01` player roadster and `02` police r
   - The sensor pods on the front fenders and mirrors, and the rear-corner sensors.
   - The teal/blue-green accent where the real car has it.
 
+- **Cybertruck** (added by Ofir):
+  - The angular stainless-steel pickup: flat brushed-steel panels and the sharp triangular roofline.
+  - A full-width light bar front and back, the dark glass band, and the covered bed.
+  - Big wheels with aero covers, and the flared wheel arches.
+  - About 5.5 m long, 2.0 m wide, 1.8 m tall. It drives in traffic like the other cars; I'll pick whether it counts as a car or a truck in the rules.
+
 **Brands:** no logos, badges, wordmarks or text on either car. The shapes and colours carry the likeness. The names are fine while the repo is private, and we rename them before publishing.
 
 **Technical (they are traffic, drawn many times as instances):**
 - One Three.js builder per car, in TypeScript, like `police-roadster.ts`:
-  - `buildCybercab()` and `buildWaymo()`.
+  - `buildCybercab()`, `buildWaymo()` and `buildCybertruck()`.
   - Each returns a `THREE.Group`, plus `dispose()`.
   - Use only primitives and merged geometry. No downloaded models or textures.
 - Units and orientation:
@@ -35,6 +41,6 @@ Read `00-style-guide.md` and look at your `01` player roadster and `02` police r
 
 **Must show (PNGs):**
 - 3/4 front, side, back and front views of each car.
-- A gameplay shot: both in traffic, seen from the chase camera behind the player roadster at sunset (like your `03-austin-stretch` shots).
+- A gameplay shot: all three in traffic, seen from the chase camera behind the player roadster at sunset (like your `03-austin-stretch` shots).
 
-**Deliver:** `art/mockups/06-robotaxis/`: `cybercab.ts`, `waymo.ts`, a preview, the PNGs, and `notes.md` (triangles, meshes, materials, bounds, palette). Then comment `[codex → claude]` on the issue and set Turn = Claude.
+**Deliver:** `art/mockups/06-robotaxis/`: `cybercab.ts`, `waymo.ts`, `cybertruck.ts`, a preview, the PNGs, and `notes.md` (triangles, meshes, materials, bounds, palette). Then comment `[codex → claude]` on the issue and set Turn = Claude.
