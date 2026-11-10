@@ -8,11 +8,12 @@ import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
 import {
-  POWER_TIME, createWorld, hover, jump, policeClose, queueConstruction, queueLonghorns, queuePoliceStop, queueSwarm, queueTunnel, score,
+  POWER_TIME, createWorld, hover, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
+  queueSwarm, queueTunnel, score,
   slam, start, steer, step,
 } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
-import { HOVER_CHARGES_MAX } from './sim/config';
+import { HOVER_CHARGES_MAX, LANE_WIDTH } from './sim/config';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
 const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn't restart instantly
@@ -98,7 +99,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
-  else if (action === 'down') slam(world);
+  else if (action === 'down') { if (slam(world)) audio.duckWhoosh(); }
   else if (action === 'hover') { if (hover(world)) audio.hover(); }
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
@@ -133,6 +134,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'police-stop': hud.toast('Police stop!', '#54bdeb'); break;
         case 'roadwork': hud.toast('Road work!', '#ff8a1a'); break;
         case 'longhorns': hud.toast('Longhorns crossing!', '#ffd23f'); break;
+        case 'highroad': hud.toast('Ramp up!', '#4cff6a'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
     }
@@ -177,9 +179,14 @@ if (debug) {
     construction: () => queueConstruction(world),
     /** Lay a longhorns crossing at the next free chunk slot. */
     longhorns: () => queueLonghorns(world),
+    /** Lay a high road (trailers with ramps, sometimes a train) at the next free chunk slot. */
+    highroad: () => queueHighroad(world),
+    /** Make the next cone chunk one with an overhead beam to duck under. */
+    overhead: () => queueOverhead(world),
     give: (k: 'ludicrous' | 'autopilot' | 'hover') => { world.power = k; world.powerTime = POWER_TIME[k]; world.lastPower = k; hud.powerToast(k); },
   };
-  // Headless screenshots: ?debug&go=police|construction|longhorns[&wait=ms][&tod=0.6][&drive=m] starts a run after `wait`
+  // Headless screenshots: ?debug&go=police|construction|longhorns|highroad|overhead[&wait=ms][&tod=0.6][&drive=m][&lane=0-2|&ride=trailer|overhead][&time=s][&duck]
+  // starts a run after `wait`
   // with that piece laid in the first chunk slot (40 m ahead).
   const q = new URLSearchParams(location.search);
   const go = q.get('go');
@@ -188,13 +195,26 @@ if (debug) {
     hud.hideCard();
     document.getElementById('card')?.style.setProperty('transition', 'none');
     if (q.has('tod')) world.dayOffset = offsetFor(world, Number(q.get('tod')));
+    if (q.has('time')) world.time = Number(q.get('time')); // &time=s: as far into a run (speed, harder chunks)
     if (go === 'police') queuePoliceStop(world);
     else if (go === 'construction') queueConstruction(world);
     else if (go === 'longhorns') queueLonghorns(world);
+    else if (go === 'highroad') queueHighroad(world);
+    else if (go === 'overhead') queueOverhead(world);
+    // &lane=n: drive in that lane (the sim drives straight, so this picks which piece the car meets);
+    // &ride=trailer|overhead: in the lane of the first one laid.
+    const ride = q.get('ride');
+    if (ride) {
+      step(world, SIM_DT); // lays the first chunk
+      const first = world.entities.filter((e) => e.alive && e.kind === ride).sort((a, b) => a.s - b.s)[0];
+      if (first) q.set('lane', String(first.lane));
+    }
+    if (q.has('lane')) { world.lane = Number(q.get('lane')); world.x = (world.lane - 1) * LANE_WIDTH; }
     // &drive=m: drive that far straight away (sim only) and freeze there, for a still shot.
     const drive = Number(q.get('drive') ?? 0);
     if (drive > 0) {
       for (let i = 0; i < 100000 && world.distance < drive && world.phase === 'running'; i++) if (step(world, SIM_DT).includes('puncture')) view.puncture();
+      if (q.has('duck')) slam(world); // &duck: freeze mid-duck
       paused = true;
     }
     stampDraws = true; // the fps overlay needs real frame time; stamp the draw calls every frame for headless shots

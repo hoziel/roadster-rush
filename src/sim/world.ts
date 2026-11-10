@@ -10,7 +10,7 @@ import {
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
   PLAYER_HALF_LENGTH, POLICE_FIRST_AT, POLICE_GAP, WORK_FIRST_AT, WORK_GAP, WORK_RUN, ZONE_AFTER_BLOCK, ZONE_SPACING,
   ZONE_WARN, LONGHORN_FIRST_AT, LONGHORN_GAP, LONGHORN_HIT_X,
-  DECK_CLIMB, DECK_STEP, DECK_HEIGHT, DUCK_TIME, HIGHROAD_FIRST_AT, HIGHROAD_GAP, OVERHEAD_TOP,
+  DECK_CLIMB, DECK_STEP, DECK_HEIGHT, DUCK_TIME, HIGHROAD_FIRST_AT, HIGHROAD_GAP, OVERHEAD_TOP, RAMP_LENGTH,
 } from './config';
 import { deckLength, deckOffset, deckSurface, isDeck, underOverhead, type DeckKind } from './highroad';
 import { herdLane } from './longhorns';
@@ -349,6 +349,17 @@ function clears(w: World, e: Entity): boolean {
 
 /** How high a deck piece stands `r` m in front of its back end (the car's front reaches it from r = -1): the ramp, else the deck. */
 const wallHeight = (k: DeckKind, r: number): number => (k === 'flatbed' ? DECK_HEIGHT : deckSurface(k, Math.max(0, r)));
+
+/** Slope (rise per metre) of the ramp the car is driving up, 0 if it isn't on one (for the view's nose-up tilt). */
+export function rampSlope(w: World): number {
+  if (w.tube || w.y > w.floor + 1e-6 || w.floor <= 0 || w.floor >= DECK_HEIGHT) return 0;
+  for (const e of w.entities) {
+    if (!e.alive || e.kind !== 'trailer' || e.bumped !== undefined || !sideOverlap(w, e)) continue;
+    const r = deckOffset(e.kind, e.s, w.distance);
+    if (r > 0 && r < RAMP_LENGTH && Math.abs(deckSurface(e.kind, r) - w.y) < 0.05) return DECK_HEIGHT / RAMP_LENGTH;
+  }
+  return 0;
+}
 
 /** Is the car level with `e` across the road (or around the tube's ring)? */
 function sideOverlap(w: World, e: Entity): boolean {

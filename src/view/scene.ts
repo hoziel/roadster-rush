@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SPEED_START, TUNNEL_RADIUS } from '../sim/config';
 import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
-import { laneX, policeClose, type World } from '../sim/world';
+import { isDucking, laneX, policeClose, rampSlope, type World } from '../sim/world';
 import { buildRoadster, type RoadsterParts } from './roadster';
 import { buildPoliceRoadster } from './policeRoadster';
 import { CarStyle } from './carStyle';
@@ -18,6 +18,7 @@ import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { HazardView } from './roadwork';
+import { HighroadView } from './highroad';
 
 const MAX_COINS = 160;
 const MAX_CONES = 80;
@@ -32,6 +33,9 @@ const C_BLACK = new THREE.Color('#000000');
 const CAR_SCALE = 0.9; // both roadsters: ~1.7 m wide in 2.5 m lanes
 const SIREN_HZ = 2.5; // police light-bar alternation
 const FLAT_TIME = 1.0; // s of flat-tyre wobble after a puncture
+const DUCK_SQUASH = 0.45; // ducking flattens the car to this much less of its height (and a little wider)
+const DUCK_EASE = 22; // 1/s: how fast it squashes down and pops back up
+const CAM_DECK_LIFT = 0.7; // the camera rises this fraction of the floor height (riding a deck or a roof)
 
 export const POWER_COLORS: Record<PowerKind, string> = {
   ludicrous: '#ff4fd8',
@@ -89,6 +93,10 @@ export class GameView {
   private shake = 0;
   private flatT = 0; // s left of the flat-tyre wobble after a puncture
   private hazards = new HazardView();
+  private highroad = new HighroadView();
+  private duckK = 0; // 0..1 eased squash while ducking
+  private pitch = 0; // nose up (rad) while climbing a ramp
+  private camLift = 0; // eased camera rise with the floor
   private dayNight: DayNight;
   private nightLights = new NightLights();
   private landmarks: Landmarks;
@@ -166,7 +174,7 @@ export class GameView {
     this.puffFrame.position.y = TUBE_CY;
     this.scene.add(this.traffic.group);
     void this.traffic.load();
-    this.scene.add(this.hazards.group);
+    this.scene.add(this.hazards.group, this.highroad.group);
     void this.hazards.load();
     this.scene.add(this.nightLights.group, this.landmarks.group, this.batSwarm.group, this.buildings.group, this.puffFrame, this.tunnel.group);
 
@@ -250,7 +258,9 @@ export class GameView {
     this.carMount.rotation.z = ang;
     this.puffFrame.rotation.z = ang;
     car.position.set(FLIP_PIVOT * Math.sin(roll), w.y + FLIP_PIVOT * (1 - Math.cos(roll)), 0);
-    car.rotation.set(w.y > w.floor && roll === 0 ? -0.06 : 0, 0, lean + roll);
+    // Nose up while rolling up a ramp, level again on the deck.
+    this.pitch += (Math.atan(rampSlope(w)) - this.pitch) * Math.min(1, dt * 18);
+    car.rotation.set((w.y > w.floor && roll === 0 ? -0.06 : 0) + this.pitch, 0, lean + roll);
     if (this.flatT > 0) {
       // Flat tyre: sag onto the front-left wheel and wobble, easing off; a thin hiss of air keeps leaking.
       this.flatT = Math.max(0, this.flatT - dt);
@@ -262,7 +272,10 @@ export class GameView {
     }
     this.puffs.update(dt, w.phase === 'running' ? w.speed : 0);
     this.honkBounce = Math.max(0, this.honkBounce - dt * 4);
-    car.scale.set(CAR_SCALE, CAR_SCALE * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), CAR_SCALE);
+    // Ducking (swipe down): squash flat and a little wider, then pop back up.
+    this.duckK += ((isDucking(w) && w.phase === 'running' ? 1 : 0) - this.duckK) * Math.min(1, dt * DUCK_EASE);
+    const squash = 1 - DUCK_SQUASH * this.duckK, widen = 1 + 0.12 * this.duckK;
+    car.scale.set(CAR_SCALE * widen, CAR_SCALE * squash * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), CAR_SCALE * widen);
     // Blink during the post-crash grace period.
     car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
     // Glow in the power-up's color.
@@ -294,8 +307,9 @@ export class GameView {
     this.shake = Math.max(0, this.shake - dt);
     const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
     const hov = w.power === 'hover' ? 0.6 : 0;
-    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + hov, 9.5);
-    this.camTarget.set(w.x * 0.4, 1, -12);
+    this.camLift += ((w.tube ? 0 : w.floor * CAM_DECK_LIFT) - this.camLift) * Math.min(1, dt * 4);
+    this.camera.position.set(w.x * 0.6 + sx, 5 + sy + hov + this.camLift, 9.5);
+    this.camTarget.set(w.x * 0.4, 1 + this.camLift, -12);
     this.camera.up.set(0, 1, 0);
     if (k > 0) {
       // Inside the tube: the camera sits behind the car in the car's rolled frame, so the car stays
@@ -334,6 +348,7 @@ export class GameView {
     this.tunnel.update(w, this.dayNight.lights, time);
     this.traffic.update(w, this.dayNight.lights, time, !this.showcase);
     this.hazards.update(w, this.dayNight.lights, time, !this.showcase);
+    this.highroad.update(w, !this.showcase);
 
     let nc = 0, nk = 0, np = 0;
     for (const e of w.entities) {

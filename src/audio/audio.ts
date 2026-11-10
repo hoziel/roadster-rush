@@ -417,6 +417,12 @@ export class GameAudio {
     this.sweep(260, 1500, 0.45, 0.11);
   }
 
+  /** Duck (swipe down): a quick downward whoosh as the car squashes low. */
+  duckWhoosh(): void {
+    this.whoosh(0.28, 2400, 600, 0.32, 0, 1.6);
+    this.sweep(520, 160, 0.16, 0.06);
+  }
+
   /** Touchdown after a kickflip: a soft thump and a puff of gas. */
   land(): void {
     this.sweep(130, 45, 0.18, 0.4, 'sine');
