@@ -13,7 +13,7 @@ Ofir asked for a few super-polished game mockups covering the opening and in-gam
 | `03-thruster-jump.jpg` | Lake/bridge stretch, red roadster in the air, broad white thruster jets and expanding vapor, safe obstacle clearance, coin arc and compact Air Time celebration. |
 | `04-neon-chase.jpg` | Bright readable twilight, neon storefront icons/string lights, coins and cones, two remaining batteries and the friendly police roadster following in a small rear-view mirror. |
 
-Every image is **720×1560, exactly 9:19.5**, JPEG quality 95 with 4:4:4 color; all are below 0.5 MB. `index.html` is a lightweight review gallery, available on Vite at `/art/mockups/03-austin-stretch/`.
+Every screen is **720×1560, exactly 9:19.5**, JPEG quality 95 with 4:4:4 color; all are below 0.5 MB. `index.html` is a lightweight review gallery, available on Vite at `/art/mockups/03-austin-stretch/`. `gallery.jpg` is a 1280×967 browser screenshot showing all four screens together.
 
 ## Visual system
 
