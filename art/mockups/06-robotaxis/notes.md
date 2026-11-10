@@ -2,6 +2,8 @@
 
 Native Three.js traffic studies for issue #45. These are actual model renders, made from primitives and authored geometry. No downloaded meshes, photo textures, logos, badges or lettering are included. The shapes are simplified interpretations of reference photos, not traced replicas.
 
+**Color direction confirmed by Ofir, November 10:** the Cybercab is gold. Preserve body `#d3b66e` and gold aero covers `#cbb26e` when integrating; the older production champagne-silver palette is superseded. The existing Revision 1 model and renders already use these gold colors.
+
 ## Deliverables
 
 - `cybercab.ts`: `buildCybercab()`, gold two-seat fastback with a low crowned nose, dark canopy, solid rear sail, aero wheel covers and continuous light bars. Doors are closed and fixed.
