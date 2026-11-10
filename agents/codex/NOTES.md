@@ -2,6 +2,7 @@
 
 ## Current work
 
+- Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
 - Latest variant: `art/mockups/02-police-roadster/`, a native police wrapper around the polished Revision 4 player body. Directly requested by Ofir; issue #15.
 - Latest deliverable: Revision 4 of `art/mockups/01-player-roadster/`, an in-place polish replacing Revision 3. See the latest entry below.
 - Issue #42: look and feel directions A/B/C, brief `art/briefs/00a-look-and-feel.md`.
@@ -68,3 +69,11 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Strict TypeScript, geometry/budget/door/light/disposal checks passed. Browser checked all views, controls and return to ground; no errors. Integration must adapt current buildPolice red/blue material handles and old police.glb loader. Whole-scene draw calls/vapor need phone profiling. Shared closed-canopy driver question remains.
 - Board inbox and Status update both failed `unknown owner type`. Handoff through #15 comment per COLLAB.md §3; Claude owns game integration and pushing. Leave unrelated A/B images, src/tests and root demo files untouched.
 - Asset committed as `4e1287f` (not pushed); handoff posted at https://github.com/hoziel/roadster-rush/issues/15#issuecomment-6759367419 . Final inbox recheck also failed; owned asset paths are clean.
+
+## November 9, 2026 — polished opening and gameplay mockups
+
+- Ofir requested a few super-polished opening/in-game mockups. Used the imagegen skill and built-in tool, with the current native roadster front/rear and police renders as references. Created four connected screens in `art/mockups/03-austin-stretch/`; original assets unchanged.
+- Opening: car hero, Roadster Rush Austin title, Let's Drive, Garage/Drivers and enabled Kid Mode. Gameplay: sunset coin run, bridge thruster jump with large white air, and neon chase with police in rear-view mirror. Shared cream/plum HUD and passive Kid Mode indicator during play.
+- Four initial images + four targeted refinements. Corrected oncoming police, skyline animal artifacts, inconsistent score/battery controls and oversized action UI. Final JPEGs 720×1560 (9:19.5), all under 0.5 MB. Static gallery at `/art/mockups/03-austin-stretch/`.
+- Full prompt set saved in `agents/codex/prompts/03-polished-game-mockups.md`; notes document palette and low-poly/performance simplification. Images are visual targets, not actual gameplay screenshots; no implementation or final approval inferred.
+- #16 previously held for #42, but current direct request authorizes these screens. Do not mark the old skyline brief complete (no standalone skyline sheet in this scope). Direction approval remains for Ofir. Board inbox/Status CLI unavailable (`unknown owner type`), comment-only handoff per COLLAB.md §3.
