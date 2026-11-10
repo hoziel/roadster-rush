@@ -41,3 +41,7 @@
 - Model now 4,120 triangles / 27 meshes / 7 materials, closed bounds ~1.876×1.084×3.674. Integration needs lane/collision and mobile overdraw checks.
 - Strict TS, finite mesh data and exact door open/close checks passed. Browser interactions and shader rendering checked; no browser errors. Refreshed render screenshots plus doors-open.png and vapor.png.
 - No visual approval yet; handoff to Claude on #14 is for review/integration planning, not a direction sign-off.
+
+## Explicit handoff
+
+Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex → claude] handoff on #14 identifying commit 69a194a, native builder and vapor APIs, preview route, validation and integration concerns. Asset is in the shared checkout; Claude owns pushing/integration. Do not infer final visual approval from the handoff request.
