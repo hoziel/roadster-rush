@@ -18,8 +18,9 @@ const PLAZA: [number, number] = [14, 22];
 const JITTER: [number, number] = [0.92, 1.08]; // per-building width/scale jitter
 const POOL_MARGIN = 2; // spare instances per model on top of the worst case
 
-// Warm sunset Austin palette (white walls take one per building).
-const PALETTE = ['#d9734e', '#f2e3c6', '#3fa7a0', '#e0b03a', '#f08aa8', '#b49ad8', '#e8a77a', '#7cc3b0'];
+// Downtown Austin palette (white walls take one per building): limestone, red brick, terracotta,
+// the Capitol's pink granite, sandstone, a few painted 6th Street fronts.
+const PALETTE = ['#eadfc6', '#b5523b', '#c96f4a', '#c98f80', '#d8c39a', '#f2ece0', '#9c4a3c', '#3fa7a0', '#e0b03a', '#8fa6b8'];
 const GLOW = '#ffc56e'; // window light at night
 const GLOW_GAIN = 4; // the kit's panes are small: push them hard so they read through the night fog
 const LIT_MIN = 0.5; // dimmest per-building night glow
@@ -34,10 +35,9 @@ const VARIANTS: Variant[] = [
   { file: 'building-i.glb', weight: 0.13, scale: 10.5, stretchY: [0.95, 1.1] },
   { file: 'building-l.glb', weight: 0.12, scale: 10.5, stretchY: [0.95, 1.1] }, // green roof cap
   { file: 'building-n.glb', weight: 0.09, scale: 10.5, stretchY: [0.95, 1.05] }, // wide mid-rise
-  { file: 'skyscraper-a.glb', weight: 0.1, scale: 10, stretchY: [0.9, 1.15] },
-  { file: 'skyscraper-e.glb', weight: 0.08, scale: 10, stretchY: [0.85, 1.05] },
-  { file: 'house-d.glb', weight: 0.12, scale: 9, stretchY: [1, 1.1] }, // bungalow-ish houses
-  { file: 'house-h.glb', weight: 0.1, scale: 9, stretchY: [1, 1.15] },
+  // Downtown is towers among the low historic fronts (no houses): more and taller glass towers.
+  { file: 'skyscraper-a.glb', weight: 0.2, scale: 10, stretchY: [1.1, 1.6] },
+  { file: 'skyscraper-e.glb', weight: 0.18, scale: 10, stretchY: [1.0, 1.4] },
 ];
 
 interface Model { variant: Variant; geometry: THREE.BufferGeometry; map: THREE.Texture | null; width: number }

@@ -19,14 +19,14 @@ interface PropSpec {
 
 // Roadside props. Instanced so each model part is one draw call however many copies there are.
 const PROPS: PropSpec[] = [
-  { file: 'cactus.glb', count: 16, height: 2.2, x: [7, 16] },
-  { file: 'cactus-flowers.glb', count: 10, height: 1.4, x: [6.5, 12] },
-  { file: 'food-truck.glb', count: 2, height: 3.0, x: [8.5, 9.5], faceRoad: true },
-  // Kenney Nature Kit and City Kit Roads (CC0).
-  { file: 'tree-oak.glb', count: 8, height: 5.5, x: [10.5, 15], lambert: true },
-  { file: 'tree-palm.glb', count: 4, height: 7.5, x: [11, 15], lambert: true },
-  { file: 'rock-tall.glb', count: 6, height: 1.3, x: [7.5, 14], lambert: true },
-  { file: 'street-light.glb', count: 6, height: 6.5, x: [8.2, 8.4], faceRoad: true, turn: Math.PI, lambert: true },
+  // Downtown Austin (after Congress Ave / 6th St references): live oaks lining the sidewalks, street lights
+  // on the curb, rental scooters, the odd food truck. No desert props downtown.
+  // Kenney Nature Kit, City Kit Roads and Car Kit (CC0).
+  { file: 'tree-oak.glb', count: 26, height: 6.4, x: [6.6, 7.6], lambert: true }, // street trees, a row each side
+  { file: 'tree-oak.glb', count: 8, height: 7.5, x: [11, 15], lambert: true }, // plazas behind
+  { file: 'street-light.glb', count: 10, height: 6.5, x: [5.3, 5.4], faceRoad: true, turn: Math.PI, lambert: true },
+  { file: 'scooter.glb', count: 6, height: 1.1, x: [8.4, 9.6] },
+  { file: 'food-truck.glb', count: 2, height: 3.0, x: [10, 11], faceRoad: true },
 ];
 
 /**

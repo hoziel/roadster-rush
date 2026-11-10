@@ -32,6 +32,7 @@ const MAX_CONES = 80;
 const MAX_POWERS = 8;
 const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from the start-screen orbit)
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
+const WALK_WIDTH = 6; // m of sidewalk each side (street trees, lights and scooters stand on it)
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
 const POLICE_HOVER_Z = 2; // tailing a hovering player: one lane over, a little behind (flanking, not covering the car)
@@ -100,6 +101,7 @@ export class GameView {
   private powers: THREE.InstancedMesh;
   private laneTex: THREE.CanvasTexture;
   private sideTex: THREE.CanvasTexture;
+  private walkTex!: THREE.CanvasTexture;
   private dummy = new THREE.Object3D();
   private color = new THREE.Color();
   private raycaster = new THREE.Raycaster();
@@ -167,6 +169,19 @@ export class GameView {
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.02, -ROAD_LENGTH / 2 + 125);
     this.scene.add(ground);
+    // Sidewalks along both sides (lighter concrete, slab joints) and a curb at the road's edge.
+    this.walkTex = makeWalkTexture();
+    this.walkTex.repeat.set(1, ROAD_LENGTH / 2.5);
+    const walkMat = new THREE.MeshLambertMaterial({ map: this.walkTex });
+    const curbMat = new THREE.MeshLambertMaterial({ color: '#d8d2c6' });
+    for (const side of [-1, 1]) {
+      const walk = new THREE.Mesh(new THREE.PlaneGeometry(WALK_WIDTH, ROAD_LENGTH), walkMat);
+      walk.rotation.x = -Math.PI / 2;
+      walk.position.set(side * (ROAD_WIDTH / 2 + WALK_WIDTH / 2), 0.04, -ROAD_LENGTH / 2 + 125);
+      const curb = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.14, ROAD_LENGTH), curbMat);
+      curb.position.set(side * (ROAD_WIDTH / 2 + 0.05), 0.06, -ROAD_LENGTH / 2 + 125);
+      this.scene.add(walk, curb);
+    }
 
     this.car = buildRoadster('#e8344e', { liveDoors: true });
     this.car.group.scale.setScalar(CAR_SCALE);
@@ -453,6 +468,7 @@ export class GameView {
     this.scenery.update(w.distance);
     this.laneTex.offset.y = (w.distance / 8) % 1;
     this.sideTex.offset.y = (w.distance / 10) % 1;
+    this.walkTex.offset.y = (w.distance / 2.5) % 1;
 
     this.phase = dayPhase(w);
     this.dayNight.update(this.phase);
@@ -595,16 +611,33 @@ function makeLaneTexture(): THREE.CanvasTexture {
   return t;
 }
 
+/** Downtown pavement: warm grey concrete paving slabs with darker joints (was desert sand). */
 function makeSideTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 64;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#c9a26b';
+  g.fillStyle = '#b9b0a2';
   g.fillRect(0, 0, 64, 64);
-  g.fillStyle = '#b88f5a';
-  g.fillRect(0, 0, 64, 32);
+  g.fillStyle = '#b1a798';
+  g.fillRect(0, 0, 32, 32); g.fillRect(32, 32, 32, 32);
+  g.fillStyle = '#9b9183';
+  g.fillRect(0, 0, 64, 2); g.fillRect(0, 0, 2, 64);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/** Sidewalk: pale concrete with a joint line across every slab and a darker tree-pit strip near the curb. */
+function makeWalkTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 32;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#d3cbbd'; g.fillRect(0, 0, 128, 32);
+  g.fillStyle = '#c4bcad'; g.fillRect(0, 0, 128, 2); // joint
+  g.fillStyle = '#c9c1b2'; g.fillRect(0, 0, 3, 32); g.fillRect(125, 0, 3, 32);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.ClampToEdgeWrapping; t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
