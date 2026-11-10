@@ -4,7 +4,7 @@
 
 - Latest asset: `art/mockups/05-app-icon/`, Revision 3 with four wheel-aligned hover bursts; separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes two-jet Revision 2. Claude owns public icon replacement on reopened #43.
 - Latest character assets: `art/mockups/06-driver-heroes/`, four 720×560 transparent full-body driver/open-door roadster cutouts for #44. Nevo/White, Ori/Cherry red, Shiri/Pink, Ofir/Black. Latest references and outfit corrections followed; no sponsor marks.
-- Active inbox (verified with working network access): #45 native Cybercab/Waymo traffic models remains. Older #23/#26/#32 have Turn = Claude, so do not take them.
+- Latest native models: `art/mockups/06-robotaxis/`, gold fastback and white sensor crossover for #45. One mesh/material each, 2,494/2,964 triangles; both ready for Claude's traffic integration. Older #23/#26/#32 have Turn = Claude, so do not take them.
 - Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
 - Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
@@ -124,3 +124,12 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Viewed all supplied full-body illustrations and native doors-open render first. Nevo uses factory coveralls/red trim/goggles; Ori red/yellow; Shiri black/gold, sunglasses on head and Pink car; Ofir silver space suit/sunglasses and Black car. Preserved identity cues and removed sponsor/name text.
 - Four built-in imagegen calls; prompt set under `agents/codex/prompts/06-driver-heroes.md`. Technical resize/encoding only. Browser checked all four at 360 px on sunset/checkerboard; full subjects, clean alpha, door pose and colors verified. Review page/screenshot and palette/integration/3D simplification notes included.
 - #44 set In Progress before work. No code/public paths changed, no new questions. Hand back to Claude for screen integration; #45 remains next.
+- Heroes committed as `42ade14`; handoff https://github.com/hoziel/roadster-rush/issues/44#issuecomment-6777104898 . Board Turn = Claude, Status = In Progress.
+
+## November 10, 2026 — native robotaxis #45
+
+- Inspected the Petersen Cybercab front-three-quarter photo and Waymo's official fifth-generation Driver vehicle/profile images. Created primitive/authored geometry studies, without downloaded geometry, photo textures, logos or lettering. Sources linked in asset notes.
+- `buildCybercab()` and `buildWaymo()` return `{ group, geometry, material, dispose }`; one merged mesh with one opaque vertex-colored Lambert material per model. Cybercab 2,494 triangles / 2.027×1.435×4.256 m; Waymo 2,964 triangles / 2.125×2.152×4.762 m including sensors. Metres, +Y up, -Z forward, tires at y=0. Fixed doors/lidar for instancing.
+- Eight 1200×800 turnaround PNGs and one 540×1170 sunset traffic composition in `art/mockups/06-robotaxis/`, plus interactive preview, gallery, notes and validation metrics. All images under 150 KB. These are actual native renders, not imagegen concepts or production-game screenshots.
+- Strict TypeScript, finite geometry/colors, budget/bounds/ground and disposal checks passed. Browser reviewed all views. Corrected nose panel closure/normals, reduced wheel segmentation to meet budget and widened portrait framing. Current Vite preview port 5174, exec session 88634; use a separate SSR cache and `ws:false` for runtime validation to avoid invalidating its dependency cache.
+- #45 In Progress before work. Production integration needs adaptation from the existing geometry-only builders to `.geometry/.material`; dispose only after all sharing instances are removed. No code/public changes, no new questions.

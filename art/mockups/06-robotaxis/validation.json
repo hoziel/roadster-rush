@@ -1,0 +1,30 @@
+[
+  {
+    "model": "cybercab",
+    "triangles": 2494,
+    "meshes": 1,
+    "materials": 1,
+    "width": 2.0269999504089355,
+    "height": 1.4349999475479125,
+    "length": 4.256253242492676,
+    "forward": "-Z",
+    "groundY": -4.76837147544984e-9,
+    "finiteGeometry": true,
+    "opaque": true,
+    "disposalIdempotent": true
+  },
+  {
+    "model": "waymo",
+    "triangles": 2964,
+    "meshes": 1,
+    "materials": 1,
+    "width": 2.125,
+    "height": 2.151999936103821,
+    "length": 4.76200008392334,
+    "forward": "-Z",
+    "groundY": 1.4305114426349519e-8,
+    "finiteGeometry": true,
+    "opaque": true,
+    "disposalIdempotent": true
+  }
+]
