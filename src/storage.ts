@@ -11,11 +11,11 @@ function load(): Saved {
     const s: Saved = { best: 0, muted: false, music: false, sfx: true, ...raw, shop: normalizeShop(raw.shop) };
     // Nov 10: music is off by default (Ofir found it annoying); turn it off once on existing saves too.
     if (!s.musicReset) { s.music = false; s.musicReset = true; }
-    // Nov 10: scores became 100x bigger; scale an old best once so it stays comparable.
-    if (!s.bestScaled) { s.best *= 100; s.bestScaled = true; }
+    // Scores were briefly 100x bigger (Nov 10, reverted): bring a best saved then back down.
+    if (s.bestScaled) { s.best = Math.round(s.best / 100); delete s.bestScaled; }
     return s;
   } catch {
-    return { best: 0, muted: false, music: false, sfx: true, shop: defaultShop(), bestScaled: true };
+    return { best: 0, muted: false, music: false, sfx: true, shop: defaultShop() };
   }
 }
 
