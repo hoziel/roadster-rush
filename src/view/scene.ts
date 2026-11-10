@@ -29,9 +29,9 @@ const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
 // The chosen driver's billboard stands at the start line, right of the road, a few metres ahead of the parked car.
-const BILLBOARD = { x: 5.4, z: -14, rotY: -0.3, scale: 1.5, hideZ: 24 };
+const BILLBOARD = { x: 5.8, z: -14, rotY: -0.3, scale: 2.1, hideZ: 26 };
 // Garage Driver tab: behind-left of the car, looking past its open driver's door at the billboard.
-const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.1, lookY: -0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
+const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.3, lookY: 0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
 const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.6, lookY: 0.7, lift: 0.22 }; // garage preview camera
 
