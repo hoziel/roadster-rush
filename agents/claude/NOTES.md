@@ -20,3 +20,7 @@ Claude's long-term memory is outside the repo (~/.claude). This file holds orche
 - Kenney buildings/police (90%)/street lights/trees, real Capitol (CC-BY, credited), tube tunnels (camera rolls), Driver + Sound buttons (music/effects switches), Kenney SFX + jingles + EV clip.
 - Decisions (Claude's call, Ofir delegated): police 0.9 scale, keep palms, keep green roofs; every run ends with a jingle (unanswered, default).
 - Open: offline play needs https hosting (Ofir choosing: Cloudflare/Netlify/Tailscale/Capacitor). Codex has committed #42 mockups but hasn't handed the turn back. Phone playtest of everything pending; triangles ~100k.
+
+## Nov 10
+- Ofir 1A/2A/3A: Codex roadster + police roadster integrated (d00adae, `src/view/roadster.ts`, `policeRoadster.ts`), merged per material (~7 draws each), glass 45% opacity, driver in left seat, Kenney police.glb removed, soft billboard vapor in puffs.ts. Draws 47–66 in play.
+- 03-austin-stretch is the visual target; #20 (Turn Claude) carries the restyle: HUD, title card, palette, bigger air. #14–17, #19, #42 closed; Codex told to stop #42 (A/B.png still uncommitted, Codex's call).
