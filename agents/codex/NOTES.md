@@ -2,6 +2,8 @@
 
 ## Current work
 
+- Latest handoff candidate: #47 fan themes in `art/mockups/08-fan-themes/`: six instanced player/ball batches, eight canvas posters, hoop/net, 54 PNGs and review gallery. See latest session entry for integration limits.
+
 - Latest quality test: `art/mockups/07-driver-models/` for #46. Four native posed drivers and 33 PNGs/comparisons. **Not recommended for production:** likeness falls below the requested perfect bar, and the current cabin does not fit them at their full standing scale. Keep the 2D heroes while Claude decides the next character/cabin approach.
 - Latest asset: `art/mockups/05-app-icon/`, Revision 3 with four wheel-aligned hover bursts; separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes two-jet Revision 2. Claude owns public icon replacement on reopened #43.
 - Latest character assets: `art/mockups/06-driver-heroes/`, four 720×560 transparent full-body driver/open-door roadster cutouts for #44. Nevo/White, Ori/Cherry red, Shiri/Pink, Ofir/Black. Latest references and outfit corrections followed; no sponsor marks.
@@ -147,3 +149,15 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Roadster has no seat anchor API; cushion top y=.43, canopy max ~1.084. Actual-size seated Nevo reaches ~1.260 m; adults ~1.426–1.429 m. Current opaque glazing also hides the driver. The preview's 66%/65%/55% scale reductions are explicitly labeled diagnostics, not a solution; hands still miss the wheel. No original roadster or app code changed.
 - Recommended next path: retain 2D heroes; seek an approved custom face/hair/suit sculpt and then rig one character before extending to all four. Resolve cabin proportions, seat/wheel anchors and driver visibility before another seated integration pass. Ask Claude whether to retain 2D or scope that work with Ofir.
 - Vite preview port 5174, exec session 21696. Preview route `/art/mockups/07-driver-models/`; gallery and `comparison.html?driver=<id>` alongside it. Preserve unrelated A/B images, `src/view/bust.ts`, `src/view/scene.ts` and root demo media.
+- Quality test committed as `a854f1b`; handoff https://github.com/hoziel/roadster-rush/issues/46#issuecomment-6778441394 . Turn = Claude. Inbox recheck found new #47 (fan-theme art polish), so the inbox is not yet empty; work that next.
+
+
+## November 10, 2026 — fan themes #47
+
+- Newly assigned after #46 handoff. Read brief 08 and current sideline/fanThemes/fanBoards/startline, watched both supplied fan clips. Set In Progress and authored only `art/mockups/08-fan-themes/`.
+- `players.ts`: drop-in Sideline API and existing PlayerSpec compatibility, five sports loops plus cheer, generic faces/hair/hands/shoes, gi/belt, black/silver jersey 1, blue volleyball/knee pads, blue/gold gymnastics. 1,490 triangles per player + 384/ball; six instanced batches, one opaque Toon material. Packed shader attributes fixed the initial WebGL attribute-limit failure.
+- `ads.ts`: eight Fredoka canvas posters with original primitives, no logos/photos/likeness. Optimized 768×384 PNGs total 126,440 bytes. `props.ts`: hoop 664 triangles, net 912, foam finger 56; original scale/origin targets retained.
+- 54 native PNGs: 17 key poses, 12 additional front/side/back uniform views, eight prop views, eight ads, one lineup, eight portrait start/roadside/staging views. Review HTML and JPEGs included.
+- Strict TS and runtime geometry/pose/capacity/visibility/anchor/disposal checks passed (731 frames). Browser reviewed exports and live animation; no new errors after the packed-attribute fix. Native models remain art studies for Claude to integrate.
+- Integration limits: original roadside anchors crop board/players at 20 m in portrait. Added separate-anchor proposal (`*-staged.png`): board farther ahead, athletes nearer on shoulder. Original start-line net/gymnast can extend off-screen; Claude should stage it. Fine faces will not read at 40 m. GPU data pooled, but temporary CPU pose/vector/color allocations still need production profiling/pooling; no target-phone performance claim.
+- Reuse one Sideline for athletes/crowd; default 16 capacity, increase explicitly if adding fans. Shader hook is required. Keep player shadow flags off unless supplying matching depth-material feature filtering. Crowd proposals are gi/belt kids, black/silver fans with fiesta foam fingers, matching blue volleyball team.

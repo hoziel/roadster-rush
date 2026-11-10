@@ -1,0 +1,41 @@
+{
+  "playerTriangles": 1490,
+  "batchGeometryTriangles": {
+    "torso": 280,
+    "head": 562,
+    "limbs": 40,
+    "hands": 76,
+    "shoes": 88,
+    "balls": 384
+  },
+  "batches": 6,
+  "materials": 1,
+  "opaque": true,
+  "props": {
+    "hoop": {
+      "triangles": 664,
+      "meshes": 1,
+      "scale": 1.3
+    },
+    "net": {
+      "triangles": 912,
+      "meshes": 1,
+      "scale": 1.25
+    },
+    "foamFinger": {
+      "triangles": 56,
+      "meshes": 1,
+      "scale": 1
+    }
+  },
+  "sampledFrames": 731,
+  "finiteTransforms": true,
+  "capacityClamped": true,
+  "ancestorVisibility": true,
+  "anchorScaleConvention": true,
+  "productionPlayerSpecs": true,
+  "disposalIdempotent": true,
+  "pngCount": 54,
+  "posterBytes": 126440,
+  "maxImageBytes": 83269
+}
