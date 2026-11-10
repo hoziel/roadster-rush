@@ -1,4 +1,4 @@
-// The driver characters. Nevo and Ori are real (Ofir's art); Zoom, Bolt, Sunny and Pip are placeholders.
+// The driver characters: only the kids Ofir supplied (Nevo, Ori). Add more here.
 // To swap them in, edit only this list. Everything else (garage tiles, 3D head in the car,
 // license plate, "Great drive!" avatar) reads from here.
 // Keep names short (they go on the license plate, ~8 letters max).
@@ -19,10 +19,6 @@ export interface Driver {
 export const DRIVERS: Driver[] = [
   { id: 'nevo', name: 'Nevo', color: '#2f7de1', skin: '#f2c7a5', hair: '#4a2e1c', paint: 'white', photo: 'drivers/nevo.jpg' },
   { id: 'ori', name: 'Ori', color: '#e8452c', skin: '#f2c7a5', hair: '#6b4226', paint: 'cherry', photo: 'drivers/ori.jpg' },
-  { id: 'd1', name: 'Zoom', color: '#ff4fd8', skin: '#f2c7a5', hair: '#5a3a22' },
-  { id: 'd2', name: 'Bolt', color: '#35e0ff', skin: '#c68a5e', hair: '#1d1d26' },
-  { id: 'd3', name: 'Sunny', color: '#ffd23f', skin: '#8d5a3b', hair: '#e04a2a' },
-  { id: 'd4', name: 'Pip', color: '#4cff6a', skin: '#f6d9c2', hair: '#e8c060' },
 ];
 
 /** The saved driver, or the first one if the save is missing/unknown. */
