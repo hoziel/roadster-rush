@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadster Rush — app icon review</title>
+<style>
+  *{box-sizing:border-box} body{margin:0;background:#20122f;color:#f4e9d8;font:16px/1.5 system-ui,sans-serif}
+  main{max-width:1120px;margin:auto;padding:40px} h1{font-size:32px;letter-spacing:-1px;margin:0 0 6px} p{margin:0;color:#cdbcd8} h2{font-size:16px;margin:0 0 24px;font-weight:600}
+  .hero{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin:32px 0}.panel{background:#2a193a;padding:28px;border-radius:20px}.hero img{display:block;width:min(100%,320px);height:auto;margin:auto;border-radius:22%}.caption{font-size:13px;margin-top:20px}
+  .sizes{display:grid;grid-template-columns:1fr 1fr;gap:32px}.samples{display:flex;gap:28px;align-items:center;min-height:98px}.sample{text-align:center}.sample img{display:block;border-radius:22%;margin:auto}.sample span{display:block;font-size:11px;margin-top:9px}.light{background:#f4e9d8;color:#2a1650}.light p{color:#594964}
+  .masks{display:flex;align-items:center;justify-content:space-around;gap:24px;margin-top:24px}.masks img{display:block;width:128px;height:128px;margin:auto}.circle{clip-path:circle(50%)}.safe{clip-path:circle(40%)}.round{border-radius:22%}.masks .caption{text-align:center;max-width:220px}.note{font-size:12px;margin:24px 0 0}
+  @media(max-width:700px){main{padding:24px}.hero,.sizes{grid-template-columns:1fr}.masks{flex-wrap:wrap}.samples{gap:22px}}
+</style>
+<main>
+  <h1>Roadster Rush</h1>
+  <p>App icon · sunset roadster · Revision 1</p>
+  <section class="hero">
+    <div class="panel"><h2>Primary icon</h2><img src="app-icon-512.png" alt="Red toy roadster racing beneath a golden sun on a purple background"><p class="caption">Large car silhouette for standard icons and Apple home screens. Corners shown here are a CSS preview; the PNG is square.</p></div>
+    <div class="panel"><h2>Maskable icon</h2><img src="maskable-icon-512.png" alt="The same roadster centered with more space around it"><p class="caption">Separate composition keeps the complete car inside the central safe area for platform masks.</p></div>
+  </section>
+  <section class="sizes">
+    <div class="panel"><h2>Actual pixel sizes · dark</h2><div class="samples"><div class="sample"><img src="favicon-64.png" width="64" height="64" alt="64 pixel icon"><span>64 px</span></div><div class="sample"><img src="favicon-48.png" width="48" height="48" alt="48 pixel icon"><span>48 px</span></div><div class="sample"><img src="favicon-32.png" width="32" height="32" alt="32 pixel icon"><span>32 px</span></div></div></div>
+    <div class="panel light"><h2>Actual pixel sizes · light</h2><div class="samples"><div class="sample"><img src="favicon-64.png" width="64" height="64" alt="64 pixel icon"><span>64 px</span></div><div class="sample"><img src="favicon-48.png" width="48" height="48" alt="48 pixel icon"><span>48 px</span></div><div class="sample"><img src="favicon-32.png" width="32" height="32" alt="32 pixel icon"><span>32 px</span></div></div></div>
+  </section>
+  <section class="panel" style="margin-top:32px"><h2>Maskable composition · crop checks</h2><div class="masks"><div><img class="circle" src="maskable-icon-512.png" alt="Circular icon mask"><p class="caption">Circle</p></div><div><img class="round" src="maskable-icon-512.png" alt="Rounded square icon mask"><p class="caption">Rounded square</p></div><div><img class="safe" src="maskable-icon-512.png" alt="Only the guaranteed central safe circle is visible"><p class="caption">Safe circle only · radius 40%</p></div></div><p class="note">The last crop deliberately hides everything outside the guaranteed safe circle. No mask or corner shape is baked into the exported PNGs.</p></section>
+</main>
+</html>

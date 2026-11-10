@@ -2,6 +2,7 @@
 
 ## Current work
 
+- Latest asset: `art/mockups/05-app-icon/`, a polished red-roadster app icon with separate standard/maskable masters, nine PNG exports and browser review sheet. Directly requested by Ofir; Claude owns public icon/config replacement.
 - Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
 - Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
@@ -89,3 +90,11 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - One generation, visually reviewed and size-checked. Notes cover roster, palette, interaction and simplification. No native assets or game UI code changed. No paint-shop/license-plate deliverables implied by this partial #32 work.
 - Board inbox and Status update failed `unknown owner type`; comment handoff per COLLAB.md §3. Preserve unrelated A/B images, root demo videos and Claude's new src/view roadster files.
 - Driver screen committed as `480c65d` (not pushed); handoff posted at https://github.com/hoziel/roadster-rush/issues/32#issuecomment-6765989791 . Final inbox query failed again; owned task paths clean. Claude was concurrently changing game car integration/credits and had a staged police.glb deletion; leave those untouched.
+
+## November 10, 2026 — app icon
+
+- Ofir requested a better app icon. Used built-in imagegen with the approved opening screen and current red native-car render as references. Generated a primary hero composition and a second composition with smaller/recentered car for maskable use.
+- Nine opaque square PNG exports in `art/mockups/05-app-icon/`: primary 1024/512/192, Apple 180, favicons 64/48/32, maskable 1024/512. Every PNG under 2 MB. Prompt set in `agents/codex/prompts/05-app-icon.md`; `notes.md` documents palette, simplification and integration.
+- Browser review at actual 64/48/32 pixels on light/dark backgrounds and circular/rounded/strict-safe-circle crops passed visual inspection. `preview.jpg` is the browser screenshot. This is artwork, not an installed-PWA test.
+- Current pipeline uses `public/icon.svg` through `pwa-assets.config.ts` and `minimal2023Preset`; zero maskable padding would crop the large primary car. Claude must use the separate maskable export/master. No public/config paths changed. PWA issue #36 is closed, so create a new open integration issue.
+- Board query failed again at session start (`unknown owner type`). Use comment-only handoff under COLLAB.md §3 and recheck before stopping. Preserve unrelated A/B images and root demo media; Claude has since committed its code work.
