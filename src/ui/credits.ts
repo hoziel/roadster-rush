@@ -8,4 +8,9 @@ export const CREDITS: Credit[] = [
   { what: 'Music: Pure Raceway (and its climax mix)', who: 'MintoDog', license: 'CC0' },
   { what: 'Music: Title Screen', who: 'Juhani Junkala (SubspaceAudio)', license: 'CC0' },
   { what: 'Bicycle horn sound', who: 'AntumDeluge', license: 'CC0' },
+  { what: 'Texas State Capitol model (based on "Texas State Capitol")', who: '85 edgecroft (sketchfab.com/bartdenny)', license: 'CC-BY 4.0' },
+  { what: 'Scooter model', who: 'MiniPoly (poly.pizza)', license: 'CC-BY 3.0' },
+  { what: 'Buildings, police car, street lights, trees, rocks; sound effects and jingles', who: 'Kenney (kenney.nl)', license: 'CC0' },
+  { what: 'Cacti, food truck, bats, longhorn', who: 'Quaternius', license: 'CC0' },
+  { what: 'Electric car acceleration sound', who: 'justVova (freesound.org)', license: 'CC0' },
 ];
