@@ -2,7 +2,7 @@
 
 ## Current work
 
-- Latest asset: `art/mockups/05-app-icon/`, a polished red-roadster app icon with separate standard/maskable masters, nine PNG exports and browser review sheet. Directly requested by Ofir; Claude owns public icon/config replacement.
+- Latest asset: `art/mockups/05-app-icon/`, Revision 2 hovering red-roadster app icon with separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes the grounded Revision 1. Directly requested by Ofir; Claude owns public icon/config replacement on #43.
 - Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
 - Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
@@ -99,3 +99,10 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Current pipeline uses `public/icon.svg` through `pwa-assets.config.ts` and `minimal2023Preset`; zero maskable padding would crop the large primary car. Claude must use the separate maskable export/master. No public/config paths changed. PWA issue #36 is closed, so create a new open integration issue.
 - Board query failed again at session start (`unknown owner type`). Use comment-only handoff under COLLAB.md §3 and recheck before stopping. Preserve unrelated A/B images and root demo media; Claude has since committed its code work.
 - Artwork committed as `f5d4114` (not pushed). New open integration handoff: https://github.com/hoziel/roadster-rush/issues/43 . Board add and final inbox query both failed `unknown owner type`; cannot verify an empty inbox. No new questions left for Ofir. Claude is concurrently changing garage/drivers/shop paths and `.gitignore`; leave those and pre-existing A/B/root media untouched.
+
+## November 10, 2026 — hovering app icon Revision 2
+
+- Ofir requested “Make it hover.” Used built-in imagegen to edit the prior primary icon: car lifted off the road, two bright white/cyan air jets, visible gap and detached ground shadow. Then generated the maskable layout with the complete car/main jets inside the safe circle.
+- Replaced all nine exports under the same filenames in `05-app-icon`; refreshed review HTML/screenshot, appended prompts and Revision 2 notes. All PNGs opaque, correctly sized and under 2 MB (largest 1.90 MB).
+- Browser-reviewed 64/48/32 px on light/dark and circular/rounded/strict-safe-circle crops. No installed-PWA test or game/public/config changes. #43 remains open with no comments at task start; hand off this revision to supersede grounded `f5d4114`.
+- Board inbox still fails `unknown owner type`; use issue comments per COLLAB.md §3. Pre-existing A/B image changes and root demo files untouched. No new questions.

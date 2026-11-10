@@ -1,5 +1,7 @@
 # Roadster Rush app icon
 
+Current export set: **Revision 2 — hovering car**, superseding the grounded Revision 1 in place. See the revision entry below.
+
 ## Revision 1 — November 10, 2026
 
 Direct request from Ofir: “Also create a better app icon.” Extends the approved polished opening/gameplay screen direction. This is a replacement artwork package for Claude to integrate; no public icon, manifest or game config was changed by Codex.
@@ -28,7 +30,7 @@ References supplied to built-in imagegen: `../03-austin-stretch/01-opening.jpg` 
 | `index.html` | — | Review at `/art/mockups/05-app-icon/` |
 | `preview.jpg` | 1280 × 1252 | Actual browser screenshot of size/mask checks |
 
-All PNGs are under 2 MB; the largest is approximately 1.79 MB. Small exports are approximately 3–79 KB. Export dimensions, file size and absence of alpha were checked programmatically.
+All current PNGs are under 2 MB; the largest is approximately 1.90 MB. Small exports are approximately 3–86 KB. Export dimensions, file size and absence of alpha were checked programmatically.
 
 ## Palette
 
@@ -58,3 +60,13 @@ The guaranteed maskable safe area is a centered circle of radius 40% of the icon
 Browser-reviewed the actual exports at 64, 48 and 32 CSS pixels on dark and light backgrounds. The red car and sun remain identifiable; fine wheel/door detail naturally disappears at 32 px. Checked the separate maskable composition with circular, rounded-square and strict radius-40% crops: the full essential car stays inside. `preview.jpg` records these checks. No game tests are required for this isolated artwork package.
 
 The existing PWA implementation issue #36 is closed. Integration handoff: [#43](https://github.com/hoziel/roadster-rush/issues/43), artwork commit `f5d4114` (not pushed). Board add/inbox commands returned `unknown owner type`, so the issue header is the handoff per COLLAB.md §3. No new taste question blocks integration.
+
+## Revision 2 — November 10, 2026 — hover
+
+Ofir requested “Make it hover.” Replaced all nine icon PNGs in place, maintaining filenames and sizes. The red car now floats above the road with normal vertical wheels, two strong cyan-white downward air jets, rolling white vapor and a detached soft ground shadow. The visible gap and bright jets communicate the hover power-up without relying on small text or extra symbols. The existing car design, sunset disc, skyline and gold ribbon remain.
+
+Two targeted built-in imagegen edits: first the primary hover composition, then a smaller/recentered maskable composition keeping the car and main airflow inside the safe area. Added airy white `#f5fbff` and pale cyan `#b9f2ff` as shading targets. Preserve the original low-poly car if built in-engine; represent the jets with a small number of pooled translucent sprites, a broad vapor burst and a detached shadow. Do not add mesh detail to reproduce individual wisps.
+
+Regenerated the review page screenshot and checked the new actual-size 64/48/32 px exports on light/dark backgrounds. The hovering car and bright jet shapes remain visible. Circular, rounded-square and strict safe-circle crops retain the complete car and main jets. File dimensions/opacity/under-2-MB limits and whitespace checks pass. Native model, public assets and PWA configuration are still Claude-owned and unchanged by this revision.
+
+This Revision 2 supersedes the grounded artwork from `f5d4114` for #43 integration. Prompts for both edits are appended to the existing prompt record. No new question blocks handoff.

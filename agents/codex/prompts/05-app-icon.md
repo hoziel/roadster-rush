@@ -34,3 +34,33 @@ Change only the car's scale/position and corresponding shadow: reduce the car so
 Original output: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-56344e50-fda9-43fa-9f09-c785cf6c057f.png`
 
 Final exports use Sharp only for resizing, removing the unused alpha channel and PNG compression. No painted or composited image changes.
+
+
+## Revision 2 — hovering icon
+
+Created 2026-11-10 with built-in imagegen. Supersedes the grounded icon exports in place.
+
+### Generation 3 — hover edit
+
+Reference: `art/mockups/05-app-icon/app-icon-1024.png` as committed in `f5d4114`.
+
+```text
+Use case: precise-object-edit.
+Edit this exact Roadster Rush app icon so the red car is unmistakably HOVERING above the road, supported by powerful clean air thrusters. Preserve the exact original red car design, dark closed canopy, silver spoked wheels, cream light bar, three-quarter camera angle, sun disc, golden speed ribbon, faint skyline and purple-magenta-orange palette. Preserve the polished toy-like 3D illustration finish and square icon composition.
+Lift the whole car vertically, without changing its scale or proportions, so every visible tire is clearly detached from the road. Make a generous visible air gap roughly half a wheel diameter below the wheels, with a soft detached elliptical shadow on the ground below. Keep wheels vertical and in their normal car positions. The car should feel level and controlled, with only a very slight nose-up tilt.
+Add strong white compressed-air vapor jets with a cool pale-cyan core, aimed straight down from small concealed underbody thruster outlets near the front and rear axle. Two visible jets, with a hint of far-side airflow, are enough. They flare into soft rolling white vapor and curved air wisps close to the road; make the airflow visually substantial and easy to read at small icon sizes, but leave the body, tires and the visible gap unobscured. Clean friendly air, not fire, not black smoke. No rocket fins, wings, hoverboard, glowing wheel conversion, extra accessories, text, brand, border or baked corners. No change to the background design. Full-bleed opaque square, exactly 1:1. This is the actual icon artwork, not a presentation mockup.
+```
+
+Original output: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-8b0d65db-043d-40f9-8766-cb4bfdc1ce3d.png`
+
+### Generation 4 — hover maskable composition
+
+Reference: Generation 3 output.
+
+```text
+Use case: precise-object-edit.
+Create a mask-safe variant of this exact hovering-roadster app icon. Preserve the exact car design, suspended pose, normal vertical wheels, bright pale-cyan and white downward air jets, fluffy ground vapor, detached shadow, sunset disc, golden ribbon, skyline and colors. Keep the same camera angle and polished toy-like finish.
+Change only the SCALE AND POSITION of the hovering car plus its complete two jets, ground vapor and shadow as one coherent group. Reduce that group to roughly 64% of its present size and center it vertically. Put the full car silhouette in approximately x=20% to 80%, y=32% to 61%. The visible jet cores and main white vapor should occupy y=58% to 70%. Keep the whole car and essential two vapor jets inside a centered circle of radius 38% of the canvas width. Preserve a very obvious air gap between the wheels and the detached ground shadow. Do not shrink individual parts relative to each other or alter the body proportions. The background continues full bleed across the square. No borders, no visible guide circles, no rounded corners, no text. Opaque exactly square icon artwork.
+```
+
+Original output: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-b29ead2b-0bbc-42a1-8c1a-fc3bb2378ffd.png`
