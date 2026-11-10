@@ -152,6 +152,11 @@ export function start(w: World): void {
   Object.assign(w, runState(), { phase: 'running' });
 }
 
+/** Game over: clear everything within `radius` m of the car, so the police cars closing in have the road to themselves. */
+export function clearAround(w: World, radius: number): void {
+  for (const e of w.entities) if (e.alive && Math.abs(e.s - w.distance) < radius) e.alive = false;
+}
+
 /** Can't be hurt right now (grace period or a protective power-up). */
 export const isShielded = (w: World): boolean =>
   w.invuln > 0 || w.power === 'ludicrous' || w.power === 'autopilot' || w.power === 'hover';

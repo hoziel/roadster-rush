@@ -19,6 +19,7 @@ import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { StartLine } from './startline';
 import { SkyLanes } from './skyLanes';
+import { BustScene } from './bust';
 import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
@@ -39,6 +40,9 @@ const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage a
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.35, lookY: 0.7, lift: 0.22, idle: 2.5 }; // garage orbit; auto-spins after `idle` s
 // Start screen: the same orbit, a bit higher and further back so the billboard is in view; drag to spin it.
 const START_ORBIT = { radius: 9, height: 3.6, lookY: 1.2 };
+// Game over: a wider, higher circle so the police cars boxing the car in are all in view.
+const BUST_ORBIT = { radius: 14, height: 6.5, spin: 0.32 };
+const TUMBLE_TIME = 1.1; // s of the hard-crash tumble
 const DRAG_TURN = 0.012; // rad per pixel of horizontal drag
 
 const C_BLACK = new THREE.Color('#000000');
@@ -105,6 +109,11 @@ export class GameView {
   private puffs = new Puffs();
   /** The hover police car: floats at the start line, flies across the sky now and then during a run. */
   readonly patrol = new PolicePatrol(this.puffs);
+  private bust = new BustScene(this.puffs);
+  private overBlend = 0;
+  private tumbleT = -1; // s into the hard-crash tumble, -1 when none
+  private tumbleY = 0;
+  private tumbleDir = 1;
   private hoverJets = new HoverJets(this.puffs, CAR_SCALE);
   private policeJets = new HoverJets(this.puffs, CAR_SCALE);
   private flipJets = new HoverJets(this.puffs, CAR_SCALE);
@@ -187,7 +196,7 @@ export class GameView {
     this.puffFrame.add(this.puffs.mesh);
     this.puffs.mesh.position.y = -TUBE_CY; // frame origin sits on the tube axis
     this.puffFrame.position.y = TUBE_CY;
-    this.scene.add(this.startLine.group, this.skyLanes.group);
+    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group);
     this.scene.add(this.traffic.group);
     void this.traffic.load();
     this.scene.add(this.hazards.group, this.highroad.group);
@@ -219,7 +228,16 @@ export class GameView {
   honk(): void { this.honkBounce = 1; }
   bump(): void { this.shake = 0.35; }
   /** A run starts: lay a fresh random roadside (buildings and props). */
-  newRun(): void { this.buildings.newRun(); this.scenery.newRun(); }
+  newRun(): void { this.buildings.newRun(); this.scenery.newRun(); this.bust.end(); this.tumbleT = -1; }
+  /**
+   * Game over: police cars close in from every side and the camera circles. hard (ran out of batteries):
+   * the car tumbles and lands on its roof; caught by the police: it stays on its wheels.
+   */
+  busted(x: number, y: number, hard: boolean): void {
+    this.bust.begin(x);
+    this.orbitA = 0; // start the circle from behind the car, where the chase camera is
+    if (hard) { this.tumbleT = 0; this.tumbleY = y; this.tumbleDir = Math.random() < 0.5 ? -1 : 1; }
+  }
   /** Drove over a spike strip: the car wobbles and sags on a flat tyre for a second, air hissing from the wheels. */
   puncture(): void {
     this.flatT = FLAT_TIME;
@@ -284,6 +302,15 @@ export class GameView {
     // Nose up while rolling up a ramp, level again on the deck.
     this.pitch += (Math.atan(rampSlope(w)) - this.pitch) * Math.min(1, dt * 18);
     car.rotation.set((w.y > w.floor && roll === 0 ? -0.06 : 0) + this.pitch, 0, lean + roll);
+    if (this.tumbleT >= 0 && !this.showcase) {
+      // Hard crash: a hop, a barrel roll and a half, and it ends upside down on its roof, skidded round.
+      this.tumbleT += dt;
+      const p = Math.min(1, this.tumbleT / TUMBLE_TIME), ease = 1 - Math.pow(1 - p, 2);
+      const r = Math.PI * 3 * ease * this.tumbleDir;
+      car.rotation.set(0, 0.7 * ease * this.tumbleDir, r);
+      car.position.set(FLIP_PIVOT * Math.sin(r) + 0.8 * ease * this.tumbleDir, this.tumbleY * (1 - p) + Math.sin(p * Math.PI) * 2.2 + FLIP_PIVOT * (1 - Math.cos(r)) + 0.08 * ease, 0);
+      if (p >= 1 && this.tumbleT < TUMBLE_TIME + 1.5 && Math.random() < 0.5) this.puffs.emit(px + (Math.random() - 0.5) * 1.6, 0.4, (Math.random() - 0.5) * 2.5, 0, 1.2, 0, 0.35, 1.2); // smoke
+    }
     if (this.flatT > 0) {
       // Flat tyre: sag onto the front-left wheel and wobble, easing off; a thin hiss of air keeps leaking.
       this.flatT = Math.max(0, this.flatT - dt);
@@ -338,9 +365,10 @@ export class GameView {
     if (ph > 0.02) {
       this.policeJets.update(this.policeX, this.police.group.position.y, this.policeZ, w.speed, dt, time, ph); // same bursts as the player
     }
-    this.police.group.visible = this.policeZ < POLICE_FAR - 1;
+    this.police.group.visible = this.policeZ < POLICE_FAR - 1 && !this.bust.active; // the bust fleet takes over
     if (this.police.group.visible) this.police.updateLights(time * SIREN_HZ);
     this.patrol.update(w, dt, time, this.showcase);
+    if (this.bust.active) this.patrol.group.visible = false;
 
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);
@@ -369,7 +397,12 @@ export class GameView {
     // Start screen and garage: an orbit round the car you can drag; the Driver tab frames car + billboard.
     // Every switch glides (not cuts), including back to the run camera when the run starts.
     const ease = Math.min(1, dt * CAM_EASE);
-    const orbiting = this.showcase || w.phase === 'ready';
+    if (this.showcase && this.bust.active) this.bust.end();
+    this.bust.update(dt, time);
+    this.overBlend += ((w.phase === 'over' && this.bust.active ? 1 : 0) - this.overBlend) * Math.min(1, dt * 2);
+    const o = smooth(this.overBlend);
+    if (this.bust.active && !this.showcase) this.orbitA += dt * BUST_ORBIT.spin;
+    const orbiting = this.showcase || w.phase === 'ready' || this.bust.active;
     this.camBlend += ((orbiting ? 1 : 0) - this.camBlend) * ease;
     this.focusBlend += ((this.showcase && this.driverFocus ? 1 : 0) - this.focusBlend) * ease;
     this.garageBlend += ((this.showcase ? 1 : 0) - this.garageBlend) * ease;
@@ -377,7 +410,8 @@ export class GameView {
     if (this.showcase && !this.driverFocus && time - this.lastDrag > TURNTABLE.idle) this.orbitA += dt * TURNTABLE.spin;
     if (e > 0.001) {
       const a = this.orbitA;
-      const r = THREE.MathUtils.lerp(START_ORBIT.radius, TURNTABLE.radius, g), h = THREE.MathUtils.lerp(START_ORBIT.height, TURNTABLE.height, g);
+      const r = THREE.MathUtils.lerp(THREE.MathUtils.lerp(START_ORBIT.radius, BUST_ORBIT.radius, o), TURNTABLE.radius, g);
+      const h = THREE.MathUtils.lerp(THREE.MathUtils.lerp(START_ORBIT.height, BUST_ORBIT.height, o), TURNTABLE.height, g);
       this.tmpV.set(w.x + Math.sin(a) * r, h, Math.cos(a) * r);
       this.tmpV.lerp(this.tmpV2.set(w.x + DRIVER_CAM.dx, DRIVER_CAM.y, DRIVER_CAM.z), f);
       this.camera.position.lerp(this.tmpV, e);

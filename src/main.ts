@@ -9,7 +9,7 @@ import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
 import {
-  POWER_TIME, createWorld, hover, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
+  POWER_TIME, clearAround, createWorld, hover, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
   queueSwarm, queueTunnel, score,
   slam, start, steer, step,
 } from './sim/world';
@@ -17,6 +17,8 @@ import { dayLabel, offsetFor } from './sim/daycycle';
 import { HOVER_CHARGES_MAX, LANE_WIDTH } from './sim/config';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
+const BUST_SHOW_MS = 3200; // game over: the police bust plays this long before the finish card
+const BUST_CLEAR = 30; // m round the car cleared of traffic and obstacles for the bust
 const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn't restart instantly
 
 const world = createWorld();
@@ -81,9 +83,14 @@ function finish(): void {
   const newBest = s > storage.best;
   if (newBest) storage.set({ best: s });
   storage.set({ shop: addCoins(storage.shop, world.coins) });
-  finishedAt = performance.now();
-  hud.showFinish(s, world.coins, storage.best, newBest, world.caught, garage.driverHtml(), garage.walletHtml(), garage.buttonsHtml());
-  setTimeout(() => audio.finishJingle(newBest), 600);
+  // Let the bust play (police closing in, camera circling) before the finish card comes up.
+  finishedAt = performance.now() + BUST_SHOW_MS;
+  const caught = world.caught, coins = world.coins, best = storage.best;
+  setTimeout(() => {
+    if (world.phase !== 'over') return; // already driving again
+    hud.showFinish(s, coins, best, newBest, caught, garage.driverHtml(), garage.walletHtml(), garage.buttonsHtml());
+    audio.finishJingle(newBest);
+  }, BUST_SHOW_MS);
 }
 
 bindInput(view.renderer.domElement, (action, x, y) => {
@@ -167,7 +174,12 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'roadwork': hud.toast('Road work!', '#ff8a1a'); break;
         case 'longhorns': hud.toast('Longhorns crossing!', '#ffd23f'); break;
         case 'highroad': hud.toast('Ramp up!', '#4cff6a'); break;
-        case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
+        case 'crash': case 'caught':
+          audio.crash(); view.bump();
+          clearAround(world, BUST_CLEAR);
+          view.busted(world.x, world.y, ev === 'crash');
+          finish();
+          break;
       }
     }
     acc -= SIM_DT;
