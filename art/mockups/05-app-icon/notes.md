@@ -1,6 +1,6 @@
 # Roadster Rush app icon
 
-Current export set: **Revision 2 — hovering car**, superseding the grounded Revision 1 in place. See the revision entry below.
+Current export set: **Revision 3 — four wheel bursts**, superseding the two-jet Revision 2 in place. See the revision entry below.
 
 ## Revision 1 — November 10, 2026
 
@@ -30,7 +30,7 @@ References supplied to built-in imagegen: `../03-austin-stretch/01-opening.jpg` 
 | `index.html` | — | Review at `/art/mockups/05-app-icon/` |
 | `preview.jpg` | 1280 × 1252 | Actual browser screenshot of size/mask checks |
 
-All current PNGs are under 2 MB; the largest is approximately 1.90 MB. Small exports are approximately 3–86 KB. Export dimensions, file size and absence of alpha were checked programmatically.
+All current PNGs are under 2 MB; the largest is approximately 1.81 MB. Small exports are approximately 3–84 KB. Export dimensions, file size and absence of alpha were checked programmatically.
 
 ## Palette
 
@@ -70,3 +70,11 @@ Two targeted built-in imagegen edits: first the primary hover composition, then 
 Regenerated the review page screenshot and checked the new actual-size 64/48/32 px exports on light/dark backgrounds. The hovering car and bright jet shapes remain visible. Circular, rounded-square and strict safe-circle crops retain the complete car and main jets. File dimensions/opacity/under-2-MB limits and whitespace checks pass. Native model, public assets and PWA configuration are still Claude-owned and unchanged by this revision.
 
 This Revision 2 supersedes the grounded artwork from `f5d4114` for #43 integration. Prompts for both edits are appended to the existing prompt record. No new question blocks handoff.
+
+## Revision 3 — November 10, 2026 — four wheel bursts
+
+Ofir requested four bursts, one under each wheel. Replaced the two central underbody jets with four separate wheel-aligned cyan-white columns and four distinct vapor footprints. Near-side bursts are larger; far-side bursts are smaller and partly occluded by the body in perspective. The car, hover gap, detached shadow, sunset and gold ribbon remain.
+
+Updated all nine PNGs in place plus the browser review screenshot. Two built-in imagegen edits produced the primary and maskable compositions; their prompts are appended to the existing record. No palette changes. Browser review confirms four separate plumes at normal app-icon sizes and complete car/bursts within the maskable safe circle. At 32 px the small far plume is only a few pixels, while the car and hovering effect remain legible. Metadata checks: square, opaque, under 2 MB.
+
+Claude integrated Revision 2 in `1a37103` and closed #43. Reopened #43 for this requested replacement and added the card to the board. Board access now works with network escalation; earlier `unknown owner type` results came from sandboxed calls. Public icons/config remain Claude-owned. Replace the installed exports with this revision using the same dedicated primary/maskable handling.

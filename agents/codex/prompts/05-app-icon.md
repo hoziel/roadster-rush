@@ -64,3 +64,30 @@ Change only the SCALE AND POSITION of the hovering car plus its complete two jet
 ```
 
 Original output: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-b29ead2b-0bbc-42a1-8c1a-fc3bb2378ffd.png`
+
+
+## Revision 3 — four wheel bursts
+
+Requested 2026-11-10. Built-in imagegen precise edits; existing Revision 2 primary icon used as reference.
+
+### Generation 5 — wheel-aligned bursts
+
+```text
+Use case: precise-object-edit.
+Edit this exact hovering red roadster app icon. Replace the current TWO centrally placed air jets with EXACTLY FOUR SEPARATE AIR BURSTS, ONE DIRECTLY BENEATH EACH OF THE CAR'S FOUR WHEELS. The wheel-to-jet relationship is the key requirement: front-left wheel, rear-left wheel, front-right wheel, rear-right wheel each has its own downward cyan-white jet and small separate white vapor footprint. Delete the old jets under the center of the body. Keep normal vertical wheels.
+Keep the same original red body, dark canopy, silver rims, hover height, sunset disc, gold ribbon, purple/magenta palette and polished toy-like 3D finish. Use perspective correctly: two near-side wheel jets are prominent and two far-side jets are smaller behind them. Far wheels may be partly occluded by the body, but all FOUR jet columns and FOUR distinct plume bases must be visibly countable below the car. Slightly adjust the three-quarter view only if necessary to separate their projections. Each jet originates immediately below its own tire/wheel position, never from the middle of the chassis. Increase the clear ground gap a little if needed so rear jets are visible behind the near jets. The four jets occupy a rectangular footprint under the car in perspective, not four jets arbitrarily spaced in a straight row. Avoid merging the four separate plumes into one cloud. White compressed-air vapor with pale cyan centers, no fire.
+Preserve the icon's subject scale, background and clean silhouette. No extra wheels, no extra car parts, no lettering, no brands, no border or rounded corners. Exactly square opaque full-bleed artwork.
+```
+
+Original: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-bc1f952d-1538-4b98-8f71-75f8727b40c5.png`
+
+### Generation 6 — maskable
+
+Reference: Generation 5 output.
+
+```text
+Use case: precise-object-edit.
+Create a mask-safe composition of this exact icon. Preserve the car and EXACTLY FOUR wheel-aligned compressed-air jets, including all four distinct white plume footprints, as a coherent group. The large near-side two jets and smaller far-side two jets must remain four visibly separate bursts under four wheel positions, with the same proper perspective. Do not change the design or invent extra jets. Scale the entire car, all four jets and shadow down together to 67% of their current size, then recenter them in the square so the whole car plus all four plumes fit INSIDE a central circle of radius 38% of the canvas width. Car bounds roughly x=20% to80%, y=32% to60%, jet bases no lower than73%. Preserve the air gap, wheel-to-jet alignment, sunset, gold ribbon, skyline, purple background and polished finish. Full opaque square artwork, no guide circle, no framing, no rounded corners, no text.
+```
+
+Original: `~/.codex/generated_images/01a1c395-d433-7ba3-a364-b7cac5d9afaa/exec-007a1f9e-2541-4f16-99c1-cbb8274cddd9.png`

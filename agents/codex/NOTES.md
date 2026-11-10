@@ -2,7 +2,8 @@
 
 ## Current work
 
-- Latest asset: `art/mockups/05-app-icon/`, Revision 2 hovering red-roadster app icon with separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes the grounded Revision 1. Directly requested by Ofir; Claude owns public icon/config replacement on #43.
+- Latest asset: `art/mockups/05-app-icon/`, Revision 3 with four wheel-aligned hover bursts; separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes two-jet Revision 2. Claude owns public icon replacement on reopened #43.
+- Active inbox (verified with working network access): #44 four driver heroes (Nevo, Ori, Shiri, Ofir), #45 native Cybercab/Waymo traffic models. Older #23/#26/#32 have Turn = Claude, so do not take them.
 - Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
 - Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
@@ -14,6 +15,7 @@
 
 ## Project workflow
 
+- Board CLI works with `sandbox_permissions=require_escalated`; the earlier `unknown owner type` was a sandbox/network failure. Use actual `gh project item-edit --id ITEM --project-id PROJECT --field-id FIELD --single-select-option-id OPTION` syntax. Project `PVT_kwHOAAmJfc4Bq5YK`; Status field `PVTSSF_lAHOAAmJfc4Bq5YKzhpOb6E`, In Progress `8c6e0b32`; Turn field `PVTSSF_lAHOAAmJfc4Bq5YKzhpO1O8`, Claude `10ec38dc`, Codex `1fe53265`. #44 item `PVTI_lAHOAAmJfc4Bq5YKzhHfPM0`, #45 item `PVTI_lAHOAAmJfc4Bq5YKzhHmk-o`, #43 item `PVTI_lAHOAAmJfc4Bq5YKzhHmwQs`.
 - Read `COLLAB.md`, this file, `CLAUDE.md`, `SCOPE.md`, and `art/briefs/00-style-guide.md` before art work.
 - Work only in `art/mockups/**` and `agents/codex/**`; stage and commit only those paths.
 - Issue #42 is assigned to Codex per its issue body. The prescribed `gh project item-list` query failed with `unknown owner type`, and `--owner @me` could not connect to GitHub. Project Turn/Status fields could not be verified or changed in this session; handoff is recorded in the issue comment.
@@ -107,3 +109,9 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Browser-reviewed 64/48/32 px on light/dark and circular/rounded/strict-safe-circle crops. No installed-PWA test or game/public/config changes. #43 remains open with no comments at task start; hand off this revision to supersede grounded `f5d4114`.
 - Board inbox still fails `unknown owner type`; use issue comments per COLLAB.md §3. Pre-existing A/B image changes and root demo files untouched. No new questions.
 - Hover revision committed as `3e5ed0a` (not pushed); superseding handoff posted on #43: https://github.com/hoziel/roadster-rush/issues/43#issuecomment-6766342684 . Final inbox check failed again; cannot verify empty. Owned icon paths are clean after commit.
+
+## November 10, 2026 — assignments and four-burst icon
+
+- Ofir requested checking/doing assignments and four icon bursts, one under each wheel. Verified inbox after retrying board CLI with network escalation: #44 and #45 are Codex. #44 latest comments add Shiri/Pink and Ofir/Black; Nevo now uses factory coveralls/red trim/safety goggles, not the old racing suit.
+- Replaced all icon exports with Revision 3: four distinct wheel-aligned bursts, primary and maskable compositions. Browser size/mask checks and file metadata passed. Prompts/notes/review refreshed. #43 reopened after Claude's integration of Revision 2 in `1a37103`; set In Progress/Turn Codex for revision work.
+- Current unrelated changes are A/B direction images, src/view policePatrol/puffs/scene and root demo media. Preserve them. Preview Vite server runs on 127.0.0.1:5174 (exec session 1482).
