@@ -6,8 +6,9 @@ import { Garage, lookOf } from './ui/garage';
 import { Hud } from './ui/hud';
 import './ui/hud.css';
 import { GameView } from './view/scene';
-import { POWER_TIME, createWorld, jump, queueSwarm, score, start, steer, step } from './sim/world';
+import { POWER_TIME, createWorld, hover, jump, policeClose, queueSwarm, score, start, steer, step } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
+import { HOVER_CHARGES_MAX } from './sim/config';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
 const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn't restart instantly
@@ -20,7 +21,7 @@ const hud = new Hud(() => {
   audio.unlock();
   audio.setMuted(storage.muted);
   hud.setMuted(storage.muted);
-});
+}, () => { audio.unlock(); if (!paused) hover(world); });
 hud.setMuted(storage.muted);
 
 const garage = new Garage(document.getElementById('ui')!, {
@@ -79,6 +80,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') jump(world);
+  else if (action === 'hover') hover(world);
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
 }, () => audio.unlock()); // raw pointerdown/up/keydown: real gestures, so iOS lets audio start
@@ -99,6 +101,7 @@ view.renderer.setAnimationLoop((now: number) => {
         case 'hit': audio.bonk(); view.bump(); hud.toast('Oops!', '#ffb8d0'); break;
         case 'power': audio.powerUp(); if (world.lastPower) hud.powerToast(world.lastPower); break;
         case 'battery': audio.powerUp(); hud.powerToast('supercharger'); break;
+        case 'charge': audio.coin(); hud.toast(world.hoverCharges >= HOVER_CHARGES_MAX ? 'Hover full!' : 'Hover +1', '#b18cff'); break;
         case 'swarm': audio.powerUp(); hud.toast('Bat swarm!', '#ffd23f'); break;
         case 'crash': case 'caught': audio.crash(); view.bump(); finish(); break;
       }
@@ -108,7 +111,7 @@ view.renderer.setAnimationLoop((now: number) => {
 
   const running = world.phase === 'running' && !paused;
   audio.motorUpdate(world.speed, running);
-  audio.siren(running && world.chase > 0, now / 1000);
+  audio.siren(running && policeClose(world), now / 1000);
   audio.music(running ? (world.power === 'ludicrous' ? 'climax' : 'run') : 'menu');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   view.render(world, dt, now / 1000);

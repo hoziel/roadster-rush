@@ -26,6 +26,7 @@ export const INVULN_TIME = 1.5; // s of blinking grace after a crash
 export const STUMBLE_TIME = 1.5; // s of slowdown after a crash
 export const STUMBLE_SLOWDOWN = 0.4; // fraction of speed lost right after a crash
 export const CHASE_TIME = 6; // s the police stays close after a crash
+export const INTRO_CHASE_TIME = 4; // s the police tails you at the start of every run (harmless)
 
 // Power-ups
 export const POWER_CHANCE = 0.08; // base rate; chunk power slots fill at 4x this
@@ -33,7 +34,9 @@ export const POWER_START_AFTER = 12; // s into a run before power-ups appear
 export const LUDICROUS_TIME = 5;
 export const LUDICROUS_BOOST = 1.5;
 export const AUTOPILOT_TIME = 8;
-export const HOVER_TIME = 5;
+export const HOVER_TIME = 8; // s per hover-button press
+export const HOVER_CHARGES_MAX = 3; // hover pickups bank charges for the button, up to this
+export const HOVER_CHARGES_START = 1; // every run starts with one, so kids find the button
 export const HOVER_HEIGHT = 1.6;
 export const HOVER_RISE = 6; // m/s up/down
 export const AUTOPILOT_LOOKAHEAD = 22;

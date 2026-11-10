@@ -1,6 +1,7 @@
 import {
   AUTOPILOT_LOOKAHEAD, AUTOPILOT_TIME, BATTERIES, CHASE_TIME, COIN_VALUE, CONE_HEIGHT,
-  DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
+  DESPAWN_BEHIND, GRAVITY, HIT_DEPTH, HIT_HALF_WIDTH, HOVER_CHARGES_MAX, HOVER_CHARGES_START, HOVER_HEIGHT, HOVER_RISE, HOVER_TIME,
+  INTRO_CHASE_TIME,
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
   SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
@@ -23,7 +24,7 @@ export interface Entity {
 
 export type SimEvent =
   | 'coin' | 'hit' | 'smash' | 'crash' | 'caught' | 'battery'
-  | 'power' | 'power-end' | 'swarm';
+  | 'power' | 'power-end' | 'swarm' | 'charge';
 export type Phase = 'ready' | 'running' | 'over';
 
 export const POWER_TIME: Record<PowerKind, number> = {
@@ -44,7 +45,9 @@ export interface World {
   batteries: number;
   invuln: number; // s of post-crash grace left
   stumble: number; // s of post-crash slowdown left
-  chase: number; // s the police stays close
+  chase: number; // s the police stays close (a crash now ends the run)
+  intro: number; // s of the harmless opening chase left (police shown close, crashes don't end the run)
+  hoverCharges: number; // banked hover-button presses
   power: PowerKind | null; // timed power-up in effect
   powerTime: number; // s left on it
   lastPower: PowerKind | null; // last picked up (for UI events)
@@ -64,7 +67,8 @@ export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * L
 
 const runState = () => ({
   time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, coins: 0,
-  batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0,
+  batteries: BATTERIES, invuln: 0, stumble: 0, chase: 0, intro: INTRO_CHASE_TIME,
+  hoverCharges: HOVER_CHARGES_START,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
 });
@@ -95,6 +99,17 @@ export function steer(w: World, dir: -1 | 1): boolean {
   return true;
 }
 
+/** Hover button: spend a banked charge to hover for HOVER_TIME. */
+export function hover(w: World): boolean {
+  if (w.phase !== 'running' || w.hoverCharges <= 0 || w.power === 'hover') return false;
+  w.hoverCharges--;
+  activate(w, 'hover');
+  return true;
+}
+
+/** Police is shown right behind the car (after a crash, or the opening chase). */
+export const policeClose = (w: World): boolean => w.chase > 0 || w.intro > 0;
+
 export function jump(w: World): boolean {
   if (w.phase !== 'running' || w.y > 0 || w.power === 'hover') return false;
   w.vy = JUMP_VELOCITY;
@@ -114,6 +129,7 @@ export function step(w: World, dt: number): SimEvent[] {
   w.invuln = Math.max(0, w.invuln - dt);
   w.stumble = Math.max(0, w.stumble - dt);
   w.chase = Math.max(0, w.chase - dt);
+  w.intro = Math.max(0, w.intro - dt);
   if (w.power) {
     w.powerTime -= dt;
     if (w.powerTime <= 0) { w.power = null; w.powerTime = 0; events.push('power-end'); }
@@ -154,6 +170,12 @@ export function step(w: World, dt: number): SimEvent[] {
       events.push('coin');
     } else if (isPower(e.kind)) {
       e.alive = false;
+      if (e.kind === 'hover') {
+        // Hover pickups charge the hover button instead of firing right away.
+        w.hoverCharges = Math.min(HOVER_CHARGES_MAX, w.hoverCharges + 1);
+        events.push('charge');
+        continue;
+      }
       activate(w, e.kind);
       events.push(e.kind === 'supercharger' ? 'battery' : 'power');
     } else if (w.y >= CONE_HEIGHT) {
@@ -172,16 +194,17 @@ export function step(w: World, dt: number): SimEvent[] {
 
 /** Returns true if this crash ends the run. */
 function crash(w: World): boolean {
-  const policeClose = w.chase > 0;
+  const close = w.chase > 0; // the harmless opening chase doesn't count
   w.batteries--;
-  if (!w.kidMode || policeClose || w.batteries <= 0) {
-    w.caught = policeClose;
+  if (!w.kidMode || close || w.batteries <= 0) {
+    w.caught = close;
     w.phase = 'over';
     return true;
   }
   w.invuln = INVULN_TIME;
   w.stumble = STUMBLE_TIME;
   w.chase = CHASE_TIME;
+  w.intro = 0;
   return false;
 }
 
@@ -190,6 +213,7 @@ function activate(w: World, kind: PowerKind): void {
   if (kind === 'supercharger') {
     w.batteries = Math.min(BATTERIES, w.batteries + 1);
     w.chase = 0; // a fresh battery also shakes off the police
+    w.intro = 0;
     return;
   }
   w.power = kind;

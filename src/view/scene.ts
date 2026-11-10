@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH } from '../sim/config';
 import { isPower, type PowerKind } from '../sim/spawner';
-import { laneX, type World } from '../sim/world';
+import { laneX, policeClose, type World } from '../sim/world';
 import { buildCar, buildPolice, type CarParts } from './cars';
 import { CarStyle } from './carStyle';
 import { Scenery } from './scenery';
@@ -185,7 +185,7 @@ export class GameView {
     this.hoverPad.position.y = -w.y + 0.08 + Math.sin(time * 6) * 0.05;
 
     // Police: slides in close after a crash, drops back out of view otherwise.
-    const targetZ = w.chase > 0 && w.phase !== 'ready' ? POLICE_CLOSE : POLICE_FAR;
+    const targetZ = policeClose(w) && w.phase === 'running' ? POLICE_CLOSE : POLICE_FAR;
     this.policeZ += (targetZ - this.policeZ) * Math.min(1, dt * (targetZ < this.policeZ ? 2.5 : 0.8));
     this.policeX += (w.x - this.policeX) * Math.min(1, dt * 3);
     this.police.group.position.set(this.policeX, 0, this.policeZ);

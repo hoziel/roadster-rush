@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BATTERIES, CHASE_TIME, HOVER_HEIGHT } from '../src/sim/config';
-import { createWorld, jump, start, step, steer, type Entity, type World } from '../src/sim/world';
+import { BATTERIES, CHASE_TIME, HOVER_HEIGHT, HOVER_TIME } from '../src/sim/config';
+import { createWorld, hover, jump, start, step, steer, type Entity, type World } from '../src/sim/world';
 
 const DT = 1 / 60;
 const run = (w: World, seconds: number) => {
@@ -92,7 +92,7 @@ describe('power-ups', () => {
 
   it('hover floats over cones and still grabs coins', () => {
     const w = emptyRunning();
-    put(w, 'hover', 3);
+    hover(w);
     run(w, 0.6);
     expect(w.power).toBe('hover');
     expect(w.y).toBeCloseTo(HOVER_HEIGHT);
@@ -106,8 +106,8 @@ describe('power-ups', () => {
 
   it('hover lands when it runs out', () => {
     const w = emptyRunning();
-    put(w, 'hover', 3);
-    const ev = run(w, 7);
+    hover(w);
+    const ev = run(w, HOVER_TIME + 1);
     expect(ev).toContain('power-end');
     expect(w.y).toBe(0);
   });

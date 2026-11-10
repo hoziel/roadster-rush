@@ -1,4 +1,4 @@
-export type Action = 'left' | 'right' | 'jump' | 'tap' | 'honk';
+export type Action = 'left' | 'right' | 'jump' | 'tap' | 'honk' | 'hover';
 
 const SWIPE_PX = 28; // finger travel that counts as a swipe
 const TAP_PX = 14; // a release within this distance is a tap, however long the press (kids press and hold)
@@ -49,6 +49,7 @@ export function bindInput(
     const map: Record<string, Action> = {
       ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
       ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyH: 'honk', Enter: 'tap',
+      ArrowDown: 'hover', KeyS: 'hover', KeyF: 'hover',
     };
     const a = map[e.code];
     if (a) { e.preventDefault(); onAction(a); }
