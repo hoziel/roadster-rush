@@ -21,6 +21,7 @@ const FINISH_LOCK_MS = 900; // ignore taps right after a finish so a swipe doesn
 
 const world = createWorld();
 const view = new GameView(document.getElementById('game')!);
+view.patrol.onFlyby = (dir) => audio.patrolFlyby(dir);
 const audio = new GameAudio(storage.muted);
 const hud = new Hud(() => {
   storage.set({ muted: !storage.muted });
@@ -200,6 +201,7 @@ if (debug) {
     /** Jump the sunset-to-night cycle: 0 sunset, 0.3 dusk, 0.6 night. */
     timeOfDay: (phase: number) => { world.dayOffset = offsetFor(world, phase); },
     /** Lay a Bat Swarm at the next chunk slot (~6 s ahead), any time of day. */
+    patrol: () => view.patrol.flyNow(),
     swarm: () => { world.dayOffset = offsetFor(world, 0.3); queueSwarm(world); },
     /** Lay a tube tunnel at the next chunk slot (~6 s ahead). */
     tunnel: () => queueTunnel(world),

@@ -4,7 +4,7 @@ import { DriverBillboard } from './billboard';
 import { buildPoliceRoadster, type PoliceRoadsterParts } from './policeRoadster';
 
 // The start line: two giant billboards of the chosen driver, a cheering crowd with name signs,
-// and police cars parked in the distance with their lights going. It sits on the road at the
+// and police cars parked in the distance with their lights going (plus one hovering: policePatrol.ts). It sits on the road at the
 // start of every run (moves with world.distance) so the car drives past it as the run begins.
 
 /** Billboards, one each side of the road (start-line metres: z < 0 is ahead of the parked car). */
@@ -15,7 +15,7 @@ const BILLBOARDS = [
 const BILLBOARD_SCALE = 3.2; // ~7.7 x 10 m picture, top ~15 m up
 const POLICE = [
   { x: 7.2, z: -52, rotY: -0.6 },
-  { x: -7.4, z: -60, rotY: 0.5 },
+  // (-7.4, -60) is the hover police car's spot: policePatrol.ts.
   { x: 7.6, z: -72, rotY: -0.4 },
 ];
 const SIREN_HZ = 2.5;

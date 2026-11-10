@@ -572,6 +572,31 @@ export class GameAudio {
   }
   private hoverNodes?: { out: GainNode; nodes: AudioNode[]; stops: AudioScheduledSourceNode[] };
 
+  /** Hover police fly-by overhead: a whoosh that pans across with it and two short "whoop" chirps. dir: +1 left to right. */
+  patrolFlyby(dir: number): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const pan = ctx.createStereoPanner();
+    pan.pan.setValueAtTime(-0.8 * dir, t);
+    pan.pan.linearRampToValueAtTime(0.8 * dir, t + 4);
+    pan.connect(this.sfxBus!);
+    for (const at of [0.9, 1.35]) {
+      const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(520, t + at);
+      o.frequency.exponentialRampToValueAtTime(1350, t + at + 0.28);
+      lp.type = 'lowpass'; lp.frequency.value = 1600;
+      g.gain.setValueAtTime(0.0001, t + at);
+      g.gain.exponentialRampToValueAtTime(0.05, t + at + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.32);
+      o.connect(lp).connect(g).connect(pan);
+      o.start(t + at); o.stop(t + at + 0.35);
+      o.onended = () => { o.disconnect(); lp.disconnect(); g.disconnect(); };
+    }
+    this.whoosh(2.6, 300, 1400, 0.16, 0.6, 0.9);
+    setTimeout(() => pan.disconnect(), 4500);
+  }
+
   /** Kickflip: thruster ignition (low rumble + jet hiss), a rising zing, and a side-thruster puff as the roll starts. */
   kickflip(): void {
     this.whoosh(0.4, 110, 700, 0.55, 0, 0.8); // ignition rumble

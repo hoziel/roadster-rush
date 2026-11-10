@@ -18,6 +18,7 @@ import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
 import { StartLine } from './startline';
+import { HoverGlow, PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
@@ -29,6 +30,9 @@ const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from 
 const ROAD_WIDTH = LANE_COUNT * LANE_WIDTH + 1.5;
 const POLICE_FAR = 18; // behind the camera, out of view
 const POLICE_CLOSE = 4.6; // just behind the player, in view (bottom of the screen, not covering the car)
+const POLICE_HOVER_Z = 2; // tailing a hovering player: one lane over, a little behind (flanking, not covering the car)
+const POLICE_HOVER_LIFT = 0.8; // m the chase car floats while the player hovers
+const FLANK = 2.1; // m to the side of the player (a bit under a lane, so it stays on a phone screen)
 // Garage Driver tab: behind-left of the car, looking past its open driver's door at the billboard.
 const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.3, lookY: 0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
 const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
@@ -82,6 +86,11 @@ export class GameView {
   private police: ReturnType<typeof buildPoliceRoadster>;
   private policeZ = POLICE_FAR;
   private policeX = 0;
+  private policeHover = 0; // 0..1 eased: the chase car floats while the player hovers
+  private policePuffs = 0;
+  private policeGlow = new HoverGlow();
+  /** The hover police car: floats at the start line, flies across the sky now and then during a run. */
+  readonly patrol = new PolicePatrol((x, y, z, vx, vy, vz, size, life) => this.puffs.emit(x, y, z, vx, vy, vz, size, life));
   private hoverPad: THREE.Mesh;
   private hoverRings: THREE.Mesh[] = [];
   private hoverAcc = 0; // hover puffs owed (emitted at HOVER_PUFFS per second)
@@ -153,7 +162,8 @@ export class GameView {
     this.police = buildPoliceRoadster();
     this.police.group.scale.setScalar(CAR_SCALE);
     this.police.group.position.z = POLICE_FAR;
-    this.scene.add(this.police.group);
+    this.police.group.add(this.policeGlow.group);
+    this.scene.add(this.police.group, this.patrol.group);
 
     this.hoverPad = new THREE.Mesh(
       new THREE.CylinderGeometry(1.1, 1.3, 0.12, 24),
@@ -326,10 +336,15 @@ export class GameView {
       (r.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - t);
     });
 
-    // Police: slides in close after a crash, drops back out of view otherwise.
-    const targetZ = policeClose(w) && w.phase === 'running' ? POLICE_CLOSE : POLICE_FAR;
+    // Police: slides in close after a crash, drops back out of view otherwise. When the player hovers,
+    // the police hovers too and tails them (a playful chase, no siren).
+    const hovering = w.phase === 'running' && w.power === 'hover' && !w.tube;
+    this.policeHover += ((hovering ? 1 : 0) - this.policeHover) * Math.min(1, dt * 2);
+    const targetZ = policeClose(w) && w.phase === 'running' ? POLICE_CLOSE : hovering ? POLICE_HOVER_Z : POLICE_FAR;
     this.policeZ += (targetZ - this.policeZ) * Math.min(1, dt * (targetZ < this.policeZ ? 2.5 : 0.8));
-    this.policeX += (w.x - this.policeX) * Math.min(1, dt * 3);
+    // Hover chase: one lane toward the middle (the left lane from the centre lane).
+    const flank = this.policeHover > 0.5 && !policeClose(w) ? (w.x > 0.1 ? -FLANK : FLANK) : 0;
+    this.policeX += (w.x + flank - this.policeX) * Math.min(1, dt * 3);
     this.police.group.position.set(this.policeX, 0, this.policeZ);
     this.police.group.rotation.z = 0;
     if (k > 0) {
@@ -339,8 +354,22 @@ export class GameView {
         THREE.MathUtils.lerp(this.policeX, TUNNEL_RADIUS * Math.sin(pa), k), (TUBE_CY - TUNNEL_RADIUS * Math.cos(pa)) * k, this.policeZ);
       this.police.group.rotation.z = pa * k;
     }
+    const ph = smooth(this.policeHover);
+    this.police.group.position.y += ph * (POLICE_HOVER_LIFT + Math.sin(time * 2.6) * 0.1);
+    this.police.group.rotation.x = ph * Math.sin(time * 1.9) * 0.04;
+    this.policeGlow.group.visible = ph > 0.02;
+    if (ph > 0.02) {
+      this.policeGlow.group.position.y = (0.03 - this.police.group.position.y) / CAR_SCALE; // stays on the road
+      this.policeGlow.update(time);
+      this.policePuffs += dt * 60 * ph;
+      for (; this.policePuffs >= 1; this.policePuffs--) {
+        const cx = Math.random() < 0.5 ? -0.5 : 0.5, cz = Math.random() < 0.5 ? -1 : 1;
+        this.puffs.emit(this.policeX + cx, this.police.group.position.y - 0.1, this.policeZ + cz, 0, -8, 0, 0.22, 0.3);
+      }
+    }
     this.police.group.visible = this.policeZ < POLICE_FAR - 1;
     if (this.police.group.visible) this.police.updateLights(time * SIREN_HZ);
+    this.patrol.update(w, dt, time, this.showcase);
 
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);
