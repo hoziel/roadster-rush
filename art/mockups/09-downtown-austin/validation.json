@@ -1,0 +1,295 @@
+{
+  "models": [
+    {
+      "id": "brick-arc",
+      "triangles": 1398,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        10.420000076293945,
+        11,
+        9.289999961853027
+      ],
+      "groundY": 0,
+      "glowVertices": 789,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "limestone-hall",
+      "triangles": 1485,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        12.420000076293945,
+        13.5,
+        9.358399868011475
+      ],
+      "groundY": 0,
+      "glowVertices": 933,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "teal-corner",
+      "triangles": 1083,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        8.920000076293945,
+        10.024999618530273,
+        9.358399868011475
+      ],
+      "groundY": 0,
+      "glowVertices": 804,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "rose-bay",
+      "triangles": 1398,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        10.920000076293945,
+        10.654999732971191,
+        9.289999961853027
+      ],
+      "groundY": 0,
+      "glowVertices": 753,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "gold-market",
+      "triangles": 1126,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        11.920000076293945,
+        8.5,
+        9.289999961853027
+      ],
+      "groundY": 0,
+      "glowVertices": 708,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "plum-music",
+      "triangles": 1366,
+      "budget": 1500,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        9.420000076293945,
+        13.350000381469727,
+        9.289999961853027
+      ],
+      "groundY": 0,
+      "glowVertices": 579,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "crown-tower",
+      "triangles": 1112,
+      "budget": 3000,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        19,
+        70.0196762084961,
+        17
+      ],
+      "groundY": 0,
+      "glowVertices": 1488,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "slim-tower",
+      "triangles": 1464,
+      "budget": 3000,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        19,
+        88.4000015258789,
+        15
+      ],
+      "groundY": 0,
+      "glowVertices": 1764,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "stack-tower",
+      "triangles": 1332,
+      "budget": 3000,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        24,
+        73.1500015258789,
+        20
+      ],
+      "groundY": 0,
+      "glowVertices": 1620,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "blue-tower",
+      "triangles": 1008,
+      "budget": 3000,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        23,
+        62.119998931884766,
+        18
+      ],
+      "groundY": 0,
+      "glowVertices": 1428,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "live-oak",
+      "triangles": 672,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        8.400000095367432,
+        7.874082565307617,
+        7.1000001430511475
+      ],
+      "groundY": 0,
+      "glowVertices": 0,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "moonlight-tower",
+      "triangles": 744,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        3.3763644695281982,
+        23.090614318847656,
+        2.98783802986145
+      ],
+      "groundY": 0,
+      "glowVertices": 360,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "texas-flag",
+      "triangles": 152,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        3,
+        7.162077903747559,
+        1
+      ],
+      "groundY": 0,
+      "glowVertices": 0,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "pedicab",
+      "triangles": 564,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        1.4299999475479126,
+        2.0399999618530273,
+        2.6449999809265137
+      ],
+      "groundY": 0,
+      "glowVertices": 0,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "string-lights",
+      "triangles": 704,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        16.011690139770508,
+        1.7450422048568726,
+        0.2381822168827057
+      ],
+      "groundY": 0,
+      "glowVertices": 720,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "postcard-mural",
+      "triangles": 294,
+      "budget": 800,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        8,
+        4.5,
+        0.25
+      ],
+      "groundY": 0,
+      "glowVertices": 0,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    },
+    {
+      "id": "capitol-vista",
+      "triangles": 2731,
+      "budget": 3000,
+      "meshes": 1,
+      "materials": 1,
+      "size": [
+        39,
+        33.79999923706055,
+        16.550000190734863
+      ],
+      "groundY": 0,
+      "glowVertices": 120,
+      "finiteGeometry": true,
+      "nightClamp": true,
+      "disposalIdempotent": true
+    }
+  ],
+  "pngCount": 73,
+  "maxImageBytes": 244874
+}
