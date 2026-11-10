@@ -2,6 +2,8 @@
 
 ## Current work
 
+- Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
+- Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
 - Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
 - Latest variant: `art/mockups/02-police-roadster/`, a native police wrapper around the polished Revision 4 player body. Directly requested by Ofir; issue #15.
 - Latest deliverable: Revision 4 of `art/mockups/01-player-roadster/`, an in-place polish replacing Revision 3. See the latest entry below.
@@ -78,3 +80,11 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Full prompt set saved in `agents/codex/prompts/03-polished-game-mockups.md`; notes document palette and low-poly/performance simplification. Images are visual targets, not actual gameplay screenshots; no implementation or final approval inferred.
 - #16 previously held for #42, but current direct request authorizes these screens. Do not mark the old skyline brief complete (no standalone skyline sheet in this scope). Direction approval remains for Ofir. Board inbox/Status CLI unavailable (`unknown owner type`), comment-only handoff per COLLAB.md §3.
 - Mockups committed as `7277db2` (not pushed). Handoff posted at https://github.com/hoziel/roadster-rush/issues/16#issuecomment-6759546952 ; question: should this sunset-to-neon visual system become the implementation target? Final inbox recheck failed again. `gallery.jpg` is the full-page browser screenshot of the review page (separate from the four generated portrait screens).
+
+## November 10, 2026 — driver selection screen
+
+- Ofir approved the prior mockups (“Mockups are perfect!”) and requested a matching driver selection screen. Recorded that direction decision on #16: https://github.com/hoziel/roadster-rush/issues/16#issuecomment-6765941850 . Claude should reconcile the style guide; earlier entries saying direction approval is open are historical.
+- Read `src/ui/drivers.ts`: existing placeholder roster d1 Zoom/magenta, d2 Bolt/cyan, d3 Sunny/gold, d4 Pip/green. Used those identities/color targets; no real-person photos. Final characters remain Ofir's input under #31.
+- Created one polished imagegen screen in `art/mockups/04-driver-select/`: selected Bolt waves beside the red roadster with one open butterfly door, 2×2 portrait cards, cyan selection plus checkmark, gold Let's Drive and passive Kid Mode. 720×1560 JPEG; prompt recorded in `agents/codex/prompts/04-driver-select.md`.
+- One generation, visually reviewed and size-checked. Notes cover roster, palette, interaction and simplification. No native assets or game UI code changed. No paint-shop/license-plate deliverables implied by this partial #32 work.
+- Board inbox and Status update failed `unknown owner type`; comment handoff per COLLAB.md §3. Preserve unrelated A/B images, root demo videos and Claude's new src/view roadster files.
