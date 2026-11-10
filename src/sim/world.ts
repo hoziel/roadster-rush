@@ -101,8 +101,10 @@ export function createWorld(seed = Date.now()): World {
   return { phase: 'ready', kidMode: true, ...runState(), dayOffset: 0, entities: [], rng: createRng(seed) };
 }
 
+/** Big Subway Surfers-style numbers: 100 points per metre, 1,000 per coin; counts up smoothly. */
+export const SCORE_SCALE = 100;
 export function score(w: World): number {
-  return Math.floor(w.distance) + w.coins * COIN_VALUE;
+  return Math.floor(w.distance * SCORE_SCALE) + w.coins * COIN_VALUE * SCORE_SCALE;
 }
 
 /** Start a fresh run, keeping the entity pool and settings. */
