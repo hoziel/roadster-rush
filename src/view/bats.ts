@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { LANE_COUNT, LANE_WIDTH } from '../sim/config';
 import type { World } from '../sim/world';
+import { buildBat as buildBatModel, type BatParts } from './batModel';
 
 // Bat Swarm view: the bridge the road passes under, bats bursting out of it, and the
 // coin rain lift. The coins themselves come from the sim (sim/batswarm.ts).
@@ -13,19 +14,16 @@ const BRIDGE_COLOR = '#8a7484';
 const BRIDGE_VISIBLE_AHEAD = 230; // m; show it from beyond the fog
 
 const BAT_COUNT = 70;
-export const BAT_COLOR = '#7a4fc4';
-const BAT_OUTLINE = '#1c0f33'; // dark contour drawn behind each bat (Ofir: needs a stroke)
-const OUTLINE_WIDTH = 0.09; // m (bat units) the contour sticks out all round // friendly violet: the old near-black read as holes in the sky (Ofir: too dark)
 const BAT_TRIGGER = 85; // m from the bridge when the bats burst out
 const BAT_TIME = 7; // s the swarm lasts
 const BAT_STAGGER = 1.6; // s spread of take-off times
 const BAT_SPEED_MIN = -3, BAT_SPEED_MAX = 6; // m/s toward the camera relative to the bridge (which comes at car speed)
 const BAT_RISE_MIN = 0.2, BAT_RISE_MAX = 1.6; // m/s up
 const BAT_SPREAD = 4; // m/s sideways at most
-const BAT_SCALE_MIN = 1.4, BAT_SCALE_MAX = 2.2;
-const FLAP_SPEED = 19; // rad/s
-const FLAP_ANGLE = 0.85; // rad
-const BAT_PITCH = 0.9; // rad; tips the wing plane toward the camera so bats don't render edge-on
+const BAT_SCALE_MIN = 2.6, BAT_SCALE_MAX = 4; // the model is 0.8 m across: 2-3 m wingspans read from the car
+const FLAP_SPEED = 14; // rad/s of the wing beat
+const FLAP_ANGLE = 0.82; // rad each wing swings about its shoulder
+const BAT_PITCH = -0.25; // rad; tips the face down a little toward the car below
 
 // Coins in a swarm stretch fall from the sky as they come closer.
 const RAIN_LAND = 14; // m ahead where a coin reaches its normal height
@@ -41,10 +39,10 @@ export function coinRainLift(s: number, w: World): number {
 export class BatSwarm {
   readonly group = new THREE.Group();
   private bridge: THREE.Mesh;
-  private bats: THREE.InstancedMesh;
-  private outline: THREE.InstancedMesh;
-  private time = { value: 0 };
+  private model: BatParts;
+  private parts: THREE.InstancedMesh[]; // body, left wing, right wing
   private dummy = new THREE.Object3D();
+  private mb = new THREE.Matrix4(); private ml = new THREE.Matrix4(); private mr = new THREE.Matrix4();
   private burstFor = -1; // swarmAt the current burst belongs to
   private burstT = -1; // s since the burst, -1 = none
   // per-bat random parameters, made once
@@ -61,35 +59,18 @@ export class BatSwarm {
     this.bridge.visible = false;
     this.group.add(this.bridge);
 
-    const flapMat = (color: string, outline: boolean): THREE.MeshBasicMaterial => {
-      const m = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, fog: false, depthWrite: !outline });
-      m.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = this.time;
-      shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        /* glsl */ `
-        vec3 transformed = vec3(position);
-        float wingR = abs(position.x);
-        float flap = sin(uTime * ${FLAP_SPEED.toFixed(1)} + float(gl_InstanceID) * 1.7) * ${FLAP_ANGLE.toFixed(2)};
-        transformed.x = sign(position.x) * wingR * cos(flap);
-        transformed.y = position.y + wingR * sin(flap);`,
-      );
-      };
-      m.customProgramCacheKey = () => (outline ? 'bat-outline' : 'bat');
-      return m;
-    };
-    this.bats = new THREE.InstancedMesh(buildBat(), flapMat(BAT_COLOR, false), BAT_COUNT);
-    this.bats.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.bats.frustumCulled = false;
-    this.bats.count = 0;
-    this.bats.renderOrder = 2;
-    // Contour: the same bats, a bit bigger and dark, drawn first without depth so each bat sits on its outline.
-    this.outline = new THREE.InstancedMesh(inflate(buildBat(), OUTLINE_WIDTH), flapMat(BAT_OUTLINE, true), BAT_COUNT);
-    this.outline.instanceMatrix = this.bats.instanceMatrix; // shares the matrices: no extra per-frame work
-    this.outline.frustumCulled = false;
-    this.outline.count = 0;
-    this.outline.renderOrder = 1;
-    this.group.add(this.outline, this.bats);
+    // Codex's bat: three parts drawn as instances (3 draw calls for the whole swarm); each bat's wings beat on their own.
+    this.model = buildBatModel();
+    this.model.material.fog = false; // stays bright against the dusk sky
+    const g = this.model.geometries;
+    this.parts = [g.body, g.leftWing, g.rightWing].map((geo) => {
+      const mesh = new THREE.InstancedMesh(geo, this.model.material, BAT_COUNT);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      mesh.count = 0;
+      this.group.add(mesh);
+      return mesh;
+    });
 
     for (let i = 0; i < BAT_COUNT; i++) {
       this.x0[i] = (Math.random() * 2 - 1) * (ROAD_HALF + 1);
@@ -102,8 +83,9 @@ export class BatSwarm {
     }
   }
 
+  private setCount(n: number): void { for (const m of this.parts) { m.count = n; m.instanceMatrix.needsUpdate = true; } }
+
   update(w: World, dt: number, time: number): void {
-    this.time.value = time;
     const bridgeS = w.swarmAt - BRIDGE_BEFORE;
     const rel = bridgeS - w.distance;
     const has = w.swarmAt >= 0 && rel > -BRIDGE_DEPTH * 3 && rel < BRIDGE_VISIBLE_AHEAD;
@@ -115,9 +97,9 @@ export class BatSwarm {
       this.burstT = 0;
     }
     if (w.distance < 1) { this.burstT = -1; this.burstFor = -1; } // new run
-    if (this.burstT < 0) { this.bats.count = this.outline.count = 0; return; }
+    if (this.burstT < 0) { this.setCount(0); return; }
     if (w.phase === 'running') this.burstT += dt;
-    if (this.burstT > BAT_TIME + BAT_STAGGER) { this.burstT = -1; this.bats.count = this.outline.count = 0; return; }
+    if (this.burstT > BAT_TIME + BAT_STAGGER) { this.burstT = -1; this.setCount(0); return; }
 
     let n = 0;
     for (let i = 0; i < BAT_COUNT; i++) {
@@ -129,13 +111,15 @@ export class BatSwarm {
       const x = this.x0[i] + this.side[i] * t + sway * 1.5;
       const y = BRIDGE_Y - 1.2 + this.rise[i] * t + Math.sin(t * 2.3 + this.wobble[i]) * 0.6;
       this.dummy.position.set(x, y, z);
-      this.dummy.rotation.set(BAT_PITCH, this.side[i] * 0.05, sway * 0.35);
+      this.dummy.rotation.set(BAT_PITCH, Math.PI + this.side[i] * 0.08, sway * 0.35); // facing the camera (the model faces -z)
       this.dummy.scale.setScalar(this.size[i] * Math.min(1, t * 3));
       this.dummy.updateMatrix();
-      this.bats.setMatrixAt(n++, this.dummy.matrix);
+      const flap = Math.sin(time * FLAP_SPEED + i * 1.7) * FLAP_ANGLE;
+      this.model.writeInstanceMatrices(this.dummy.matrix, flap, this.mb, this.ml, this.mr);
+      this.parts[0].setMatrixAt(n, this.mb); this.parts[1].setMatrixAt(n, this.ml); this.parts[2].setMatrixAt(n, this.mr);
+      n++;
     }
-    this.bats.count = this.outline.count = n;
-    this.bats.instanceMatrix.needsUpdate = true;
+    this.setCount(n);
   }
 }
 
@@ -156,39 +140,5 @@ function buildBridge(): THREE.BufferGeometry {
   }
   const g = mergeGeometries(parts);
   for (const p of parts) p.dispose();
-  return g;
-}
-
-/** Push every vertex outward (in the wing plane, away from the body centre) by a fixed width: an even contour. */
-function inflate(g: THREE.BufferGeometry, w: number): THREE.BufferGeometry {
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i), len = Math.hypot(x, z) || 1;
-    p.setXYZ(i, x + (x / len) * w, p.getY(i), z + (z / len) * w);
-  }
-  p.needsUpdate = true;
-  return g;
-}
-
-/** Low-poly bat: a small body and two wings in the XZ plane; the shader flaps |x| > 0. */
-export function buildBat(): THREE.BufferGeometry {
-  const wing = [
-    // inner front, tip, scallop / inner front, scallop, inner back
-    0.06, 0, 0.2, 0.78, 0, 0.06, 0.42, 0, -0.12,
-    0.06, 0, 0.2, 0.42, 0, -0.12, 0.06, 0, -0.2,
-    // second scallop point to the tip for a jagged trailing edge
-    0.42, 0, -0.12, 0.78, 0, 0.06, 0.66, 0, -0.16,
-  ];
-  const pos: number[] = [];
-  for (let i = 0; i < wing.length; i += 3) pos.push(wing[i], wing[i + 1], wing[i + 2]);
-  for (let i = 0; i < wing.length; i += 3) pos.push(-wing[i], wing[i + 1], wing[i + 2]);
-  // body diamond and ears
-  pos.push(0, 0, 0.34, 0.09, 0, 0, -0.09, 0, 0);
-  pos.push(-0.09, 0, 0, 0.09, 0, 0, 0, 0, -0.3);
-  pos.push(-0.07, 0, 0.3, -0.02, 0, 0.3, -0.06, 0, 0.42);
-  pos.push(0.02, 0, 0.3, 0.07, 0, 0.3, 0.06, 0, 0.42);
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.computeVertexNormals();
   return g;
 }

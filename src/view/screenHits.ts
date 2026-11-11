@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BAT_COLOR, buildBat } from './bats';
+import { buildBat } from './batModel';
 import { LEG_TOP, longhornGeometry } from './roadwork';
 import { birdGeometry, droneGeometry } from './skyLanes';
 
@@ -29,7 +29,7 @@ const LOOKS: Record<ScreenHitKind, Look> = {
   longhorn: { size: 0.1, centre: 1.0, pose: new THREE.Euler(0.25, -Math.PI / 2, 0) }, // face first, horns across
   bird: { size: 0.12, centre: 0, pose: new THREE.Euler(Math.PI / 2, 0, 0), debris: '#fbfaf6' }, // splayed flat, wings spread, head up
   drone: { size: 0.12, centre: 0, pose: new THREE.Euler(1.1, 0.4, 0), debris: '#3a3f52' }, // top side, rotors showing
-  bat: { size: 0.24, centre: 0, pose: new THREE.Euler(Math.PI / 2, 0, 0), away: true }, // flat on the glass, wings out
+  bat: { size: 0.4, centre: 0, pose: new THREE.Euler(0, Math.PI, 0), away: true }, // face to the glass, wings spread
 };
 
 interface Flyer { kind: ScreenHitKind; mesh: THREE.Group; star: THREE.Mesh; t: number; from: THREE.Vector3; tx: number; ty: number; spin: number; tilt: number; sway: number; shed: boolean }
@@ -49,10 +49,10 @@ export class ScreenHits {
     const starMat = new THREE.MeshBasicMaterial({ map: starTexture(), transparent: true, depthTest: false, depthWrite: false, fog: false });
     const vc = new THREE.MeshLambertMaterial({ vertexColors: true });
     const bird = birdGeometry(), drone = droneGeometry(), bat = buildBat();
-    const batMat = new THREE.MeshBasicMaterial({ color: BAT_COLOR, side: THREE.DoubleSide, fog: false });
+    bat.material.fog = false;
     const make: Record<ScreenHitKind, () => THREE.Object3D> = {
       cone: coneModel(), longhorn: longhornModel(),
-      bird: () => new THREE.Mesh(bird, vc), drone: () => new THREE.Mesh(drone, vc), bat: () => new THREE.Mesh(bat, batMat),
+      bird: () => new THREE.Mesh(bird, vc), drone: () => new THREE.Mesh(drone, vc), bat: () => bat.group.clone(), // shares the geometry and material; the wings are its 2nd and 3rd children
     };
     for (const kind of Object.keys(LOOKS) as ScreenHitKind[]) {
       for (let i = 0; i < POOL; i++) {
@@ -111,6 +111,7 @@ export class ScreenHits {
         this.e.set(t * f.spin, t * f.spin * 0.7, 0);
         f.mesh.quaternion.copy(this.camera.quaternion).multiply(this.q.setFromEuler(this.e));
         f.mesh.scale.setScalar(THREE.MathUtils.lerp(1, look.size, k));
+        if (f.kind === 'bat') flapBat(f.mesh, Math.sin(t * 22) * 0.82);
         continue;
       }
       const end = FLY + STICK + (look.away ? FLY_OFF : SLIDE);
@@ -120,6 +121,7 @@ export class ScreenHits {
         this.v.set(f.tx, f.ty, -DEPTH);
         const squash = 1 - 0.35 * Math.exp(-p * 7) * Math.cos(p * 16);
         f.mesh.scale.set(look.size * (2 - squash), look.size * squash, look.size);
+        if (f.kind === 'bat') flapBat(f.mesh, 0); // splatted, wings spread wide
         f.star.visible = p < 0.55;
         f.star.position.copy(this.camera.localToWorld(this.w.set(f.tx, f.ty, -DEPTH - 0.02)));
         f.star.quaternion.copy(this.camera.quaternion);
@@ -131,7 +133,8 @@ export class ScreenHits {
         const p = (t - FLY - STICK) / FLY_OFF;
         this.v.set(f.tx + p * p * 0.5 * Math.sign(f.tilt || 1), f.ty + p * p * 0.6, -DEPTH - p * 1.5);
         rotZ = f.tilt + Math.sin(t * 9) * 0.25;
-        f.mesh.scale.set(look.size * (0.45 + 0.55 * Math.abs(Math.cos(t * 22))), look.size, look.size); // wing beats
+        f.mesh.scale.setScalar(look.size);
+        flapBat(f.mesh, Math.sin(t * 22) * 0.82); // real wing beats
         f.star.visible = false;
       } else if (t < end) {
         // Slowly slides down the glass, swaying side to side, and drops off the bottom.
@@ -224,4 +227,12 @@ function starTexture(): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+/** Beat a screen-hit bat's wings (its model: body, left wing, right wing, hinged at the shoulders). */
+function flapBat(holder: THREE.Group, a: number): void {
+  const model = holder.children[0];
+  const [, l, r] = model.children;
+  l.rotation.set(0, -a * 0.12, -a);
+  r.rotation.set(0, a * 0.12, a);
 }
