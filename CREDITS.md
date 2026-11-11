@@ -25,11 +25,12 @@ Every third-party asset, with source URL and license. CC-BY assets are also cred
 | Nature Kit: tree_oak, tree_palmTall, rock_tallA | `assets-src/kenney/nature-kit/` | Kenney | https://kenney.nl/assets/nature-kit | CC0 |
 
 ## Audio
-Shipped files are trimmed, mono AAC copies made by `scripts/convert-audio.sh`. CC0 needs no credit; the in-game Credits list them anyway.
+Shipped files are trimmed, mono AAC copies made by `scripts/convert-audio.sh`. CC0 needs no credit; the in-game Credits list them anyway. CC-BY music is credited there as required.
 
 | Asset | File | Ships as | Author | Source | License |
 |---|---|---|---|---|---|
-| Pure Raceway (160 bpm) | `assets-src/audio/music/pure-raceway-160.ogg` | `public/themes/austin/audio/music-run.m4a` (run music) | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
+| Hillbilly Swing | `assets-src/audio/music/kevin-macleod-hillbilly-swing.mp3` | `public/themes/austin/audio/music-run.m4a` (run music) | Kevin MacLeod (incompetech.com) | https://incompetech.com/music/royalty-free/music.html | CC-BY 4.0 ("Hillbilly Swing" Kevin MacLeod, incompetech.com, licensed under Creative Commons: By Attribution 4.0, http://creativecommons.org/licenses/by/4.0/) |
+| Pure Raceway (160 bpm) | `assets-src/audio/music/pure-raceway-160.ogg` | not used (was the run music) | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
 | Pure Raceway climax (175 bpm) | `assets-src/audio/music/pure-raceway-climax-175.ogg` | `public/themes/austin/audio/music-climax.m4a` (Ludicrous) | MintoDog | https://opengameart.org/content/pure-raceway | CC0 |
 | Title Screen (5 Chiptunes Action) | `assets-src/audio/music/juhani-junkala-title-screen.mp3` | `public/themes/austin/audio/music-menu.m4a` (start/finish) | Juhani Junkala (SubspaceAudio) | https://opengameart.org/content/5-chiptunes-action | CC0 |
 | Bicycle horn | `assets-src/audio/sfx/bicycle-horn.wav` | `public/themes/austin/audio/horn-bike.m4a` (`honk('bike')`) | AntumDeluge | https://opengameart.org/content/bicycle-horn | CC0 |

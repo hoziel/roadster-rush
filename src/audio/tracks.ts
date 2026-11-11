@@ -17,7 +17,7 @@ const bars = (n: number, bpm: number) => (n * 240) / bpm;
 const MENU_BAR = 62259 / 44100; // ~170 bpm, measured in samples
 
 export const MUSIC: Record<MusicId, TrackDef> = {
-  run: { file: 'music-run.m4a', loopStart: bars(1, 160), loopEnd: bars(49, 160) },
+  run: { file: 'music-run.m4a', loopStart: 584530 / 44100, loopEnd: 6423991 / 44100 }, // Hillbilly Swing: seam baked by scripts/bake-loop.mjs
   climax: { file: 'music-climax.m4a', loopStart: bars(1, 175), loopEnd: bars(25, 175) },
   menu: { file: 'music-menu.m4a', loopStart: MENU_BAR, loopEnd: 7 * MENU_BAR },
 };

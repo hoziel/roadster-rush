@@ -6,7 +6,7 @@ const AUDIO_DIR = new URL('../public/themes/austin/audio/', import.meta.url);
 
 describe('audio tracks', () => {
   it('loops are whole bars inside the shipped files', () => {
-    expect(MUSIC.run.loopEnd - MUSIC.run.loopStart).toBeCloseTo(72, 5); // 48 bars at 160 bpm
+    expect(MUSIC.run.loopEnd - MUSIC.run.loopStart).toBeCloseTo(5839461 / 44100, 6); // Hillbilly Swing: 80 bars
     expect(MUSIC.climax.loopStart).toBeCloseTo(60480 / 44100, 6);
     for (const def of Object.values(MUSIC)) expect(def.loopEnd).toBeGreaterThan(def.loopStart);
   });
@@ -19,9 +19,9 @@ describe('audio tracks', () => {
   });
 
   it('falls back to the whole buffer when loop points do not fit', () => {
-    const lp = loopPoints(MUSIC.run, 0.02, 73.55)!;
-    expect(lp.start).toBeCloseTo(1.52, 6);
-    expect(lp.end).toBeCloseTo(73.52, 6);
+    const lp = loopPoints(MUSIC.run, 0.02, 145.74)!;
+    expect(lp.start).toBeCloseTo(584530 / 44100 + 0.02, 6);
+    expect(lp.end).toBeCloseTo(6423991 / 44100 + 0.02, 6);
     expect(loopPoints(MUSIC.run, 0, 30)).toBeNull();
   });
 
