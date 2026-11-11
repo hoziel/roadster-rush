@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { blossomTexture, projectSideUVs } from './blossom';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Driver } from '../ui/drivers';
 import type { PaintLook } from '../ui/paints';
@@ -22,6 +23,7 @@ export interface CarLook { paint: PaintLook; driver: Driver; hat: boolean }
  * On the car it adds only the stripe / two-tone accent (1 draw call when shown).
  */
 export class CarStyle {
+  private blossomTex: THREE.CanvasTexture | null = null;
   private skin = new THREE.MeshToonMaterial();
   private hair = new THREE.MeshToonMaterial();
   private accent = new THREE.MeshToonMaterial();
@@ -82,6 +84,10 @@ export class CarStyle {
     const { paint, driver } = look;
     const mat = this.car.paint;
     mat.color.set(paint.color);
+    const blossom = paint.finish === 'blossom';
+    if (blossom && !this.blossomTex) { projectSideUVs(this.car.group, mat); this.blossomTex = blossomTexture(); }
+    const pattern = blossom ? this.blossomTex : null;
+    if (mat.map !== pattern) { mat.map = pattern; mat.needsUpdate = true; }
     const map = paint.finish === 'metallic' ? this.metalMap : null;
     if (mat.gradientMap !== map) { mat.gradientMap = map; mat.needsUpdate = true; }
     // GameView reads these as the resting glow (power-ups override it).

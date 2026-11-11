@@ -3,7 +3,7 @@ import { defaultShop, normalizeShop, type ShopState } from './sim/shop';
 // localStorage can throw (private mode, blocked storage): never let that break the game.
 const KEY = 'roadster-rush:v1';
 
-interface Saved { best: number; muted: boolean; music: boolean; sfx: boolean; shop: ShopState; musicReset?: boolean; bestScaled?: boolean }
+interface Saved { best: number; muted: boolean; music: boolean; sfx: boolean; shop: ShopState; musicReset?: boolean; bestScaled?: boolean; blossom?: boolean }
 
 function load(): Saved {
   try {
@@ -13,6 +13,8 @@ function load(): Saved {
     if (!s.musicReset) { s.music = false; s.musicReset = true; }
     // Scores were briefly 100x bigger (Nov 10, reverted): bring a best saved then back down.
     if (s.bestScaled) { s.best = Math.round(s.best / 100); delete s.bestScaled; }
+    // Nov 11: Ori's car is now the cherry-blossom paint; switch it once on saves still on her old red.
+    if (!s.blossom) { if (s.shop.driver === 'ori' && s.shop.paint === 'cherry') s.shop = { ...s.shop, paint: 'blossom' }; s.blossom = true; }
     return s;
   } catch {
     return { best: 0, muted: false, music: false, sfx: true, shop: defaultShop() };
