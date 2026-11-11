@@ -17,7 +17,7 @@ import { Landmarks } from './landmarks';
 import { NightLights } from './nightlights';
 import { TUBE_CY, TunnelView, tubeBlend } from './tunnel';
 import { TrafficView } from './traffic';
-import { StartLine } from './startline';
+import { StartLine, WaitingPolice } from './startline';
 import { SkyLanes } from './skyLanes';
 import { BustScene } from './bust';
 import { FanBoards } from './fanBoards';
@@ -45,8 +45,9 @@ const FLANK = 2.1; // m to the side of the player (a bit under a lane, so it sta
 const DRIVER_CAM = { dx: -2.5, y: 2.2, z: 6.5, lookDx: 1.3, lookY: 0.5, lookZ: -2.8, lift: 0 }; // car and billboard on one sight line; aimed low so both sit above the panel
 const CAM_EASE = 3; // 1/s: how fast the camera glides between the run, garage and driver views
 const TURNTABLE = { radius: 8.5, height: 3.2, spin: 0.35, lookY: 0.7, lift: 0.22, idle: 2.5 }; // garage orbit; auto-spins after `idle` s
-// Start screen: the same orbit, a bit higher and further back so the billboard is in view; drag to spin it.
-const START_ORBIT = { radius: 9, height: 3.6, lookY: 1.2 };
+// Start screen: the same orbit, a bit higher and further back, seen from in front of the car on its left, looking
+// back down the road (it runs off to the upper left) at the start line and the police lined up behind; drag to spin it.
+const START_ORBIT = { radius: 9, height: 3.6, lookY: 1.2, angle: 2.75 };
 // Game over: a wider, higher circle so the police cars boxing the car in are all in view.
 const BUST_ORBIT = { radius: 14, height: 6.5, spin: 0.32 };
 const TUMBLE_TIME = 1.1; // s of the hard-crash tumble
@@ -219,7 +220,7 @@ export class GameView {
     this.puffFrame.position.y = TUBE_CY;
     this.screenHits = new ScreenHits(this.camera);
     this.scene.add(this.screenHits.group, this.puddles.group);
-    this.scene.add(this.startLine.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.fanSpots.group, this.sideline.group);
+    this.scene.add(this.startLine.group, this.waitingPolice.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.fanSpots.group, this.sideline.group);
     void document.fonts?.ready.then(() => this.fanBoards.refresh());
     this.scene.add(this.traffic.group);
     void this.traffic.load();
@@ -430,6 +431,15 @@ export class GameView {
     this.overBlend += ((w.phase === 'over' && this.bust.active ? 1 : 0) - this.overBlend) * Math.min(1, dt * 2);
     const o = smooth(this.overBlend);
     if (this.bust.active && !this.showcase) this.orbitA += dt * BUST_ORBIT.spin;
+    if (w.phase === 'ready' && this.lastPhase !== 'ready') {
+      this.orbitGoal = START_ORBIT.angle;
+      this.orbitA = START_ORBIT.angle + Math.atan2(Math.sin(this.orbitA - START_ORBIT.angle), Math.cos(this.orbitA - START_ORBIT.angle)); // the short way round
+    }
+    this.lastPhase = w.phase;
+    if (this.orbitGoal !== null && !this.showcase && w.phase === 'ready') {
+      this.orbitA += (this.orbitGoal - this.orbitA) * Math.min(1, dt * 2.5);
+      if (Math.abs(this.orbitGoal - this.orbitA) < 0.001) this.orbitGoal = null;
+    }
     const orbiting = this.showcase || w.phase === 'ready' || this.bust.active;
     this.camBlend += ((orbiting ? 1 : 0) - this.camBlend) * ease;
     this.focusBlend += ((this.showcase && this.driverFocus ? 1 : 0) - this.focusBlend) * ease;
@@ -463,6 +473,7 @@ export class GameView {
     this.car.setDoorOpen(smooth(this.doorL), smooth(this.doorR));
     // The start line (billboards, crowd, parked police) is part of the road: the car drives past it.
     this.startLine.update(w.distance, time);
+    this.waitingPolice.update(w.distance, w.phase === 'ready', time);
     for (const m of [this.coins, this.cones, this.powers]) m.visible = !this.showcase;
     // Widen the view as speed builds (more road rushing past the edges reads as faster), plus a kick for Ludicrous.
     const speedK = w.phase === 'running' ? THREE.MathUtils.clamp((w.speed - SPEED_START) / (SPEED_MAX - SPEED_START), 0, 1.5) : 0;
@@ -549,6 +560,7 @@ export class GameView {
   /** Garage Driver tab: frame the car (driver's door open) in front of the billboard. */
   focusDriver(on: boolean): void { this.driverFocus = on; }
   private startLine = new StartLine();
+  private waitingPolice = new WaitingPolice();
   private fanBoards = new FanBoards();
   private fanSpots = new FanSpots();
   private sideline = new Sideline();
@@ -563,11 +575,13 @@ export class GameView {
   private doorR = 0;
   private doorsOpen = false;
   private garageBlend = 0;
-  private orbitA = 0;
+  private orbitA = START_ORBIT.angle;
+  private orbitGoal: number | null = null; // eases the orbit back to the start angle when the start screen opens
+  private lastPhase = '';
   private lastDrag = -100;
   private clock = 0;
   /** Drag on the start screen or in the garage: spin the camera round the car. */
-  orbitBy(dxPixels: number): void { this.orbitA -= dxPixels * DRAG_TURN; this.lastDrag = this.clock; }
+  orbitBy(dxPixels: number): void { this.orbitA -= dxPixels * DRAG_TURN; this.lastDrag = this.clock; this.orbitGoal = null; }
   /** Tap the parked car: open or close its doors. */
   toggleDoors(): void { this.doorsOpen = !this.doorsOpen; }
   private tmpV2 = new THREE.Vector3();

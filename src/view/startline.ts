@@ -54,6 +54,9 @@ export class StartLine {
   private e = new THREE.Euler();
 
   constructor() {
+    // The start screen looks at the car from the front, back down the road, so the whole start line is turned
+    // round to sit behind the car (start-line z < 0 below ends up behind it, facing the camera).
+    this.group.rotation.y = Math.PI;
     BILLBOARDS.forEach((b, i) => {
       const g = this.billboards[i].group;
       g.position.set(b.x, 0, b.z);
@@ -61,7 +64,7 @@ export class StartLine {
       g.scale.setScalar(BILLBOARD_SCALE);
       this.group.add(g);
     });
-    this.police = parkedPolice();
+    this.police = parkedPolice(POLICE);
     this.group.add(this.police.group);
 
     // Fans: alternating rows, a sign held up by every other one.
@@ -209,8 +212,8 @@ export class StartLine {
  * The parked police cars, merged into one car's worth of meshes (one draw call per material, ~17
  * for all three instead of ~51). The first car's materials are kept, so its updateLights flashes all three.
  */
-function parkedPolice(): PoliceRoadsterParts {
-  const cars = POLICE.map((p) => {
+function parkedPolice(spots: { x: number; z: number; rotY: number }[]): PoliceRoadsterParts {
+  const cars = spots.map((p) => {
     const car = buildPoliceRoadster();
     car.group.scale.setScalar(CAR_SCALE);
     car.group.position.set(p.x, 0, p.z);
@@ -230,6 +233,29 @@ function parkedPolice(): PoliceRoadsterParts {
   });
   for (const { meshes } of cars) for (const m of meshes) m.geometry.dispose();
   return { ...first.car, group };
+}
+
+/** Police cars lined up on the road behind the parked car, lights going, ready to give chase: on every start screen (also the one after a run). */
+const WAITING = [
+  { x: -2.5, z: 14, rotY: 0.08 },
+  { x: 2.5, z: 17, rotY: -0.08 },
+  { x: 0, z: 23, rotY: 0 },
+];
+
+export class WaitingPolice {
+  readonly group: THREE.Group;
+  private parts = parkedPolice(WAITING);
+  private anchor = 0; // distance where the car was parked on the start screen
+
+  constructor() { this.group = this.parts.group; }
+
+  update(distance: number, ready: boolean, time: number): void {
+    if (ready) this.anchor = distance;
+    const behind = distance - this.anchor;
+    this.group.position.z = behind;
+    this.group.visible = behind < HIDE_PAST;
+    if (this.group.visible) this.parts.updateLights(time * SIREN_HZ);
+  }
 }
 
 /** Nevo's basketball hoop by the start line: pole, backboard, orange rim, a net (1 group, 4 draw calls). */

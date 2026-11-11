@@ -8,7 +8,7 @@ import { HoverJets, type Puffs } from './puffs';
 // One car, so it costs no extra draw calls on the start screen.
 
 /** Start-line spot (start-line metres, as in startline.ts). */
-export const HOVER_SPOT = { x: -7.4, z: -60, rotY: 0.5, y: 1.6 };
+export const HOVER_SPOT = { x: 7.4, z: 60, rotY: 0.5 + Math.PI, y: 1.6 }; // behind the parked car (the start screen looks back down the road)
 const FLY = { y: 6, z: -20, span: 34, time: 4.8, bank: 0.25, scale: 1.25 }; // fly-by: height, depth, half-width crossed, seconds
 const FIRST_AFTER = 14; // s into a run before the first fly-by
 const EVERY = [28, 48]; // s between fly-bys
