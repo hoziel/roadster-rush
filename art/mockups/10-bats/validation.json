@@ -1,0 +1,115 @@
+{
+  "triangles": {
+    "body": 385,
+    "leftWing": 164,
+    "rightWing": 164
+  },
+  "total": 713,
+  "meshes": 3,
+  "materials": 1,
+  "opaque": true,
+  "dimensions": [
+    0.8039753484725952,
+    0.3140000030398369,
+    0.13055990263819695
+  ],
+  "pivots": [
+    [
+      -0.065,
+      0.027,
+      0.014
+    ],
+    [
+      0.065,
+      0.027,
+      0.014
+    ]
+  ],
+  "transformFrames": 362,
+  "maxMatrixError": 0,
+  "swarmAt70": {
+    "draws": 3,
+    "triangles": 49910
+  },
+  "images": [
+    {
+      "file": "bat-back.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 75543
+    },
+    {
+      "file": "bat-flap-1.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 86461
+    },
+    {
+      "file": "bat-flap-2.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 89933
+    },
+    {
+      "file": "bat-flap-3.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 85346
+    },
+    {
+      "file": "bat-flap-4.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 89836
+    },
+    {
+      "file": "bat-front.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 104501
+    },
+    {
+      "file": "bat-glide.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 104501
+    },
+    {
+      "file": "bat-side.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 56264
+    },
+    {
+      "file": "bat-splat-front.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 97283
+    },
+    {
+      "file": "bat-splat-screen.png",
+      "width": 540,
+      "height": 1170,
+      "bytes": 93378
+    },
+    {
+      "file": "bat-swarm-dusk.png",
+      "width": 540,
+      "height": 1170,
+      "bytes": 149644
+    },
+    {
+      "file": "bat-swarm-night.png",
+      "width": 540,
+      "height": 1170,
+      "bytes": 142877
+    },
+    {
+      "file": "bat-three-quarter.png",
+      "width": 1200,
+      "height": 900,
+      "bytes": 102732
+    }
+  ],
+  "checks": "finite attributes/colors; geometry budget; dimensions; scene/instance pose equivalence; flap clamp; rigid geometry; splat; idempotent disposal; PNG limits"
+}
