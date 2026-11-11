@@ -16,7 +16,7 @@ export interface SkyItem { kind: SkyKind | 'coin'; lane: number; s: number }
 
 /** One row of the sky course at `s`: one or two blocked lanes, a short coin line in a free lane just before it. */
 export function skyRow(rng: Rng, s: number, gap: number): SkyItem[] {
-  const blocked = rng() < 0.4 ? 2 : 1;
+  const blocked = rng() < 0.15 ? 2 : 1;
   const lanes = [0, 1, 2].sort(() => rng() - 0.5);
   const r = rng();
   const kind: SkyKind = r < 0.45 ? 'bird' : r < 0.8 ? 'drone' : 'heli';
