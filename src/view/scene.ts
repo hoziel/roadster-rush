@@ -24,6 +24,7 @@ import { FanBoards } from './fanBoards';
 import { FanSpots, SPOT_SCALE } from './fanSpots';
 import { themeFor } from './fanThemes';
 import { Sideline } from './sideline';
+import { HobbyBalls } from './hobbyBalls';
 import { ScreenHits, type ScreenHitKind } from './screenHits';
 import { Puddles, type SplashKind } from './puddles';
 import { PolicePatrol } from './policePatrol';
@@ -221,7 +222,8 @@ export class GameView {
     this.puffFrame.position.y = TUBE_CY;
     this.screenHits = new ScreenHits(this.camera);
     this.scene.add(this.screenHits.group, this.puddles.group);
-    this.scene.add(this.startLine.group, this.waitingPolice.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.fanSpots.group, this.sideline.group);
+    this.scene.add(this.startLine.group, this.waitingPolice.group, this.skyLanes.group, this.bust.group, this.fanBoards.group, this.fanSpots.group, this.sideline.group, this.hobbyBalls.group);
+    this.scenery.hideAt = (x, z) => this.fanBoards.covers(x, z);
     void document.fonts?.ready.then(() => this.fanBoards.refresh());
     this.scene.add(this.traffic.group);
     void this.traffic.load();
@@ -502,7 +504,8 @@ export class GameView {
     this.buildings.update(w.distance, this.dayNight.lights);
     this.batSwarm.update(w, dt, time);
     this.skyLanes.update(w, this.skyK, time);
-    this.fanBoards.update(w.distance, !w.tube);
+    this.fanBoards.update(w.distance, !w.tube, time);
+    this.hobbyBalls.update(w, time, !this.showcase);
     this.fanSpots.update(w.distance, !w.tube && !this.showcase);
     this.sideline.update(time);
     this.puddles.update(w);
@@ -555,13 +558,15 @@ export class GameView {
   setDriver(url: string, name = '', id = ''): void {
     this.startLine.setDriver(url, name, id);
     const theme = themeFor(id);
-    this.fanBoards.setTheme(theme.ads);
+    this.fanBoards.setTheme(theme.ads, theme.cutouts);
+    this.hobbyBalls.setSport(theme.sport);
     this.fanSpots.setTheme(theme, name);
     const prop = theme.prop ? this.startLine.props[theme.prop] : null;
     this.sideline.setScenes([
       ...(prop ? [{ anchor: prop, players: theme.startPlayers }] : []),
       ...(prop ? this.fanSpots.anchors().map((anchor, i) => ({ anchor, players: this.fanSpots.playerLists()[i], size: SPOT_SCALE })) : []),
       ...this.fanBoards.anchors.map((anchor, i) => ({ anchor, players: theme.boardPlayers[i % Math.max(1, theme.boardPlayers.length)] ?? [] })),
+      { anchor: this.hobbyBalls.anchor, players: HobbyBalls.players(theme.sport), size: 1.25 },
     ]);
   }
   /** Garage Driver tab: frame the car (driver's door open) in front of the billboard. */
@@ -571,6 +576,7 @@ export class GameView {
   private fanBoards = new FanBoards();
   private fanSpots = new FanSpots();
   private sideline = new Sideline();
+  private hobbyBalls = new HobbyBalls();
   private screenHits!: ScreenHits;
   /** Drove through a puddle (water) or mud: main shows the splash on the screen. */
   onSplash: ((kind: SplashKind) => void) | null = null;

@@ -4,7 +4,9 @@ import * as THREE from 'three';
 // volleyball bumps, cartwheels. Simple rigged figures (torso, head, four limbs) drawn as instances:
 // 4 draw calls for every player and ball on screen.
 
-export type Activity = 'shoot' | 'dribble' | 'karate' | 'bump' | 'cartwheel';
+// throw / cheer: the hobby-ball teammates either side of the road (the balls are drawn by hobbyBalls.ts);
+// leap: a tall player soaring right over the road and back with a basketball held high.
+export type Activity = 'shoot' | 'dribble' | 'karate' | 'bump' | 'cartwheel' | 'throw' | 'cheer' | 'leap';
 
 /** One player, placed in its anchor's local space (metres, facing -z unless yaw turns it). */
 export interface PlayerSpec {
@@ -12,14 +14,15 @@ export interface PlayerSpec {
   x: number; z: number; yaw: number;
   shirt: string; legs: string;
   phase?: number; // s offset in the loop
-  /** bump: where the partner stands (ball flies between); shoot: the rim position (all in anchor space). */
+  /** bump: where the partner stands (ball flies between); shoot: the rim position; leap: where it lands (all in anchor space). */
   target?: [number, number, number];
 }
 
-const MAX_PLAYERS = 24, MAX_BALLS = 14;
+const MAX_PLAYERS = 32, MAX_BALLS = 16;
 const HIP = 0.72, SHOULDER = 1.28, HEAD = 1.55, LEG = 0.72, ARM = 0.58;
 const SKINS = ['#f2c7a5', '#e0a77e', '#b9774f', '#8a5434'];
 const BASKETBALL = '#f08a24', VOLLEYBALL = '#ffd23f';
+const H_TURN = Math.PI / 2;
 
 interface Scene { anchor: THREE.Object3D; players: PlayerSpec[]; scale: number; size: number }
 
@@ -136,6 +139,35 @@ export class Sideline {
         L.aL = [0.9 + hit * 0.5, 0.15]; L.aR = [0.9 + hit * 0.5, -0.15]; // arms together, forward-down
         L.lL = [0.15, -0.12]; L.lR = [0.15, 0.12];
         y = -0.08 + hit * 0.12;
+        break;
+      }
+      case 'throw': { // a two-handed throw from overhead, with a little hop
+        const T = 1.5, u = (t % T) / T;
+        const wind = u < 0.55 ? u / 0.55 : Math.max(0, 1 - (u - 0.55) / 0.12);
+        L.aL = [3.1 - (1 - wind) * 1.7, -0.2]; L.aR = [3.1 - (1 - wind) * 1.7, 0.2];
+        L.lL = [0.1, -0.1]; L.lR = [-0.1, 0.1];
+        y = u > 0.55 && u < 0.75 ? Math.sin(((u - 0.55) / 0.2) * Math.PI) * 0.18 : 0;
+        break;
+      }
+      case 'cheer': { // arms up, waving, hopping
+        const b = Math.abs(Math.sin(t * 5.5));
+        L.aL = [0.3, -2.5 - b * 0.4]; L.aR = [0.3, 2.5 + b * 0.4];
+        L.lL = [0, -0.12]; L.lR = [0, 0.12];
+        y = b * 0.22;
+        break;
+      }
+      case 'leap': { // soars across to the target, pauses, soars back
+        const T = 2.6, n = Math.floor(t / T), u = (t % T) / T;
+        const f = THREE.MathUtils.clamp((u - 0.2) / 0.6, 0, 1);
+        const to = p.target ?? [-p.x, 0, p.z];
+        const [ax, az, bx, bz] = n % 2 ? [to[0] * k, to[2] * k, x, z] : [x, z, to[0] * k, to[2] * k];
+        x = THREE.MathUtils.lerp(ax, bx, f); z = THREE.MathUtils.lerp(az, bz, f);
+        y = Math.sin(f * Math.PI) * 5.2;
+        yaw = (bx > ax ? -H_TURN : H_TURN);
+        const air = Math.sin(f * Math.PI);
+        L.aL = [2.9, -0.15]; L.aR = [2.9, 0.15];
+        L.lL = [0.9 * air, -0.1]; L.lR = [-0.7 * air, 0.1];
+        ball = this.local(x, y + 2.35, z, yaw, 0, -0.1);
         break;
       }
       case 'cartwheel': {

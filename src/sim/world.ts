@@ -5,6 +5,7 @@ import {
   INVULN_TIME, JUMP_VELOCITY, LANE_CHANGE_SPEED, LANE_COUNT, LANE_WIDTH, LUDICROUS_BOOST,
   LUDICROUS_TIME, POWER_CHANCE, POWER_START_AFTER, SPAWN_AHEAD, SPEED_MAX, SPEED_START, STUMBLE_SLOWDOWN, STUMBLE_TIME,
   SWARM_CHANCE, SWARM_LENGTH, SWARM_MIN_GAP, SWARM_PAD,
+  BALL_COINS, BALL_FIRST_AT, BALL_GAP, BALL_HEIGHT, BALL_REACH, BALL_SPOTS,
   ROOF_COIN_REACH, TRAFFIC_CHANCE, TRAFFIC_FIRST_AT, TRAFFIC_GHOST_DIST, TRAFFIC_RUN, TRAFFIC_SLACK,
   TRAFFIC_SPEED,
   TUNNEL_CHANCE, TUNNEL_EXIT, TUNNEL_FIRST_AT, TUNNEL_LENGTH, TUNNEL_MIN_GAP, TUNNEL_RADIUS, TUNNEL_SLOTS,
@@ -49,6 +50,7 @@ export type SimEvent =
   | 'police-stop' | 'roadwork' | 'longhorns' | 'highroad' // one coming up, ZONE_WARN ahead
   | 'moo' // a longhorn was hit or knocked aside (comes with 'hit'/'boing')
   | 'cone' // a cone was hit or smashed (comes with 'hit'/'smash'): the view throws it at the screen
+  | 'catch' // caught a teammate's ball (BALL_COINS coins added)
   | 'sky' // reached the sky lanes
   | 'sky-hit' // flew into a sky obstacle: the hover ends and the car drops back (no battery lost)
   | 'bird-near' | 'drone-near' | 'heli-near'; // a sky obstacle SKY_NEAR ahead (for its sound)
@@ -61,6 +63,7 @@ export const POWER_TIME: Record<PowerKind, number> = {
 export interface World {
   phase: Phase;
   kidMode: boolean;
+  balls: boolean; // the driver has a sport: teammates throw balls across the road (kept across runs)
   time: number; // s driven this run
   distance: number; // m driven this run
   speed: number;
@@ -122,6 +125,8 @@ export interface World {
   tube: boolean; // driving inside a tunnel: steering moves around the ring
   slot: number; // target slot around the ring while in the tube (-3..4, 0 = bottom)
   angle: number; // current angle around the ring (rad, 0 = bottom, + = right); eases toward the slot
+  nextBallAt: number; // no new volley of hobby balls laid before this s
+  ballAt: number; // s where the latest volley's chunk starts, -1 if none (the view stages the throwers there)
   rng: Rng;
 }
 
@@ -137,11 +142,11 @@ const runState = () => ({
   policeAt: -1, policeWarned: true, nextPoliceAt: POLICE_FIRST_AT, policeQueued: false,
   workAt: -1, workEnd: -1, workWarned: true, nextWorkAt: WORK_FIRST_AT, workRun: 0, workQueued: false,
   herdAt: -1, herdWarned: true, nextHerdAt: LONGHORN_FIRST_AT, herdQueued: false,
-  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity, skyEnd: -Infinity, skyReached: false, skyHitKind: '',
+  highAt: -1, highWarned: true, nextHighAt: HIGHROAD_FIRST_AT, highQueued: false, overheadQueued: false, zoneEnd: -Infinity, nextBallAt: BALL_FIRST_AT, ballAt: -1, skyEnd: -Infinity, skyReached: false, skyHitKind: '',
 });
 
 export function createWorld(seed = Date.now()): World {
-  return { phase: 'ready', kidMode: true, ...runState(), dayOffset: 0, entities: [], rng: createRng(seed) };
+  return { phase: 'ready', kidMode: true, balls: false, ...runState(), dayOffset: 0, entities: [], rng: createRng(seed) };
 }
 
 export function score(w: World): number {
@@ -335,7 +340,12 @@ export function step(w: World, dt: number): SimEvent[] {
     }
     if (Math.abs(rel) > (isObstacle(e.kind) ? hitDepth(e.kind) : HIT_DEPTH) || !sideOverlap(w, e)) continue;
 
-    if (e.kind === 'coin') {
+    if (e.kind === 'ball') {
+      if (w.y < BALL_HEIGHT - BALL_REACH || w.y > SKY_GLIDE_FROM) continue; // fly past overhead (or far below)
+      e.alive = false;
+      w.coins += BALL_COINS;
+      events.push('catch');
+    } else if (e.kind === 'coin') {
       if (e.y !== undefined && w.y < e.y - ROOF_COIN_REACH) continue; // floating over a roof: jump for it
       if (e.y === undefined && w.y > SKY_GLIDE_FROM) continue; // road coins stay on the road below the sky lanes
       e.alive = false;
@@ -595,7 +605,9 @@ function spawn(w: World): void {
     const powersOk = w.time > POWER_START_AFTER && !w.power;
     const only = w.overheadQueued ? hasOverhead : undefined;
     w.overheadQueued = false;
-    for (const item of placeChunk(w.rng, difficulty, w.nextRowAt, 'cones', only).items) {
+    const items = placeChunk(w.rng, difficulty, w.nextRowAt, 'cones', only).items;
+    layBalls(w, items);
+    for (const item of items) {
       let kind: EntityKind;
       if (item.kind === 'power') {
         // Power slots only sometimes hold a power-up; otherwise a short coin line.
@@ -606,6 +618,19 @@ function spawn(w: World): void {
     }
     w.nextRowAt += CHUNK_LENGTH;
   }
+}
+
+/**
+ * A volley of hobby balls over the cone chunk at nextRowAt, when one is due: a ball crossing each of
+ * BALL_SPOTS, in a random lane. They float at BALL_HEIGHT and never hurt, so any cone chunk takes them, but
+ * not one with an overhead beam (jumping for the ball would mean hitting the beam). variant: the ball's index
+ * in the volley (the view has them thrown from alternating sides).
+ */
+function layBalls(w: World, items: PlacedItem[]): void {
+  if (!w.balls || w.nextRowAt < w.nextBallAt || items.some((it) => it.kind === 'overhead')) return;
+  BALL_SPOTS.forEach((at, k) => add(w, 'ball', Math.floor(w.rng() * LANE_COUNT), w.nextRowAt + at, undefined, undefined, BALL_HEIGHT, k));
+  w.ballAt = w.nextRowAt;
+  w.nextBallAt = w.nextRowAt + BALL_GAP[0] + w.rng() * (BALL_GAP[1] - BALL_GAP[0]);
 }
 
 /** Is the next chunk slot a traffic chunk? Traffic comes in runs of a few chunks, between cone chunks. */

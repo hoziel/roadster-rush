@@ -13,13 +13,14 @@ import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
+import { themeFor } from './view/fanThemes';
 import {
   POWER_TIME, clearAround, createWorld, hover, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
   queueSwarm, queueTunnel, score,
   slam, start, steer, step,
 } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
-import { HOVER_CHARGES_MAX, LANE_WIDTH, LUDICROUS_TIME, SPEED_MAX } from './sim/config';
+import { BALL_COINS, HOVER_CHARGES_MAX, LANE_WIDTH, LUDICROUS_TIME, SPEED_MAX } from './sim/config';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
 const BUST_SHOW_MS = 3200; // game over: the police bust plays this long before the finish card
@@ -49,7 +50,7 @@ const garage = new Garage(document.getElementById('ui')!, {
   showLook: (look) => view.style.set(look),
   playHorn: (id) => { audio.unlock(); audio.honk(id); },
   setOpen: (open) => { view.showcase = open; },
-  pickDriver: (url, name, id) => view.setDriver(url, name, id),
+  pickDriver: (url, name, id) => { view.setDriver(url, name, id); world.balls = !!themeFor(id).sport; },
   focusDriver: (on) => view.focusDriver(on),
 });
 const sound = new SoundPanel(document.getElementById('ui')!, {
@@ -66,6 +67,7 @@ view.setHD((() => { try { return localStorage.getItem('rr.hd') === '1'; } catch 
 audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
 view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name, storage.shop.driver);
+world.balls = !!themeFor(storage.shop.driver).sport;
 audio.horn = storage.shop.horn;
 void document.fonts?.ready.then(() => view.style.refreshPlate());
 new InstallNudge(document.getElementById('ui')!);
@@ -161,6 +163,7 @@ let acc = 0;
 let frames = 0, fpsTime = 0;
 let stampDraws = false; // debug go mode (headless shots): show draw calls every frame
 let airborne = false; // for the kickflip touchdown sound
+let ballToastAt = -1; // the volley of hobby balls last announced
 
 view.renderer.setAnimationLoop((now: number) => {
   const dt = Math.min((now - last) / 1000, 0.1);
@@ -170,6 +173,7 @@ view.renderer.setAnimationLoop((now: number) => {
     for (const ev of step(world, SIM_DT)) {
       switch (ev) {
         case 'coin': audio.coin(); break;
+        case 'catch': audio.coin(); setTimeout(() => audio.coin(), 90); setTimeout(() => audio.coin(), 180); hud.toast(`Nice catch! +${BALL_COINS}`, '#ffd23f'); break;
         case 'smash': audio.smash(); break;
         case 'cone': view.toScreen('cone', world.x); setTimeout(() => audio.bonk(), 320); break;
         case 'boing': audio.boing(); break;
@@ -229,6 +233,11 @@ view.renderer.setAnimationLoop((now: number) => {
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   cheer.update(world, driverById(storage.shop.driver).name, storage.shop.driver);
   view.render(world, dt, now / 1000);
+  // A volley of hobby balls is about to be thrown: tell the young driver what to do.
+  if (world.phase === 'running' && world.ballAt >= 0 && world.ballAt !== ballToastAt && world.ballAt - world.distance < 45) {
+    ballToastAt = world.ballAt;
+    hud.toast('Jump to catch the balls!', '#ffd23f');
+  }
   if (stampDraws) { const r = view.renderer.info.render; hud.debug(`${r.calls} draws · ${r.triangles} tris`); }
 
   if (debug) {

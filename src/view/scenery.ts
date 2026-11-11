@@ -61,6 +61,8 @@ export class Scenery {
   private v = new THREE.Vector3();
   private s = new THREE.Vector3();
   private up = new THREE.Vector3(0, 1, 0);
+  /** Spots (scene x, z) to keep free of roadside props, e.g. in front of a billboard. */
+  hideAt: ((x: number, z: number) => boolean) | null = null;
 
   async load(): Promise<void> {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -154,7 +156,8 @@ export class Scenery {
       for (let i = 0; i < p.n; i++) {
         const z = NEAR_Z - (p.a[i] - distance);
         this.q.setFromAxisAngle(this.up, p.rotY[i]);
-        this.m.compose(this.v.set(p.x[i], 0, z), this.q, this.s.setScalar(p.scale[i]));
+        const hidden = Math.abs(p.x[i]) < 9 && this.hideAt?.(p.x[i], z);
+        this.m.compose(this.v.set(p.x[i], 0, z), this.q, this.s.setScalar(hidden ? 0 : p.scale[i]));
         for (let k = 0; k < p.meshes.length; k++) p.meshes[k].setMatrixAt(i, this.tmp.multiplyMatrices(this.m, p.base[k]));
       }
       for (const mesh of p.meshes) {

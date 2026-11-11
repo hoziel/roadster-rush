@@ -10,7 +10,8 @@ export type ObstacleKind = 'cone' | 'car' | 'truck' | 'spikes' | 'police' | 'bar
   | 'trailer' | 'flatbed' | 'overhead';
 /** Big static props that pop aside with a "boing" when a shield hits them, like traffic (cones just flatten). */
 export type PropKind = 'police' | 'barrier' | 'fence' | 'digger' | 'longhorn' | 'trailer' | 'flatbed' | 'overhead';
-export type EntityKind = 'coin' | ObstacleKind | PowerKind | SkyKind;
+/** ball: a teammate's ball flying across the road (jump to catch it). */
+export type EntityKind = 'coin' | 'ball' | ObstacleKind | PowerKind | SkyKind;
 const OBSTACLES: readonly string[] = ['cone', 'car', 'truck', 'spikes', 'police', 'barrier', 'fence', 'digger', 'longhorn', 'trailer', 'flatbed', 'overhead'];
 const PROPS: readonly string[] = ['police', 'barrier', 'fence', 'digger', 'longhorn', 'trailer', 'flatbed', 'overhead'];
 export const isPower = (k: EntityKind): k is PowerKind => (POWER_KINDS as string[]).includes(k);

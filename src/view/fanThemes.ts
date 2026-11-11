@@ -2,6 +2,7 @@
 // and the ad billboards along the road. All art is drawn here on canvases (no logos, no photos).
 // Brand / real-person names (Spurs, Wemby) are fine while the repo is private; review at publish (SCOPE.md -> Risks).
 
+import type { Sport } from './hobbyBalls';
 import type { PlayerSpec } from './sideline';
 
 export type StartProp = 'hoop' | 'net' | null;
@@ -13,6 +14,8 @@ export interface FanTheme {
   signInks: string[]; // 4 sign ink colours
   prop: StartProp; // by the start line
   ads: ((g: CanvasRenderingContext2D, w: number, h: number) => void)[]; // roadside billboards, drawn on 2:1 canvases
+  cutouts: ((g: CanvasRenderingContext2D, w: number, h: number) => void)[]; // die-cut figures bursting out of the billboards (3:4, transparent)
+  sport: Sport | null; // teammates throw these across the road (jump to catch)
   startPlayers: PlayerSpec[]; // playing by the start-line prop (in its space)
   boardPlayers: PlayerSpec[][]; // under the roadside billboards (in a board's space; boards take turns)
 }
@@ -147,6 +150,71 @@ const oriAds: FanTheme['ads'] = [
   },
 ];
 
+// Die-cut figures that burst out of the top of the billboards: big, bold, with a white sticker edge.
+// Drawn on a transparent 3:4 canvas; the figure's head and arms poke out above the board.
+
+/** Draw `art` with a thick white sticker edge round everything it paints. */
+function sticker(g: CanvasRenderingContext2D, w: number, h: number, art: (g: CanvasRenderingContext2D) => void): void {
+  const tmp = document.createElement('canvas');
+  tmp.width = w; tmp.height = h;
+  const t = tmp.getContext('2d')!;
+  art(t);
+  const edge = document.createElement('canvas');
+  edge.width = w; edge.height = h;
+  const e = edge.getContext('2d')!;
+  const r = w * 0.03;
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) e.drawImage(tmp, Math.cos(a) * r, Math.sin(a) * r);
+  e.globalCompositeOperation = 'source-in';
+  e.fillStyle = '#ffffff'; e.fillRect(0, 0, w, h);
+  g.drawImage(edge, 0, 0);
+  g.drawImage(tmp, 0, 0);
+}
+
+/** A happy face on a figure() head: the head is at (x, y) with radius r (lean already applied). */
+function face(g: CanvasRenderingContext2D, x: number, y: number, r: number, hair: string): void {
+  g.fillStyle = hair; g.beginPath(); g.arc(x, y - r * 0.15, r * 1.02, Math.PI * 1.05, Math.PI * 1.95); g.fill();
+  g.fillStyle = '#2a1430';
+  g.beginPath(); g.arc(x - r * 0.35, y + r * 0.05, r * 0.12, 0, Math.PI * 2); g.arc(x + r * 0.35, y + r * 0.05, r * 0.12, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#2a1430'; g.lineWidth = r * 0.12; g.lineCap = 'round';
+  g.beginPath(); g.arc(x, y + r * 0.25, r * 0.38, 0.2, Math.PI - 0.2); g.stroke();
+}
+
+/** figure() plus its face: head position worked out from the pose's lean. */
+function person(
+  g: CanvasRenderingContext2D, x: number, y: number, s: number, body: string, skin: string, hair: string,
+  pose: { armL: number; armR: number; legL: number; legR: number; lean?: number }, belt?: string,
+): void {
+  figure(g, x, y, s, body, skin, pose, belt);
+  const a = pose.lean ?? 0;
+  face(g, x + Math.sin(a) * s * 0.98, y - Math.cos(a) * s * 0.98, s * 0.24, hair);
+}
+
+const nevoCutouts: FanTheme['cutouts'] = [
+  (g, w, h) => sticker(g, w, h, (t) => { // the very tall one dunking: long limbs, ball up high
+    t.save(); t.translate(w / 2, 0); t.scale(0.9, 1.08); t.translate(-w / 2, 0);
+    person(t, w * 0.5, h * 0.6, h * 0.29, SPURS_BLACK, '#7a4a2c', '#1a0e08', { armL: Math.PI * 0.94, armR: Math.PI * 1.06, legL: -0.2, legR: 0.5, lean: 0.05 });
+    t.fillStyle = '#ffffff'; t.font = FONT(h * 0.07); t.textAlign = 'center'; t.fillText('1', w * 0.5, h * 0.52);
+    t.restore();
+    basketball(t, w * 0.52, h * 0.08, h * 0.065);
+  }),
+  (g, w, h) => sticker(g, w, h, (t) => { // a karate kid's flying kick
+    person(t, w * 0.48, h * 0.58, h * 0.27, '#ffffff', '#f2c7a5', '#4a2e1c', { armL: Math.PI * 0.7, armR: -Math.PI * 0.6, legL: 0.2, legR: -Math.PI * 0.6, lean: -0.15 }, '#111214');
+    t.fillStyle = '#c0392b'; t.font = FONT(h * 0.1); t.textAlign = 'center'; t.fillText('HI-YA!', w * 0.5, h * 0.12);
+  }),
+];
+
+const oriCutouts: FanTheme['cutouts'] = [
+  (g, w, h) => sticker(g, w, h, (t) => { // a volleyball spike, ball just above her hand
+    person(t, w * 0.46, h * 0.6, h * 0.28, ORI_BLUE, '#f2c7a5', '#6b4226', { armL: Math.PI * 0.8, armR: Math.PI * 1.2, legL: -0.3, legR: 0.4, lean: 0.12 });
+    volleyball(t, w * 0.66, h * 0.1, h * 0.075);
+  }),
+  (g, w, h) => sticker(g, w, h, (t) => { // a gymnast's split leap, with a ribbon arc
+    t.strokeStyle = '#ff69b4'; t.lineWidth = h * 0.025; t.lineCap = 'round';
+    t.beginPath(); t.moveTo(w * 0.1, h * 0.3); t.bezierCurveTo(w * 0.3, h * 0.02, w * 0.7, h * 0.02, w * 0.9, h * 0.25); t.stroke();
+    person(t, w * 0.5, h * 0.55, h * 0.25, '#ff69b4', '#f2c7a5', '#6b4226', { armL: Math.PI * 0.75, armR: -Math.PI * 0.75, legL: Math.PI * 0.5, legR: -Math.PI * 0.5 });
+  }),
+];
+
 export const DEFAULT_THEME: FanTheme = {
   shirts: ['#e8452c', '#2f7de1', '#ffd23f', '#3fbf7f', '#ff69b4', '#8a5bd6', '#f4e9d8', '#ff8a3d'],
   signs: (n) => [`GO ${n}!`, `${n} ROCKS!`, `WE ♥ ${n}`, `GO GO ${n}!`],
@@ -154,6 +222,8 @@ export const DEFAULT_THEME: FanTheme = {
   signInks: ['#3a1440', '#c0392b', '#1f2d6b', '#3a1440'],
   prop: null,
   ads: [],
+  cutouts: [],
+  sport: null,
   startPlayers: [],
   boardPlayers: [],
 };
@@ -167,6 +237,8 @@ const THEMES: Record<string, FanTheme> = {
     signInks: ['#c0392b', SPURS_SILVER, SPURS_BLACK, '#111214'],
     prop: 'hoop',
     ads: nevoAds,
+    cutouts: nevoCutouts,
+    sport: 'basketball',
     startPlayers: [ // round the hoop (its space is scaled 1.3; the rim is at 0, 3.25, 0.6)
       { activity: 'shoot', x: 0, z: 3.4, yaw: 0, ...SPURS, target: [0, 3.25, 0.6] },
       { activity: 'dribble', x: 1.5, z: 2.3, yaw: 0.5, ...SPURS, phase: 0.7 },
@@ -186,6 +258,8 @@ const THEMES: Record<string, FanTheme> = {
     signInks: ['#ffffff', ORI_BLUE, '#1f2d6b', ORI_BLUE],
     prop: 'net',
     ads: oriAds,
+    cutouts: oriCutouts,
+    sport: 'volleyball',
     startPlayers: [ // either side of the net (its space is scaled 1.25), and a gymnast beside it
       { activity: 'bump', x: 0.8, z: 2.0, yaw: 0, ...TEAM_BLUE, target: [-0.8, 0, -2.0] },
       { activity: 'bump', x: -0.8, z: -2.0, yaw: Math.PI, ...TEAM_BLUE, target: [0.8, 0, 2.0] },
