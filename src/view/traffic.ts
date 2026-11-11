@@ -3,6 +3,7 @@ import { laneX, type World } from '../sim/world';
 import { loadModel, modelGeometry } from './models';
 import { buildCybercab } from './robotaxis/cybercab';
 import { buildWaymo } from './robotaxis/waymo';
+import { buildCybertruck } from './robotaxis/cybertruck';
 
 // Traffic: Kenney Car Kit models (CC0), one InstancedMesh per model (one draw call each), plus one more for
 // all the tail lights, which glow at night. A car knocked aside by a crash or a shield gets a "boing":
@@ -64,8 +65,8 @@ export class TrafficView {
       material.dispose();
       this.add(geometry, new THREE.MeshLambertMaterial({ map }), spec);
     });
-    // Austin's robotaxis (Codex's models from issue #45, one vertex-coloured mesh each): they join the car rotation.
-    for (const taxi of [buildCybercab(), buildWaymo()]) this.add(taxi.geometry, taxi.material, { file: '', kind: 'car', scale: 1 });
+    // Austin's robotaxis and the Cybertruck (Codex's models from issue #45, one vertex-coloured mesh each): they join the car rotation.
+    for (const taxi of [buildCybercab(), buildWaymo(), buildCybertruck()]) this.add(taxi.geometry, taxi.material, { file: '', kind: 'car', scale: 1 });
     this.counts = this.models.map(() => 0);
   }
 
