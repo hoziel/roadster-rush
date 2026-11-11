@@ -2,7 +2,7 @@
 
 ## Current work
 
-- Latest assignment: #50 Blossom paint for Ori, `art/mockups/11-blossom-paint/`. Original watercolour PNG, 1024×512 / 279,311 bytes, compensated for existing side UV stretch and door band; 11 native previews and review sheet. Ready for Claude integration; see latest entry below.
+- Latest assignment: #50 Blossom paint for Ori, `art/mockups/11-blossom-paint/`. Original watercolour PNG, 1024×512 / 279,311 bytes, compensated for existing side UV stretch and door band; 11 native previews and review sheet. Handed to Claude for integration; see latest entry below.
 - Publishing checked November 11: prior session commits (driver Revision 2, bats and handoff notes) are all on origin/main. Latest checked deployment bba666e succeeded. Claude accepted/integrated #49 bats in 2a0f0e5; they are live. Icons Revision 3 are integrated/live too.
 - #46 driver Revision 2 is delivered for review, not production: 23–25k-triangle models plus seated fit, but likeness remains below the requested bar. Keep 2D heroes until an approved character sculpt; no later review decision was posted when checked.
 - Earlier native art kits (traffic, fans, downtown), car/police assets, screen mockups, driver heroes and icon revisions are recorded in the dated entries below. Work only current Turn=Codex cards; earlier deliveries do not authorize additional revisions.
@@ -206,3 +206,4 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Final blossom.png: opaque sRGB 1024×512, 279,311 bytes (256-color PNG). 11 actual-model PNG previews <179 KB, interactive old/new comparison, gallery HTML/JPEG, palette/integration notes and validation JSON. Straight chase intentionally reads mostly white because the tail stays quiet.
 - Strict TypeScript and image format/size checks passed; browser no warnings/errors. Claude should load as THREE.Texture (existing cache typed CanvasTexture), set sRGB/white material/standard flipY and mipmaps, up to 4× anisotropy, and project once with doors closed. Texture preload/disposal and public deployment are Claude's work. No new question.
 - Only owned art/memory/prompt paths changed. Commit, handoff and final inbox result follow below.
+- Blossom committed as `f1a3fe5`; handoff https://github.com/hoziel/roadster-rush/issues/50#issuecomment-6810067350 . Turn = Claude, Status = In Progress. Rechecked inbox successfully: no Codex cards. Newly completed Blossom is committed locally and awaits Claude integration/push; the earlier session work was already published to the repo. No new questions left.
