@@ -18,7 +18,7 @@ const emptyRunning = (seed = 1) => {
 const skyItems = (w: World) => w.entities.filter((e) => e.alive && isSky(e.kind));
 
 describe('sky lanes', () => {
-  it('every row of sky obstacles leaves at least one lane free', () => {
+  it('a hover has just a couple of sky rows, each blocking one lane', () => {
     for (let seed = 1; seed <= 40; seed++) {
       const w = emptyRunning(seed);
       expect(hover(w)).toBe(true);
@@ -28,8 +28,9 @@ describe('sky lanes', () => {
         if (!rows.has(key)) rows.set(key, new Set());
         rows.get(key)!.add(e.lane);
       }
-      expect(rows.size).toBeGreaterThan(3);
-      for (const lanes of rows.values()) expect(lanes.size).toBeLessThan(3);
+      expect(rows.size).toBeGreaterThanOrEqual(1);
+      expect(rows.size).toBeLessThanOrEqual(3);
+      for (const lanes of rows.values()) expect(lanes.size).toBe(1);
     }
   });
 
