@@ -5,7 +5,7 @@ import { MUSIC, SAMPLES, SAMPLE_ORDER, audioUrl, findOnset, loopPoints, type Mus
 export { HORN_KINDS, type HornKind, type MusicId } from './tracks';
 
 const MASTER_VOL = 0.8;
-const MUSIC_VOL = 0.17; // music sits well under the SFX (it's off by default)
+const MUSIC_VOL = 0.12; // music sits well under the SFX (on by default; Nov 11: 30% quieter than 0.17)
 const DUCK = 0.6; // music level while a big moment plays (fraction of MUSIC_VOL); small sounds never duck
 // Anti-fatigue rules (Nov 10 sound pass): every repeated sample varies a little in pitch and level, the same
 // sample can't retrigger faster than SAMPLE_GAP, a limiter caps the mix, and harsh highs are shelved down.
