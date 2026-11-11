@@ -1,246 +1,202 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-
-export type DriverId = 'nevo' | 'ori' | 'shiri' | 'ofir';
-export type DriverPose = 'standing' | 'seated';
-type V = [number, number, number];
-type Row = [number, number, number];
+import {Sculpt,type V} from './sculpt';
+export type DriverId='nevo'|'ori'|'shiri'|'ofir';
+export type DriverPose='standing'|'seated';
+export const SEATED_SCALE:Record<DriverId,number>={nevo:.74,ori:.72,shiri:.62,ofir:.62};
+/** Seat contact anchor for this art roadster, not a production car API. */
+export const SEAT_POSITION=new THREE.Vector3(-.33,.43,-.07);
 export interface DriverParts {
-  group: THREE.Group;
-  joints: { pelvis: THREE.Group; torso: THREE.Group; head: THREE.Group; arms: THREE.Group[]; elbows: THREE.Group[]; hips: THREE.Group[]; knees: THREE.Group[] };
-  /** Seated origin is the seat-contact plane. Standing origin is the soles. */
-  setPose(pose: DriverPose): void;
-  /** Additive wave, in radians. Call after setPose; zero restores the standing wave angle. */
-  setWave(angle: number): void;
-  dispose(): void;
+ group:THREE.Group;
+ joints:{pelvis:THREE.Group;torso:THREE.Group;head:THREE.Group;arms:THREE.Group[];elbows:THREE.Group[];hips:THREE.Group[];knees:THREE.Group[];hands:THREE.Object3D[]};
+ seatedScale:number;
+ setPose(pose:DriverPose):void;
+ setWave(angle:number):void;
+ dispose():void;
 }
-
-export const DRIVER_PALETTES = {
-  nevo: { skin:'#eab08b', blush:'#d98f76', hair:'#493124', highlight:'#73503a', suit:'#323f49', trim:'#df4942', accent:'#64717a', eye:'#593a2b', boot:'#252d35' },
-  ori: { skin:'#edb391', blush:'#d68b73', hair:'#493024', highlight:'#966039', suit:'#e64730', trim:'#eabd51', accent:'#29394a', eye:'#318c78', boot:'#283a4a' },
-  shiri: { skin:'#edbd9e', blush:'#d99b83', hair:'#92653e', highlight:'#d7ae69', suit:'#303b4b', trim:'#d3a456', accent:'#5e6976', eye:'#94734d', boot:'#293341' },
-  ofir: { skin:'#dca382', blush:'#be8069', hair:'#49352b', highlight:'#8d694b', suit:'#b6c6d5', trim:'#e88741', accent:'#40556d', eye:'#334150', boot:'#293441' },
+export const DRIVER_PALETTES={
+ nevo:{skin:'#edb18a',blush:'#d68d74',hair:'#443027',highlight:'#80573d',suit:'#35424b',trim:'#cf493e',accent:'#6c777b',eye:'#673d28',boot:'#27313a'},
+ ori:{skin:'#edb394',blush:'#dc8c72',hair:'#422f27',highlight:'#ad713e',suit:'#df452d',trim:'#e7b94e',accent:'#2c3c4a',eye:'#47ad8c',boot:'#293d4b'},
+ shiri:{skin:'#edbd9e',blush:'#d29179',hair:'#88613e',highlight:'#d9b777',suit:'#303b4b',trim:'#cda45c',accent:'#606970',eye:'#927349',boot:'#293341'},
+ ofir:{skin:'#dca381',blush:'#bd7d66',hair:'#44332a',highlight:'#997047',suit:'#bac9d6',trim:'#e18c4b',accent:'#44566b',eye:'#34485a',boot:'#293441'},
 } as const;
-
-/** Geometry is merged per articulated part. One opaque, vertex-colored Toon material. */
-class Sculpt {
-  readonly material = new THREE.MeshToonMaterial({ vertexColors:true });
-  private pieces = new Map<THREE.Group, THREE.BufferGeometry[]>();
-  private geometry: THREE.BufferGeometry[] = [];
-  add(target:THREE.Group, source:THREE.BufferGeometry, color:string|((x:number,y:number,z:number)=>string)) {
-    const g=source.index?source.toNonIndexed():source;if(g!==source)source.dispose();
-    g.deleteAttribute('uv');if(!g.hasAttribute('normal'))g.computeVertexNormals();
-    const pos=g.getAttribute('position'), n=pos.count, a=new Float32Array(n*3);
-    for(let i=0;i<n;i++){const c=new THREE.Color(typeof color==='string'?color:color(pos.getX(i),pos.getY(i),pos.getZ(i)));a.set([c.r,c.g,c.b],i*3);}
-    g.setAttribute('color',new THREE.BufferAttribute(a,3));
-    if(!this.pieces.has(target))this.pieces.set(target,[]);this.pieces.get(target)!.push(g);
-  }
-  ell(target:THREE.Group,color:string,pos:V,scale:V,segments=12,rings=8) {
-    this.add(target,new THREE.SphereGeometry(1,segments,rings).scale(...scale).translate(...pos),color);
-  }
-  box(target:THREE.Group,color:string,pos:V,scale:V,rx=0) {
-    this.add(target,new THREE.BoxGeometry(...scale).rotateX(rx).translate(...pos),color);
-  }
-  /** Elliptical loft, with smoothed normals and optional color by surface point. */
-  loft(target:THREE.Group,color:string,rows:Row[],segments=12,colorAt?:(x:number,y:number,z:number)=>string) {
-    const vertices:number[]=[],indices:number[]=[];
-    for(const [y,w,d] of rows)for(let i=0;i<=segments;i++){const a=i/segments*Math.PI*2;vertices.push(Math.sin(a)*w,y,-Math.cos(a)*d);}
-    for(let j=1;j<rows.length;j++)for(let i=0;i<segments;i++){
-      const a=(j-1)*(segments+1)+i,b=j*(segments+1)+i;indices.push(a,b,a+1,a+1,b,b+1);
-    }
-    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();
-    if(!colorAt){this.add(target,g,color);return;}
-    const flat=g.toNonIndexed();g.dispose();const p=flat.getAttribute('position'),a=new Float32Array(p.count*3);
-    for(let i=0;i<p.count;i++){const c=new THREE.Color(colorAt(p.getX(i),p.getY(i),p.getZ(i)));a.set([c.r,c.g,c.b],i*3);}
-    flat.setAttribute('color',new THREE.BufferAttribute(a,3));if(!this.pieces.has(target))this.pieces.set(target,[]);this.pieces.get(target)!.push(flat);
-  }
-  tube(target:THREE.Group,color:string,points:V[],radius:number,segments=12,sides=5) {
-    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
-    this.add(target,new THREE.TubeGeometry(curve,segments,radius,sides,false),color);
-  }
-  /** A tapered swept hair lock; each ring has an elliptical section. */
-  lock(target:THREE.Group,color:string,points:V[],radius:number,flat=.65,steps=6) {
-    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
-    const frames=curve.computeFrenetFrames(steps,false),vertices:number[]=[],idx:number[]=[],sides=6;
-    for(let j=0;j<=steps;j++){
-      const p=curve.getPointAt(j/steps),r=radius*(j===steps?.025:Math.pow(1-j/(steps+1),.5));
-      for(let i=0;i<=sides;i++){
-        const a=i/sides*Math.PI*2,v=p.clone().addScaledVector(frames.normals[j],Math.cos(a)*r).addScaledVector(frames.binormals[j],Math.sin(a)*r*flat);vertices.push(...v.toArray());
-      }
-    }
-    for(let j=1;j<=steps;j++)for(let i=0;i<sides;i++){const a=(j-1)*(sides+1)+i,b=j*(sides+1)+i;idx.push(a,b,a+1,a+1,b,b+1);}
-    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(idx);g.computeVertexNormals();this.add(target,g,color);
-  }
-  finish(){
-    for(const [parent,parts]of this.pieces){const g=mergeGeometries(parts,false);parts.forEach(p=>p.dispose());g.computeBoundingBox();g.computeBoundingSphere();const mesh=new THREE.Mesh(g,this.material);mesh.castShadow=true;mesh.name=parent.name+'_surface';parent.add(mesh);this.geometry.push(g);}
-    this.pieces.clear();let disposed=false;return()=>{if(disposed)return;disposed=true;this.geometry.forEach(g=>g.dispose());this.material.dispose();};
-  }
-}
-
 function joint(parent:THREE.Group,name:string,position:V){const g=new THREE.Group();g.name=name;g.position.set(...position);parent.add(g);return g;}
-
-/** Original cartoon studies; dimensions in metres, +Y up, facing -Z. No image textures. */
-export function buildDriver(id:DriverId,pose:DriverPose='standing'):DriverParts {
-  const p=DRIVER_PALETTES[id],child=id==='nevo'||id==='ori',woman=id==='shiri'||id==='ori',space=id==='ofir';
-  const desired=id==='nevo'?1.28:id==='ori'?1.33:1.75;
-  const leg=child?.245:.365,shin=child?.235:.35,boot=child?.09:.11;
-  const hipY=leg+shin+boot,torsoH=child?.29:.37,shoulder=child?.17:woman?.205:.225;
-  const arm=child?.205:.275,forearm=child?.18:.245;
-  const hw=child?.158:woman?.155:.167,hh=child?.182:.201,hd=child?.143:.155;
-  const group=new THREE.Group();group.name=`Driver_${id}`;
-  const pelvis=joint(group,'pelvis',[0,hipY,0]),torso=joint(pelvis,'torso',[0,0,0]);
-  const head=joint(torso,'head',[0,torsoH+.08+hh*.78,-.005]);
-  const s=new Sculpt(),ink='#242936',white='#fff3df';
-  // Tailored suit, rounded shoulders and a clear waist rather than stacked boxes.
-  s.loft(torso,p.suit,[[0,.10,.075],[.04,.135,.09],[torsoH*.40,woman?.135:.15,.10],[torsoH*.82,shoulder*.94,.105],[torsoH,shoulder*.80,.08],[torsoH+.025,.09,.065]],14,(x,y,z)=>{
-    if(z<-.038 && Math.abs(x)>shoulder*.57 && y>.06)return p.trim;
-    return p.suit;
-  });
-  s.loft(pelvis,p.suit,[[-.065,.10,.07],[-.025,.14,.09],[.04,.133,.09]],12);
-  s.loft(torso,p.accent,[[.015,.136,.092],[.049,.14,.096],[.063,.135,.092]],14);
-  s.box(torso,space?p.trim:'#9aa7b0',[0,.041,-.097],[.05,.035,.014]);
-  s.tube(torso,ink,[[0,.07,-.102],[0,torsoH*.7,-.108],[0,torsoH+.01,-.077]],.0035,8,4);
-  s.loft(torso,p.trim,[[torsoH-.005,.087,.071],[torsoH+.039,.078,.064]],12);
-  s.ell(torso,p.skin,[0,torsoH+.065,0],[.061,.072,.06],10,6);
-  for(const side of[-1,1]){
-    if(id==='nevo'){
-      s.box(torso,p.accent,[side*.075,torsoH*.58,-.101],[.075,.073,.012]);
-      s.box(torso,p.trim,[side*.075,torsoH*.67,-.109],[.071,.01,.008]);
-      s.box(torso,p.trim,[side*.12,torsoH*.89,-.072],[.083,.036,.022]);
-    }else{
-      s.box(torso,p.trim,[side*.068,torsoH*.43,-.105],[.128,.036,.015]);
-      if(space){
-        s.box(torso,p.accent,[side*.073,torsoH*.72,-.107],[.09,.063,.022]);
-        s.tube(torso,'#a4b0b8',[[side*.11,torsoH*.65,-.11],[side*.17,torsoH+.04,-.025],[side*.18,torsoH-.01,.10]],.022,10,6);
-      }
-    }
+/** Revision 2. Authored curved surfaces and details, no sampled reference textures. */
+export function buildDriver(id:DriverId,pose:DriverPose='standing'):DriverParts{
+ const p=DRIVER_PALETTES[id],child=id==='nevo'||id==='ori',woman=id==='ori'||id==='shiri',space=id==='ofir';
+ const desired=id==='nevo'?1.28:id==='ori'?1.33:1.75;
+ const leg=child?.245:.365,shin=child?.235:.35,boot=child?.09:.11,hipY=leg+shin+boot,torsoH=child?.29:.37,shoulder=child?.17:woman?.205:.225;
+ const arm=child?.205:.275,forearm=child?.18:.245,hw=id==='nevo'?.155:id==='ori'?.154:id==='shiri'?.151:.166,hh=child?.182:.201,hd=child?.143:.155;
+ const group=new THREE.Group();group.name=`Driver_${id}_R2`;const pelvis=joint(group,'pelvis',[0,hipY,0]),torso=joint(pelvis,'torso',[0,0,0]),head=joint(torso,'head',[0,torsoH+.08+hh*.78,-.005]);
+ const s=new Sculpt(),ink='#282b34',white='#fff5e8',seam=space?'#748b9c':'#222e39';
+ // Continuous tailored torso with chest, waist and shoulder transitions.
+ s.loft(torso,(x,y,z)=>z<-.035&&Math.abs(x)>shoulder*.61&&y>.055?p.trim:p.suit,[[0,.111,.078],[.035,.135,.091],[torsoH*.25,.133,.097],[torsoH*.50,woman?.134:.148,.107],[torsoH*.77,shoulder*.93,.112],[torsoH*.92,shoulder*.96,.100],[torsoH,shoulder*.77,.081],[torsoH+.018,.085,.064]],24);
+ s.loft(pelvis,p.suit,[[-.068,.085,.055],[-.052,.125,.08],[-.02,.143,.095],[.04,.135,.091]],20);
+ s.loft(torso,p.accent,[[.015,.139,.097],[.024,.143,.099],[.058,.143,.099],[.067,.136,.094]],20);
+ s.patch(torso,space?p.trim:'#a7afb0',[0,.042,-.103],.045,.031,.004,.007);
+ s.tube(torso,seam,[[0,.072,-.104],[0,torsoH*.55,-.111],[0,torsoH*.85,-.109],[0,torsoH+.014,-.077]],.004,12,5);
+ s.tube(torso,'#c5c4b8',[[.006,.08,-.108],[.006,torsoH*.7,-.115],[.006,torsoH-.016,-.09]],.0016,9,4);
+ s.patch(torso,'#bfc6c5',[.006,torsoH*.73,-.119],.014,.025,.003,.003);
+ s.loft(torso,p.trim,[[torsoH-.003,.085,.071],[torsoH+.012,.088,.070],[torsoH+.042,.078,.065]],20);
+ s.tube(torso,seam,[[-.078,torsoH+.034,-.026],[-.055,torsoH+.038,-.055],[0,torsoH+.039,-.067],[.055,torsoH+.038,-.055],[.078,torsoH+.034,-.026]],.003,14,5);
+ s.ell(torso,p.skin,[0,torsoH+.063,0],[.061,.071,.059],16,8);
+ for(const side of[-1,1]){
+  const x=side*.078;
+  if(id==='nevo'){
+   s.patch(torso,seam,[x,torsoH*.57,-.108],.073,.079,.008,.004);
+   s.patch(torso,p.suit,[x,torsoH*.58,-.114],.066,.071,.007,.004);
+   s.patch(torso,p.trim,[x,torsoH*.68,-.121],.066,.013,.003,.003);
+   s.tube(torso,p.trim,[[side*.17,torsoH-.004,.015],[side*.15,torsoH+.001,-.07],[side*.102,torsoH-.008,-.09]],.017,8,6);
+  }else{
+   s.patch(torso,p.trim,[side*.073,torsoH*.40,-.113],.130,.040,.004,.003);
+   s.tube(torso,p.trim,[[side*.13,.076,-.064],[side*.126,torsoH*.46,-.069],[side*.14,torsoH*.76,-.067],[side*.165,torsoH*.92,-.04]],.007,12,5);
+   s.patch(torso,p.accent,[side*.073,torsoH*.70,-.114],.080,.057,.008,.005);
+   s.patch(torso,space?'#a0b4c4':p.suit,[side*.073,torsoH*.71,-.120],.068,.041,.005,.002);
   }
-  if(space)s.box(torso,p.accent,[0,torsoH*.55,.132],[.24,.24,.08]);
-
-  // Sculpted head: oval cranium, softer cheeks, a narrower jaw and chin.
-  const hg=new THREE.SphereGeometry(1,20,12),hp=hg.getAttribute('position');
-  for(let i=0;i<hp.count;i++){
-    const y=hp.getY(i),jaw=y<-.18?THREE.MathUtils.lerp(.84,1,(y+1)/.82):1;
-    hp.setXYZ(i,hp.getX(i)*hw*jaw,y*hh,hp.getZ(i)*hd*(y<-.35?.92:1));
-  }hg.computeVertexNormals();s.add(head,hg,space?(x,y,z)=>y<-.035&&z<.10&&((x/.066)**2+((y+.084)/.034)**2)>1?'#705345':p.skin:p.skin);
-  for(const side of[-1,1]){
-    s.ell(head,p.skin,[side*hw*.99,-.013,.006],[.033,.049,.026],10,7);
-    s.ell(head,p.blush,[side*hw*1.065,-.014,-.013],[.017,.030,.009],8,5);
-  }
-  const surface=(x:number,y:number)=>-hd*Math.sqrt(Math.max(.04,1-(x/hw)**2-(y/hh)**2));
-  const eyeY=.017,eyeX=hw*.40,eyeW=child?.036:.035,eyeH=child?.025:.022;
-  if(!space)for(const side of[-1,1]){
-    const x=side*eyeX,z=surface(x,eyeY)-.005;
-    s.ell(head,ink,[x,eyeY+.001,z],[eyeW*1.1,eyeH*1.12,.012],12,7);
-    s.ell(head,white,[x,eyeY,z-.009],[eyeW,eyeH,.010],12,7);
-    s.ell(head,p.eye,[x-side*.003,eyeY,z-.019],[eyeH*.70,eyeH*.91,.006],12,7);
-    s.ell(head,ink,[x-side*.003,eyeY,z-.024],[eyeH*.36,eyeH*.61,.004],10,6);
-    s.ell(head,'#ffffff',[x-.006,eyeY+.009,z-.028],[.006,.006,.003],8,5);
-    s.tube(head,p.hair,[[x-side*.033,.058,surface(x-side*.033,.058)-.009],[x,.073,surface(x,.073)-.012],[x+side*.032,.059,surface(x+side*.032,.059)-.008]],child?.007:.006,7,4);
-    if(woman)s.tube(head,ink,[[x+side*.026,eyeY+.012,z-.013],[x+side*.042,eyeY+.023,z-.008]],.0035,2,4);
-  }
-  // Small bridge, rounded nose tip and nostril shadows; mouth follows the cheek surface.
-  s.ell(head,p.skin,[0,-.014,-hd+.002],[.020,.042,.022],10,7);
-  s.ell(head,p.skin,[0,-.039,-hd-.012],[child?.024:.025,.020,.022],12,7);
-  for(const side of[-1,1])s.ell(head,p.blush,[side*.016,-.048,-hd-.023],[.007,.004,.004],8,4);
+  // Small cloth folds follow the stomach rather than floating as boxes.
+  for(let i=0;i<3;i++)s.tube(torso,space?'#8f9eac':'#3f4650',[[side*.035,.085+i*.025,-.101],[side*.076,.078+i*.025,-.096],[side*.113,.085+i*.025,-.080]],.0028,5,4);
+  s.tube(torso,seam,[[side*.12,.07,.055],[side*.14,torsoH*.6,.074],[side*.13,torsoH*.86,.071]],.0035,9,5);
   if(space){
-    // Stubble is vertex-colored directly on the head, avoiding intersecting beard shells.
-    for(const side of[-1,1])s.lock(head,p.highlight,[[side*.005,-.063,-hd-.015],[side*.03,-.064,-hd-.018],[side*.056,-.079,-hd+.003]],.012,.7,4);
+   s.tube(torso,ink,[[side*.12,torsoH*.53,-.121],[side*.175,torsoH-.01,-.097],[side*.18,torsoH+.066,.008],[side*.16,torsoH+.005,.12]],.023,16,8);
+   s.tube(torso,'#a9b7c1',[[side*.12,torsoH*.53,-.126],[side*.175,torsoH-.01,-.102],[side*.18,torsoH+.066,.004],[side*.16,torsoH+.005,.117]],.016,16,7);
+   for(let i=0;i<6;i++)s.tube(torso,'#546775',[[side*(.128+i*.006),torsoH*.55+i*.022,-.14],[side*(.145+i*.005),torsoH*.55+i*.022,-.128]],.003,2,4);
   }
-  if(id==='shiri'){
-    const smile=new THREE.Shape();smile.moveTo(-.048,-.080);smile.quadraticCurveTo(0,-.095,.048,-.080);smile.quadraticCurveTo(.025,-.126,0,-.125);smile.quadraticCurveTo(-.027,-.124,-.048,-.080);
-    s.add(head,new THREE.ShapeGeometry(smile,7).rotateY(Math.PI).translate(0,0,-hd+.012),'#733c3a');
-    const teeth=new THREE.Shape();teeth.moveTo(-.039,-.088);teeth.quadraticCurveTo(0,-.098,.039,-.088);teeth.lineTo(.028,-.101);teeth.quadraticCurveTo(0,-.108,-.028,-.101);teeth.closePath();
-    s.add(head,new THREE.ShapeGeometry(teeth,6).rotateY(Math.PI).translate(0,0,-hd+.010),white);
-    for(const side of[-1,1])for(let i=0;i<4;i++){const x=side*(.044+i*.009),y=-.039+(i%2)*.009;s.add(head,new THREE.CircleGeometry(.0023,6).rotateY(Math.PI).translate(x,y,surface(x,y)-.003),'#ae785c');}
-  }else{
-    s.tube(head,'#8e5145',[[-.044,-.086,surface(-.044,-.086)-.007],[-.015,-.096,surface(-.015,-.096)-.007],[.020,-.094,surface(.02,-.094)-.007],[.047,-.079,surface(.047,-.079)-.008]],.004,10,5);
-    s.tube(head,p.blush,[[-.024,-.112,surface(-.024,-.112)-.003],[0,-.115,surface(0,-.115)-.004],[.021,-.110,surface(.021,-.110)-.003]],.003,6,4);
-  }
-
-  // Hair mass and hand-authored swept clumps; no reference image is mapped onto geometry.
-  if(woman){
-    s.ell(head,p.hair,[0,.026,.085],[hw*1.13,hh*1.13,.10],16,10);
-    for(const side of[-1,1]){
-      const wavy=id==='shiri';
-      for(let i=0;i<4;i++){
-        const offset=i*.028,z=.015+i*.033;
-        s.lock(head,(i%2===0)?p.highlight:p.hair,[[side*.075,.17,z-.08],[side*(hw+.015),.075,z],[side*(hw+offset*.35),-.105,z+.02],[side*(hw+.03+(wavy?.025:0)),-.22,z-.012],[side*(hw+offset*.2+(wavy?-.018:.018)),-.34,z-.03]],.037,.70,7);
-      }
-      s.lock(head,p.highlight,[[side*.008,.192,-.04],[side*.082,.167,-.105],[side*.135,.085,-.112],[side*.16,-.045,-.075],[side*.19,-.19,-.075]],.037,.42,9);
-      s.lock(head,p.hair,[[side*.008,.190,-.062],[side*.064,.145,-.130],[side*.125,.081,-.124],[side*.148,.012,-.095]],.027,.42,7);
-    }
-  }else{
-    const cap=new THREE.SphereGeometry(1,20,10,0,Math.PI*2,0,Math.PI*.32);cap.scale(hw*1.06,hh*1.04,hd*1.10).translate(0,.006,0);s.add(head,cap,p.hair);
-    s.ell(head,p.hair,[0,.035,.095],[hw*1.03,hh*.78,.076],12,8);
-    for(let i=0;i<8;i++){
-      const x=-.132+i*.035;
-      s.lock(head,i%3===0?p.highlight:p.hair,[[x,.135,-.074],[x*.84-.008,.196,-.078],[x*.72-.022,.222+Math.sin(i*.6)*.018,-.025],[x*.65-.032,.240+Math.sin(i*.6)*.018,.045]],.035,.72,6);
-    }
-    for(const side of[-1,1])s.lock(head,p.hair,[[side*.14,.105,.015],[side*.16,.042,.02],[side*.147,-.015,.009]],.025,.65,4);
-  }
-
-  function glasses(y:number,z:number,goggles:boolean){
-    const lens=(x:number,w:number,h:number,depth:number,color:string,front:number)=>{
-      const shape=new THREE.Shape();shape.moveTo(-w+.01,h*.5);shape.lineTo(w-.01,h*.5);shape.quadraticCurveTo(w,h*.5,w,h*.5-.01);shape.lineTo(w*.81,-h*.5+.01);shape.quadraticCurveTo(w*.78,-h*.5,w*.62,-h*.5);shape.lineTo(-w*.62,-h*.5);shape.quadraticCurveTo(-w*.78,-h*.5,-w*.81,-h*.5+.01);shape.lineTo(-w,h*.5-.01);shape.quadraticCurveTo(-w,h*.5,-w+.01,h*.5);
-      s.add(head,new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:2}).translate(x,y,front),color);
-    };
-    for(const side of[-1,1]){
-      const x=side*.068;
-      lens(x,.063,.075,.014,ink,z-.012);
-      lens(x,.052,.054,.004,goggles?'#b7ccd2':'#35465a',z-.017);
-      s.tube(head,goggles?'#e1e9df':'#8294a7',[[x-.032,y+.010,z-.023],[x-.008,y+.020,z-.023],[x+.018,y+.020,z-.023]],.003,5,4);
-      s.tube(head,ink,[[side*.126,y,z],[side*.157,y-.006,-.047],[side*.17,y-.021,.023]],.008,5,5);
-    }
-    s.tube(head,ink,[[-.014,y+.005,z-.002],[0,y+.013,z-.004],[.014,y+.005,z-.002]],.007,4,5);
-  }
-  if(id==='nevo')glasses(.105,-.128,true);
-  if(space)glasses(.027,-.155,false);
-  if(id==='shiri')glasses(.193,-.083,false);
-
-  const arms:THREE.Group[]=[],elbows:THREE.Group[]=[],hips:THREE.Group[]=[],knees:THREE.Group[]=[];
+ }
+ if(space)s.patch(torso,p.accent,[0,torsoH*.56,.11],.235,.225,.025,.065);
+ // Face cross-section: broad cheeks, individual jaw/chin, and a flatter eye plane.
+ const jaw=id==='nevo'?.62:id==='ori'?.59:id==='shiri'?.60:.79;
+ const rings:[number,number,number][]=[[-1,.12,.24],[-.93,.42,.50],[-.80,jaw,.68],[-.63,.80,.81],[-.43,.94,.90],[-.22,1,.98],[0,.99,1],[.25,.96,.99],[.5,.93,.92],[.73,.79,.77],[.9,.53,.54],[1,.06,.07]];
+ const cross=(y:number)=>{const u=THREE.MathUtils.clamp(y/hh,-1,1);let a=rings[0],b=rings[1];for(let i=1;i<rings.length;i++)if(u<=rings[i][0]){a=rings[i-1];b=rings[i];break;}const t=(u-a[0])/(b[0]-a[0]);return[THREE.MathUtils.lerp(a[1],b[1],t)*hw,THREE.MathUtils.lerp(a[2],b[2],t)*hd];};
+ const surface=(x:number,y:number)=>{const[w,d]=cross(y);return-d*Math.pow(Math.max(.02,1-(x/w)**2),.34);};
+ const vertices:number[]=[],idx:number[]=[],rows=26,segs=36;
+ for(let j=0;j<=rows;j++){const y=(j/rows*2-1)*hh,[w,d]=cross(y);for(let i=0;i<=segs;i++){const a=i/segs*Math.PI*2,x=Math.sin(a)*w,z=-Math.sign(Math.cos(a))*Math.pow(Math.abs(Math.cos(a)),.68)*d;vertices.push(x,y,z);}}
+ for(let j=1;j<=rows;j++)for(let i=0;i<segs;i++){const a=(j-1)*(segs+1)+i,b=j*(segs+1)+i;idx.push(a,b,a+1,a+1,b,b+1);}const face=new THREE.BufferGeometry();face.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));face.setIndex(idx);face.computeVertexNormals();
+ const skin=new THREE.Color(p.skin),cheek=new THREE.Color(p.blush),beard=new THREE.Color('#796052');
+ s.add(head,face,(x,y,z)=>{const c=skin.clone(),blush=Math.exp(-(((Math.abs(x)-hw*.57)/.038)**2+((y+.039)/.030)**2))*.40*(z<0?1:0);c.lerp(cheek,blush);if(space&&z<.07){const lower=THREE.MathUtils.smoothstep(-y,.025,.08),mouth=Math.exp(-((x/.061)**6+((y+.077)/.026)**4));c.lerp(beard,lower*.50*(1-mouth*.8));}return c;});
+ for(const side of[-1,1]){
+  s.ell(head,p.skin,[side*hw*.985,-.005,.002],[.031,.048,.025],14,10);
+  s.ell(head,p.blush,[side*hw*1.04,-.004,-.016],[.018,.030,.007],12,7);
+  s.tube(head,p.skin,[[side*hw*1.03,.021,-.020],[side*hw*1.11,.018,-.022],[side*hw*1.105,-.013,-.025],[side*hw*1.035,-.025,-.023]],.0045,8,5);
+ }
+ // Almond eyes with curved lids, iris rings, pupils and two catchlights.
+ const eyeY=.018,eyeX=hw*.40,ew=child?.038:.034,eh=id==='ori'?.023:child?.026:.021;
+ if(!space)for(const side of[-1,1]){
+  const x=side*eyeX,z=surface(x,eyeY)-.004;
+  s.ell(head,white,[x,eyeY,z],[ew,eh,.012],20,12);
+  s.ell(head,p.eye,[x-side*.003,eyeY,z-.010],[eh*.70,eh*.90,.007],18,10);
+  s.ell(head,ink,[x-side*.003,eyeY,z-.016],[eh*.35,eh*.60,.004],16,9);
+  s.ell(head,'#ffffff',[x-.006,eyeY+.009,z-.020],[.0055,.006,.002],10,6);
+  s.ell(head,'#d2ede0',[x+.006,eyeY-.007,z-.020],[.0025,.0025,.0014],8,5);
+  s.tube(head,ink,[[x-ew,eyeY,z],[x-ew*.5,eyeY+eh*.90,z-.007],[x+ew*.35,eyeY+eh*.99,z-.007],[x+ew,eyeY+.002,z]],woman?.0038:.003,12,5);
+  s.tube(head,p.blush,[[x-ew,eyeY,z+.001],[x,eyeY-eh,z-.004],[x+ew,eyeY+.001,z+.001]],.0025,10,5);
+  s.tube(head,p.skin,[[x-ew*.8,eyeY+eh+.008,z+.002],[x,eyeY+eh+.012,z-.001],[x+ew*.8,eyeY+eh+.008,z+.003]],.004,8,5);
+  const by=id==='ori'?.052:.062,inner=id==='ori'?.059:.068;
+  s.lock(head,p.hair,[[x-side*.032,inner,surface(x-side*.032,inner)-.007],[x-side*.005,by+.010,surface(x-side*.005,by+.010)-.010],[x+side*.026,by+.004,surface(x+side*.026,by+.004)-.008],[x+side*.042,by-.008,surface(x+side*.042,by-.008)-.005]],.0075,.48,10,6);
+  if(woman)for(let k=0;k<3;k++)s.tube(head,ink,[[x+side*(ew*.68+k*.004),eyeY+eh*.7-k*.003,z-.005],[x+side*(ew+.009+k*.003),eyeY+eh*.95-k*.003,z-.007]],.0018,3,4);
+ }
+ // Continuous tapered nose, soft tip and nostril wings.
+ // Nose bridge is positioned on the facial surface instead of at the head centre.
+ const noseRoot=joint(head,'nose',[0,0,-hd+.008]);
+ s.ell(noseRoot,p.skin,[0,.002,0],[.016,.047,.022],14,10);
+ s.ell(noseRoot,p.skin,[0,-.034,-.017],[space?.024:.022,.018,.025],18,10);
+ for(const side of[-1,1]){s.ell(noseRoot,p.skin,[side*.019,-.038,-.003],[.013,.011,.015],12,7);s.ell(noseRoot,'#aa6f5a',[side*.014,-.046,-.016],[.006,.003,.004],10,5);}
+ // A curved smile patch is draped over the face, avoiding a floating flat sticker.
+ const smileWidth=id==='shiri'?.054:id==='ofir'?.045:.047,open=id==='shiri'?.028:id==='ofir'?.007:.004;
+ const mouthTop=(x:number)=>-.080+(space?.004:.014)*(x/smileWidth)**2+(id==='ori'?x*.07:0),mouthBottom=(x:number)=>mouthTop(x)-open*Math.sqrt(Math.max(0,1-(x/smileWidth)**2));
+ const mouthStrip=(color:string,top:(x:number)=>number,bottom:(x:number)=>number,width:number,offset:number)=>{const p:number[]=[],ix:number[]=[];for(let i=0;i<=20;i++){const x=(i/20*2-1)*width,y=top(x),b=bottom(x);p.push(x,y,surface(x,y)-offset,x,b,surface(x,b)-offset);}for(let i=0;i<20;i++){const a=i*2;ix.push(a,a+2,a+1,a+2,a+3,a+1);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setIndex(ix);g.computeVertexNormals();s.add(head,g,color);};
+ mouthStrip('#713e3b',mouthTop,mouthBottom,smileWidth,.006);
+ if(id==='shiri'||space)mouthStrip(white,x=>mouthTop(x)-.002,x=>mouthTop(x)-(id==='shiri'?.009:.0045),smileWidth*.82,.007);
+ const lipPoints:V[]=Array.from({length:9},(_,i)=>{const x=(i/8*2-1)*smileWidth,y=mouthBottom(x)-.001;return[x,y,surface(x,y)-.007];});s.tube(head,p.blush,lipPoints,id==='shiri'?.0036:.0027,16,5);
+ s.tube(head,'#865445',Array.from({length:9},(_,i)=>{const x=(i/8*2-1)*smileWidth,y=mouthTop(x);return[x,y,surface(x,y)-.008] as V;}),.0024,16,5);
+ s.tube(head,p.blush,[[-.022,-.111,surface(-.022,-.111)-.002],[0,-.115,surface(0,-.115)-.003],[.022,-.111,surface(.022,-.111)-.002]],.002,8,4);
+ if(id==='shiri')for(const side of[-1,1])for(let i=0;i<9;i++){const x=side*(.035+(i%5)*.010),y=-.023-Math.floor(i/5)*.012-(i%2)*.003;s.ell(head,'#b18464',[x,y,surface(x,y)-.002],[.0018,.0015,.0008],6,4);}
+ if(space){
+  for(const side of[-1,1])s.lock(head,'#634c3c',[[side*.003,-.057,surface(side*.003,-.057)-.005],[side*.025,-.059,surface(side*.025,-.059)-.007],[side*.046,-.068,surface(side*.046,-.068)-.005]],.006,.46,8,6);
+  for(let i=0;i<105;i++){const x=Math.sin(i*2.399)*(.035+.105*Math.sqrt(i/105)),y=-.04-(i%13)/13*.112;if(Math.abs(x)>.14||((x/.056)**2+((y+.078)/.031)**2)<1)continue;const z=surface(x,y);s.tube(head,i%3?'#826651':'#a48469',[[x,y,z-.0018],[x+.0018,y-.004,z-.0018]],.0008,1,3);}
+ }
+ // A continuous hair cap closes the scalp; locks add layered swept volume over it.
+ const hc:number[]=[],hi:number[]=[],hs=32,hr=10;
+ for(let j=0;j<=hr;j++)for(let i=0;i<=hs;i++){const a=i/hs*Math.PI*2,front=Math.cos(a),end=front>0?(woman?.72:.87)+.65*Math.abs(Math.sin(a)):1.93,th=j/hr*end,y=Math.cos(th)*hh*1.06+.006,[cw,cd]=cross(y);hc.push(j===0?0:Math.sin(a)*(cw+.009),y,j===0?0:-Math.sign(Math.cos(a))*Math.pow(Math.abs(Math.cos(a)),.68)*(cd+.009));}
+ for(let j=1;j<=hr;j++)for(let i=0;i<hs;i++){const a=(j-1)*(hs+1)+i,b=j*(hs+1)+i;hi.push(a,a+1,b,a+1,b+1,b);}const cap=new THREE.BufferGeometry();cap.setAttribute('position',new THREE.Float32BufferAttribute(hc,3));cap.setIndex(hi);cap.computeVertexNormals();s.add(head,cap,p.hair);
+ const baseHair=new THREE.Color(p.hair),lightHair=new THREE.Color(p.highlight),hairTint=(x:number,y:number,z:number)=>baseHair.clone().lerp(lightHair,.25+.22*Math.sin(x*18+y*4+z*7)**2);
+ if(woman){
+  s.ell(head,hairTint,[0,-.09,.105],[hw*1.13,.285,.095],20,14);
   for(const side of[-1,1]){
-    const upper=joint(torso,side<0?'arm_L':'arm_R',[side*shoulder,torsoH-.025,0]);
-    const elbow=joint(upper,side<0?'elbow_L':'elbow_R',[0,-arm,0]);arms.push(upper);elbows.push(elbow);
-    s.ell(upper,p.suit,[0,-.018,0],[child?.061:.075,.075,child?.062:.076],10,7);
-    s.loft(upper,p.suit,[[-arm,.045,.048],[-arm*.66,.052,.057],[-.04,child?.059:.069,.064]],10,(x,y,z)=>Math.abs(x)>.04&&z<.01&&y>-.18?p.trim:p.suit);
-    s.ell(elbow,p.suit,[0,0,0],[.049,.052,.052],10,6);
-    s.loft(elbow,p.suit,[[-forearm,.039,.041],[-forearm*.7,.046,.049],[-.02,.052,.054]],10);
-    s.loft(elbow,p.accent,[[-forearm-.008,.041,.042],[-forearm+.026,.043,.044]],10);
-    if(space){s.box(elbow,'#79bbd0',[0,-forearm*.57,-.052],[.057,.073,.015]);s.box(elbow,p.accent,[0,-forearm*.57,-.061],[.037,.048,.005]);}
-    const handColor=space?p.suit:p.skin;
-    s.ell(elbow,handColor,[0,-forearm-.047,-.005],[.036,.051,.026],10,7);
-    s.ell(elbow,handColor,[-side*.029,-forearm-.025,-.021],[.017,.029,.018],8,6);
-    for(let f=0;f<3;f++)s.ell(elbow,handColor,[(f-1)*.018,-forearm-.077,-.009],[.012,.026,.013],8,5);
-    const hip=joint(pelvis,side<0?'hip_L':'hip_R',[side*(child?.075:.09),0,0]);
-    const knee=joint(hip,side<0?'knee_L':'knee_R',[0,-leg,0]);hips.push(hip);knees.push(knee);
-    s.loft(hip,p.suit,[[-leg,.055,.061],[-leg*.5,.068,.073],[-.015,.077,.076],[.025,.071,.067]],12,(x,_y,z)=>side*x>.045&&z<.03?p.trim:p.suit);
-    s.ell(knee,p.suit,[0,0,0],[.058,.060,.062],10,6);
-    s.loft(knee,p.suit,[[-shin,.047,.052],[-shin*.65,.061,.063],[-.02,.060,.062]],12,(x,_y,z)=>side*x>.045&&z<.03?p.trim:p.suit);
-    if(id==='nevo')s.box(hip,p.trim,[side*.056,-leg*.47,-.040],[.032,.085,.032]);
-    if(space){s.ell(knee,p.accent,[0,-.035,-.059],[.064,.070,.022],10,6);s.box(knee,p.suit,[0,-.035,-.080],[.087,.052,.012]);}
-    s.loft(knee,p.accent,[[-shin-.005,.048,.052],[-shin+.018,.049,.053]],12);
-    s.ell(knee,p.boot,[0,-shin-boot*.46,-.036],[.066,boot*.52,.115],12,7);
-    s.ell(knee,'#202831',[0,-shin-boot*.83,-.037],[.067,boot*.18,.116],12,5);
-    for(let k=0;k<3;k++)s.box(knee,p.accent,[0,-shin-boot*.03,-.047-k*.021],[.072,.006,.008]);
+   for(let i=0;i<5;i++){const z=.01+i*.035,shiri=id==='shiri',sweep=shiri?.025:.035;
+    s.lock(head,hairTint,[[side*.06,.18,z-.07],[side*(hw+.006),.087,z],[side*(hw+.015),-.07,z+.005],[side*(hw+sweep),-.19,z-.028],[side*(hw+(shiri?-.006:.042)),-.33,z-.09],[side*(hw+.027),-.40+i*.008,z-.12]],.045,.75,15,8);
+   }
+   s.lock(head,hairTint,[[side*.004,.198,-.027],[side*.066,.163,-.105],[side*.125,.087,-.117],[side*.154,-.005,-.095],[side*.178,-.15,-.116],[side*.152,-.28,-.132],[side*.205,-.37,-.12]],.041,.55,18,8);
+   s.lock(head,p.highlight,[[side*.020,.188,-.056],[side*.079,.140,-.122],[side*.133,.065,-.121],[side*.156,-.019,-.109],[side*.181,-.16,-.131]],.008,.40,16,6);
   }
-  const dispose=s.finish();
-  function setPose(next:DriverPose){
-    group.scale.setScalar(1);pelvis.position.set(0,next==='standing'?hipY:.085,0);pelvis.rotation.set(0,0,0);torso.rotation.set(next==='seated'?-.12:0,0,0);head.rotation.set(0,0,0);
-    for(let i=0;i<2;i++){
-      const side=i===0?-1:1;
-      arms[i].rotation.set(next==='seated'?1.20:.10,0,next==='seated'?side*.10:side*(i===0?.85:.38));
-      elbows[i].rotation.set(next==='seated'?.68:.25,0,next==='seated'?0:side*(i===0?1.60:-.95));
-      hips[i].rotation.set(next==='seated'?Math.PI/2:0,0,next==='seated'?0:side*.04);
-      knees[i].rotation.set(next==='seated'?-Math.PI/2:0,0,0);
-    }
-    group.scale.setScalar(normalization);group.updateMatrixWorld(true);
+ }else{
+  s.ell(head,p.hair,[0,.025,.106],[hw*1.04,hh*.79,.061],20,12);
+  for(let i=0;i<9;i++){const x=-.135+i*.032,y=.206+Math.sin(i*.48)*.025;
+   s.lock(head,hairTint,[[x,.115,-.095],[x*.95-.012,.177,-.113],[x*.78-.021,y,-.050],[x*.66-.035,y+.029,.015],[x*.56-.045,y+.014,.061]],.033,.81,12,8);
   }
-  let normalization=1;setPose('standing');const box=new THREE.Box3().setFromObject(group);normalization=desired/(box.max.y-box.min.y);
-  // Standing origin stays at the soles after measuring the complete hair silhouette.
-  const soleCorrection=-box.min.y;
-  const rawSetPose=setPose;
-  const applyPose=(next:DriverPose)=>{rawSetPose(next);if(next==='standing')pelvis.position.y+=soleCorrection;group.updateMatrixWorld(true);};
-  applyPose(pose);
-  return{group,joints:{pelvis,torso,head,arms,elbows,hips,knees},setPose:applyPose,setWave(angle){elbows[0].rotation.z=-1.60+angle;},dispose};
+  for(const side of[-1,1]){s.lock(head,p.hair,[[side*.14,.112,.012],[side*.158,.044,.022],[side*.142,-.016,.014]],.025,.65,8,8);for(let i=0;i<4;i++)s.lock(head,p.highlight,[[side*.147,.085-i*.013,.024],[side*.151,.068-i*.013,.040],[side*.14,.044-i*.013,.054]],.003,.6,5,5);}
+ }
+ function glasses(y:number,z:number,goggles:boolean){
+  for(const side of[-1,1]){const x=side*.067;
+   s.patch(head,ink,[x,y,z],.123,.070,.015,.014);
+   s.patch(head,goggles?'#a8c0c8':'#43576a',[x,y,z-.004],.103,.052,.011,.003);
+   s.tube(head,goggles?'#e9ede1':'#9babb4',[[x-.035,y-.008,z-.008],[x-.012,y+.012,z-.009],[x+.018,y+.015,z-.008]],.0025,7,5);
+   s.tube(head,ink,[[side*.124,y,z+.008],[side*.157,y-.006,-.048],[side*.165,y-.023,.024]],.007,8,6);
+  }
+  s.tube(head,ink,[[-.015,y+.003,z+.004],[0,y+.011,z+.003],[.015,y+.003,z+.004]],.0055,5,6);
+ }
+ if(id==='nevo')glasses(.116,-.123,true);if(space)glasses(.029,-.158,false);if(id==='shiri')glasses(.197,-.077,false);
+ const arms:THREE.Group[]=[],elbows:THREE.Group[]=[],hips:THREE.Group[]=[],knees:THREE.Group[]=[],hands:THREE.Object3D[]=[];
+ for(const side of[-1,1]){
+  const upper=joint(torso,side<0?'arm_L':'arm_R',[side*shoulder,torsoH-.025,0]),elbow=joint(upper,side<0?'elbow_L':'elbow_R',[0,-arm,0]);arms.push(upper);elbows.push(elbow);
+  s.ell(upper,p.suit,[0,-.018,0],[child?.061:.075,.074,child?.062:.076],16,10);
+  s.loft(upper,(x,y,z)=>Math.abs(x)>.04&&z<.01&&y>-.18?p.trim:p.suit,[[-arm,.045,.048],[-arm*.8,.049,.053],[-arm*.48,.058,.062],[-.04,child?.059:.069,.064],[.008,.040,.047]],16);
+  s.ell(elbow,p.suit,[0,0,0],[.049,.052,.052],14,8);
+  s.loft(elbow,p.suit,[[-forearm,.038,.041],[-forearm*.78,.044,.046],[-forearm*.46,.049,.054],[-.035,.052,.053]],16);
+  s.tube(upper,seam,[[side*.046,-arm*.91,-.028],[side*.055,-arm*.55,-.039],[side*.058,-.05,-.040]],.003,7,5);
+  for(let i=0;i<3;i++)s.tube(elbow,space?'#8f9da9':seam,[[-.032,-.030-i*.015,-.035],[0,-.037-i*.015,-.052],[.032,-.025-i*.015,-.035]],.0026,6,4);
+  s.loft(elbow,p.accent,[[-forearm-.008,.041,.043],[-forearm+.025,.043,.045]],16);
+  for(let i=0;i<5;i++)s.tube(elbow,seam,[[-.032,-forearm+i*.005,-.026],[0,-forearm+i*.005,-.045],[.032,-forearm+i*.005,-.026]],.0015,6,4);
+  if(space){s.patch(elbow,p.accent,[0,-forearm*.57,-.054],.064,.079,.009,.008);s.patch(elbow,'#74bacf',[0,-forearm*.57,-.059],.046,.058,.004,.003);for(let i=0;i<3;i++)s.box(elbow,'#31526d',[0,-forearm*.57+.014-i*.013,-.064],[.028,.003,.002]);}
+  const handColor=space?p.suit:p.skin,palmY=-forearm-.041;
+  s.ell(elbow,handColor,[0,palmY,-.005],[.033,.043,.020],14,9);
+  for(let f=0;f<4;f++){const x=(f-1.5)*.016,len=[.039,.049,.047,.035][f];s.lock(elbow,handColor,[[x,palmY-.020,-.006],[x*1.12,palmY-.038,-.010],[x*1.18,palmY-.020-len,-.008]],.009,.91,6,8);if(!space)s.patch(elbow,'#eec0a4',[x*1.15,palmY-.012-len,-.017],.010,.012,.004,.001);}
+  s.lock(elbow,handColor,[[-side*.026,palmY+.009,-.002],[-side*.047,palmY-.008,-.008],[-side*.043,palmY-.032,-.016]],.013,.82,7,8);
+  if(space)for(let i=0;i<3;i++)s.tube(elbow,p.accent,[[-.022,palmY+.012-i*.010,-.022],[.022,palmY+.008-i*.010,-.022]],.0025,3,4);
+  const hand=joint(elbow,'grip',[0,-forearm-.052,-.005]);hands.push(hand);
+  const hip=joint(pelvis,side<0?'hip_L':'hip_R',[side*(child?.075:.09),0,0]),knee=joint(hip,side<0?'knee_L':'knee_R',[0,-leg,0]);hips.push(hip);knees.push(knee);
+  s.loft(hip,(x,_y,z)=>side*x>.045&&z<.03?p.trim:p.suit,[[-leg,.055,.061],[-leg*.82,.062,.066],[-leg*.46,.071,.078],[-.015,.077,.076],[.025,.071,.067]],18);
+  s.ell(knee,p.suit,[0,0,0],[.058,.060,.062],14,9);
+  s.loft(knee,(x,_y,z)=>side*x>.045&&z<.03?p.trim:p.suit,[[-shin,.047,.052],[-shin*.83,.061,.060],[-shin*.60,.062,.065],[-shin*.28,.057,.060],[-.02,.060,.062]],18);
+  s.tube(hip,seam,[[side*.057,-.04,-.049],[side*.060,-leg*.55,-.045],[side*.045,-leg+.025,-.045]],.003,8,5);
+  for(let i=0;i<3;i++)s.tube(knee,space?'#8899aa':seam,[[-.044,-shin*(.45+i*.16),-.034],[0,-shin*(.48+i*.16),-.061],[.040,-shin*(.46+i*.16),-.035]],.003,6,4);
+  if(id==='nevo'){s.patch(hip,p.trim,[side*.035,-leg*.47,-.073],.066,.093,.006,.007);s.patch(hip,p.suit,[side*.035,-leg*.35,-.081],.066,.024,.004,.003);}
+  if(space){s.patch(knee,p.accent,[0,-.034,-.065],.104,.106,.024,.016);for(let i=0;i<3;i++)s.patch(knee,p.suit,[0,-.009-i*.027,-.086],.087,.018,.004,.003);}
+  s.loft(knee,p.accent,[[-shin-.005,.049,.053],[-shin+.024,.050,.054]],16);
+  s.ell(knee,p.boot,[0,-shin-boot*.43,-.038],[.067,boot*.51,.115],20,10);
+  s.ell(knee,'#1f2933',[0,-shin-boot*.82,-.038],[.068,boot*.19,.117],20,6);
+  s.ell(knee,p.accent,[0,-shin-boot*.16,-.020],[.042,.028,.063],14,8);
+  for(let k=0;k<4;k++){const z=-.019-k*.018;s.tube(knee,'#7c878d',[[-.033,-shin+.007-k*.004,z],[.032,-shin+.007-k*.004,z-.008]],.003,2,5);}
+  for(const sign of[-1,1])s.tube(knee,p.accent,[[sign*.043,-shin-.045,-.132],[sign*.062,-shin-.048,-.080],[sign*.055,-shin-.033,.020]],.003,8,5);
+ }
+ const dispose=s.finish();let normalization=1,current:DriverPose='standing';
+ const down=new THREE.Vector3(0,-1,0);
+ function seatArms(){
+  group.updateMatrixWorld(true);
+  for(let i=0;i<2;i++){
+   const side=i===0?-1:1,target=new THREE.Vector3(side*.102,.22,-.34-SEAT_POSITION.z),actual=normalization*SEATED_SCALE[id];target.divideScalar(actual);group.localToWorld(target);torso.worldToLocal(target);
+   const shoulderPos=arms[i].position,delta=target.clone().sub(shoulderPos),length=delta.length(),dir=delta.clone().normalize(),l1=arm,l2=forearm+.052;
+   const a=(l1*l1-l2*l2+length*length)/(2*length),h=Math.sqrt(Math.max(0,l1*l1-a*a));let pole=new THREE.Vector3(side*.5,-1,0);pole.addScaledVector(dir,-pole.dot(dir)).normalize();
+   const e=shoulderPos.clone().addScaledVector(dir,a).addScaledVector(pole,h);
+   arms[i].quaternion.setFromUnitVectors(down,e.clone().sub(shoulderPos).normalize());
+   const localEnd=target.clone().sub(e).applyQuaternion(arms[i].quaternion.clone().invert()).normalize();elbows[i].quaternion.setFromUnitVectors(down,localEnd);
+  }
+ }
+ function setPose(next:DriverPose){current=next;group.scale.setScalar(normalization*(next==='seated'?SEATED_SCALE[id]:1));pelvis.position.set(0,next==='standing'?hipY:.074,0);pelvis.rotation.set(0,0,0);torso.rotation.set(next==='seated'?-.28:0,0,0);head.rotation.set(next==='seated'?.15:0,0,0);
+  for(let i=0;i<2;i++){const side=i===0?-1:1;arms[i].rotation.set(.10,0,side*(i===0?.85:.38));elbows[i].rotation.set(.25,0,side*(i===0?1.60:-.95));hips[i].rotation.set(next==='seated'?Math.PI/2:0,0,next==='seated'?0:side*.04);knees[i].rotation.set(next==='seated'?-.25:0,0,0);}
+  if(next==='seated')seatArms();else{
+   const i=1,target=new THREE.Vector3(child?.125:.15,.055,-.108),start=arms[i].position,delta=target.clone().sub(start),dist=delta.length(),dir=delta.normalize(),l2=forearm+.052,a=(arm*arm-l2*l2+dist*dist)/(2*dist),h=Math.sqrt(Math.max(0,arm*arm-a*a)),pole=new THREE.Vector3(1,0,0);pole.addScaledVector(dir,-pole.dot(dir)).normalize();const e=start.clone().addScaledVector(dir,a).addScaledVector(pole,h);arms[i].quaternion.setFromUnitVectors(down,e.clone().sub(start).normalize());elbows[i].quaternion.setFromUnitVectors(down,target.sub(e).applyQuaternion(arms[i].quaternion.clone().invert()).normalize());
+  }group.updateMatrixWorld(true);
+ }
+ setPose('standing');const bounds=new THREE.Box3().setFromObject(group),soleCorrection=-bounds.min.y;normalization=desired/(bounds.max.y-bounds.min.y);
+ const applyPose=(next:DriverPose)=>{setPose(next);if(next==='standing')pelvis.position.y+=soleCorrection;group.updateMatrixWorld(true);};applyPose(pose);
+ return{group,joints:{pelvis,torso,head,arms,elbows,hips,knees,hands},seatedScale:SEATED_SCALE[id],setPose:applyPose,setWave(angle){if(current==='standing')elbows[0].rotation.z=-1.60+angle;},dispose};
 }

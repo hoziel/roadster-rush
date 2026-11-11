@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildDriver, type DriverId } from './drivers';
+import { buildDriver, SEAT_POSITION, type DriverId } from './drivers';
 import { buildRoadster } from '../01-player-roadster/roadster';
 
 const ids:DriverId[]=['nevo','ori','shiri','ofir'];
@@ -29,7 +29,7 @@ function view(name:string){
   if(name==='door')d.group.position.set(-1.37,0,-.32);
   if(inCar){
     // Preview-only fit study: intentionally expose the required scale reduction in the UI/notes.
-    if(name!=='seat-full')d.group.scale.multiplyScalar(selected==='nevo'?.66:selected==='ori'?.65:.55);d.group.position.set(-.33,.43,.22);
+    if(name==='seat-full')d.group.scale.divideScalar(d.seatedScale);d.group.position.copy(SEAT_POSITION);
   }
   const bounds=new THREE.Box3().setFromObject(d.group),height=bounds.max.y-bounds.min.y;
   floor.position.y=name==='seated'?bounds.min.y-.008:-.008;
@@ -41,7 +41,7 @@ function view(name:string){
   else if(name==='face'){const head=new THREE.Vector3();d.joints.head.getWorldPosition(head);position=head.clone().add(new THREE.Vector3(0,.01,-1.25));target=head;}
   else{const y=height*.51+(name==='seated'?bounds.min.y:0),distance=name==='seated'?3.8:height*3.3;target=new THREE.Vector3(0,y,0);const angled=name==='three-quarter'||name==='seated';position=new THREE.Vector3(name==='side'?-distance:angled?-distance*.61:0,y+height*.10,name==='side'?0:name==='back'?distance:-distance*(angled?.84:1));}
   camera.position.copy(position);orbit.target.copy(target);orbit.update();const m=metrics();stats.textContent=`${selected} · ${m.triangles.toLocaleString()} triangles · ${m.meshes} articulated meshes · 1 opaque Toon material`;
-  note.textContent=name==='seat-full'?'Actual character scale: head intersects the existing canopy. This is a failed fit check.':inCar?`Seat fit study: ${Math.round((selected==='nevo'?.66:selected==='ori'?.65:.55)*100)}% size. ${name==='cutaway'?'Glazing hidden for inspection.':'Original opaque canopy retained.'}`:'Likeness study for review; not approved production character art.';
+  note.textContent=name==='seat-full'?'Actual character scale: head intersects the existing canopy. This is a failed fit check.':inCar?`Seat fit study: ${Math.round(d.seatedScale*100)}% standing size; hand targets solved at the wheel. ${name==='cutaway'?'Glazing hidden for inspection.':'Original opaque canopy retained.'}`:'Revision 2: detailed native sculpt study; likeness verdict remains subject to review.';
   resize();
 }
 function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.zoom=1;camera.updateProjectionMatrix();}
