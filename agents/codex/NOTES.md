@@ -2,23 +2,11 @@
 
 ## Current work
 
-- Latest completed handoff: #48 downtown Austin kit in `art/mockups/09-downtown-austin/`: 17 native city pieces, 73 PNGs, sunset/night Congress studies and review gallery. All model budgets pass; see latest session entry for integration limits.
-- #47 fan themes delivered: six instanced player/ball batches, eight canvas posters, hoop/net, 54 PNGs and review gallery.
-
-- Latest quality test: `art/mockups/07-driver-models/` for #46. Four native posed drivers and 33 PNGs/comparisons. **Not recommended for production:** likeness falls below the requested perfect bar, and the current cabin does not fit them at their full standing scale. Keep the 2D heroes while Claude decides the next character/cabin approach.
-- Latest asset: `art/mockups/05-app-icon/`, Revision 3 with four wheel-aligned hover bursts; separate standard/maskable masters, nine PNG exports and browser review sheet. Supersedes two-jet Revision 2. Claude owns public icon replacement on reopened #43.
-- Latest character assets: `art/mockups/06-driver-heroes/`, four 720×560 transparent full-body driver/open-door roadster cutouts for #44. Nevo/White, Ori/Cherry red, Shiri/Pink, Ofir/Black. Latest references and outfit corrections followed; no sponsor marks.
-- Latest native traffic models: `art/mockups/06-robotaxis/`, gold fastback, white sensor crossover and added angular pickup for #45. One mesh/material each, 2,494/2,964/2,366 triangles. Claude accepted/integrated the first two; pickup handed back for integration. Older #23/#26/#32 have Turn = Claude, so do not take them.
-- Ofir explicitly confirmed Cybercab is gold. Art already uses body `#d3b66e` and gold covers `#cbb26e`; production still had the old champagne-silver `#d9cfbf`/silver hubs when checked. Decision and integration mismatch posted on #45; Claude should preserve gold and correct the brief wording. No repaint of the already-gold art was needed.
-- Inbox empty after the #43/#44/#45 handoffs, verified with the board CLI on November 10, 2026. Recheck at the next session; no unresolved questions from these three deliveries.
-- Ofir said the four polished opening/gameplay mockups are “perfect.” That visual direction is accepted; approval recorded on #16. New driver-selection screen uses that direction, while its character artwork is still placeholder/review material.
-- Latest screen: `art/mockups/04-driver-select/driver-select.jpg`, using the existing Zoom/Bolt/Sunny/Pip roster from `src/ui/drivers.ts`; handoff on #32.
-- Latest screen set: four polished imagegen mockups in `art/mockups/03-austin-stretch/` (opening, sunset run, thruster jump, neon chase), with review gallery and build notes. Directly requested by Ofir; handoff on #16.
-- Latest variant: `art/mockups/02-police-roadster/`, a native police wrapper around the polished Revision 4 player body. Directly requested by Ofir; issue #15.
-- Latest deliverable: Revision 4 of `art/mockups/01-player-roadster/`, an in-place polish replacing Revision 3. See the latest entry below.
-- Issue #42: look and feel directions A/B/C, brief `art/briefs/00a-look-and-feel.md`.
-- Mockups are in `art/mockups/00a-look-and-feel/` with gameplay frames, matching four-view car sheets, and direction notes.
-- The launch reference is the October 15, 2026 Roadster event and its later kickflip POV clip. Use the stunt only as broad gameplay inspiration; do not copy Tesla's exact car shape, badges, logos, or source imagery.
+- Latest assignment: #50 Blossom paint for Ori, `art/mockups/11-blossom-paint/`. Original watercolour PNG, 1024×512 / 279,311 bytes, compensated for existing side UV stretch and door band; 11 native previews and review sheet. Ready for Claude integration; see latest entry below.
+- Publishing checked November 11: prior session commits (driver Revision 2, bats and handoff notes) are all on origin/main. Latest checked deployment bba666e succeeded. Claude accepted/integrated #49 bats in 2a0f0e5; they are live. Icons Revision 3 are integrated/live too.
+- #46 driver Revision 2 is delivered for review, not production: 23–25k-triangle models plus seated fit, but likeness remains below the requested bar. Keep 2D heroes until an approved character sculpt; no later review decision was posted when checked.
+- Earlier native art kits (traffic, fans, downtown), car/police assets, screen mockups, driver heroes and icon revisions are recorded in the dated entries below. Work only current Turn=Codex cards; earlier deliveries do not authorize additional revisions.
+- Preserve pre-existing modified look-and-feel A.png/B.png and untracked root demo media. Claude owns integration and pushing.
 
 ## Project workflow
 
@@ -209,3 +197,12 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Claude must remove old flat-bat shader/outline, adapt old BAT_PITCH/.9 rotation to XY wings, use camera quaternion × local Y-pi for screen-front view, and restore glide before hinge flap-away. Preview proposes .32 overall scale at camera depth .6. Actual event timing/placement/collision/mobile performance remain production responsibilities. No new taste question or production edits.
 - Current preview server port 5174. Preserve unrelated A/B images, current src/view policePatrol/scene/startline changes and root media. Ready to hand #49 back; commit and final inbox result follow below.
 - Bat kit committed as `bb78745`; handoff https://github.com/hoziel/roadster-rush/issues/49#issuecomment-6797325390 . Board Turn = Claude, Status = In Progress. Inbox recheck succeeded with no Codex cards after the #46/#49 handoffs. No new bat question; #46 retains the recommendation to keep 2D heroes until a dedicated character sculpt is approved. Claude owns integration and pushing.
+
+## November 11, 2026 — publication check and Blossom paint #50
+
+- Ofir asked whether everything was published and to check new assignments. Refreshed origin: no prior local commits ahead. Latest Pages run for bba666e succeeded. #49 has Claude acceptance/integration comment; #46 has no new review after Revision 2. Report source pushed vs live integration distinctly.
+- Inbox contained #50 only; set In Progress. Read brief 11 and production blossom/carStyle/roadster. Used built-in image_gen skill for original watercolour based on written brief, without a copied wrap photo. One generation + two targeted edits; exact prompts saved in agents/codex/prompts/11-blossom-paint.md.
+- Native car review exposed 2.2497× horizontal UV stretch and painted canopy frame extending bounds to y=1.05899. Adjusted the painting so three vertically elongated blooms occupy the lower image band (roughly y42–90%); they become fuller blooms on the doors. Kept existing production UV helper and geometry untouched. Both sides, door opening, roof and warm lighting reviewed.
+- Final blossom.png: opaque sRGB 1024×512, 279,311 bytes (256-color PNG). 11 actual-model PNG previews <179 KB, interactive old/new comparison, gallery HTML/JPEG, palette/integration notes and validation JSON. Straight chase intentionally reads mostly white because the tail stays quiet.
+- Strict TypeScript and image format/size checks passed; browser no warnings/errors. Claude should load as THREE.Texture (existing cache typed CanvasTexture), set sRGB/white material/standard flipY and mipmaps, up to 4× anisotropy, and project once with doors closed. Texture preload/disposal and public deployment are Claude's work. No new question.
+- Only owned art/memory/prompt paths changed. Commit, handoff and final inbox result follow below.

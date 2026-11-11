@@ -1,0 +1,104 @@
+{
+  "texture": "blossom.png",
+  "source": "original built-in image_gen; two targeted edits; resized/encoded with Sharp",
+  "uvProjection": "unchanged src/view/blossom.ts projectSideUVs",
+  "paintBounds": {
+    "min": [
+      -0.925,
+      0.25,
+      -1.82
+    ],
+    "max": [
+      0.925,
+      1.058991685,
+      1.82
+    ]
+  },
+  "horizontalStretch": 2.2497141644,
+  "images": [
+    {
+      "file": "baseline-side-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 160323
+    },
+    {
+      "file": "blossom.png",
+      "width": 1024,
+      "height": 512,
+      "hasAlpha": false,
+      "bytes": 279311
+    },
+    {
+      "file": "polished-back-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 68963
+    },
+    {
+      "file": "polished-chase-sunset.png",
+      "width": 540,
+      "height": 1170,
+      "hasAlpha": true,
+      "bytes": 53208
+    },
+    {
+      "file": "polished-doors-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 170420
+    },
+    {
+      "file": "polished-front-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 57723
+    },
+    {
+      "file": "polished-right-side-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 170268
+    },
+    {
+      "file": "polished-side-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 178349
+    },
+    {
+      "file": "polished-side-sunset.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 164009
+    },
+    {
+      "file": "polished-three-quarter-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 166354
+    },
+    {
+      "file": "polished-three-quarter-sunset.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 152153
+    },
+    {
+      "file": "polished-top-studio.png",
+      "width": 1200,
+      "height": 800,
+      "hasAlpha": true,
+      "bytes": 148252
+    }
+  ]
+}
