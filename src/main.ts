@@ -208,8 +208,9 @@ view.renderer.setAnimationLoop((now: number) => {
   audio.hoverLoop(running && world.power === 'hover');
   audio.siren(running && policeClose(world), now / 1000);
   audio.ambientPolice(running && !policeClose(world));
-  // One steady run track (no jarring switch to the climax track during Ludicrous).
-  audio.music(running ? 'run' : 'menu');
+  // One steady track everywhere: Hillbilly Swing on the start and finish screens and through the run, never
+  // restarting between them (no switch to the climax track during Ludicrous either).
+  audio.music('run');
   hud.update(world, score(world), world.power ? POWER_TIME[world.power] : 1);
   cheer.update(world, driverById(storage.shop.driver).name, storage.shop.driver);
   view.render(world, dt, now / 1000);

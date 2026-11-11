@@ -102,12 +102,11 @@ export class GameAudio {
     if (ctx.state !== 'running') void ctx.resume().catch(() => {});
   }
 
-  /** Fetch and decode every file, menu music first. A failure just leaves that sound out. */
+  /** Fetch and decode every file, the music first (it also plays on the start screen). A failure just leaves that sound out. */
   private async loadAll(): Promise<void> {
     const order: [MusicId | SampleId, string][] = [
-      ['menu', MUSIC.menu.file],
+      ['run', MUSIC.run.file],
       ...SAMPLE_ORDER.map((id): [SampleId, string] => [id, SAMPLES[id]]), // ~100 KB in all
-      ['run', MUSIC.run.file], ['climax', MUSIC.climax.file],
     ];
     for (const [id, file] of order) {
       try {
