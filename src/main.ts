@@ -6,6 +6,8 @@ import { addCoins } from './sim/shop';
 import { Garage, lookOf } from './ui/garage';
 import { InstallNudge } from './ui/install';
 import { Splash } from './ui/splash';
+import { SpeedLines } from './ui/speedLines';
+import { SwipeHint } from './ui/swipeHint';
 import { Cheer } from './ui/cheer';
 import { Hud } from './ui/hud';
 import { SoundPanel } from './ui/sound';
@@ -17,7 +19,7 @@ import {
   slam, start, steer, step,
 } from './sim/world';
 import { dayLabel, offsetFor } from './sim/daycycle';
-import { HOVER_CHARGES_MAX, LANE_WIDTH } from './sim/config';
+import { HOVER_CHARGES_MAX, LANE_WIDTH, LUDICROUS_TIME, SPEED_MAX } from './sim/config';
 
 const SIM_DT = 1 / 120; // fixed sim step; render runs at display rate
 const BUST_SHOW_MS = 3200; // game over: the police bust plays this long before the finish card
@@ -28,6 +30,8 @@ const world = createWorld();
 const view = new GameView(document.getElementById('game')!);
 view.patrol.onFlyby = (dir) => audio.patrolFlyby(dir);
 const splash = new Splash(document.getElementById('game')!);
+const speedLines = new SpeedLines(document.getElementById('game')!);
+const swipeHint = new SwipeHint(document.getElementById('game')!);
 view.onSplash = (kind) => { splash.hit(kind); audio.splash(kind === 'mud'); };
 const audio = new GameAudio(storage.muted);
 const hud = new Hud(() => {
@@ -53,7 +57,12 @@ const sound = new SoundPanel(document.getElementById('ui')!, {
   set: (music, sfx) => { storage.set({ music, sfx }); audio.unlock(); audio.setMix(music, sfx); },
   openHorns: () => garage.open('horn'),
   preview: () => audio.coin(),
+  hd: {
+    get: () => { try { return localStorage.getItem('rr.hd') === '1'; } catch { return false; } },
+    set: (on) => { try { localStorage.setItem('rr.hd', on ? '1' : '0'); } catch { /* private mode: just this visit */ } view.setHD(on); },
+  },
 });
+view.setHD((() => { try { return localStorage.getItem('rr.hd') === '1'; } catch { return false; } })());
 audio.setMix(storage.music, storage.sfx);
 view.style.set(lookOf(storage.shop));
 view.setDriver(fullUrl(driverById(storage.shop.driver)), driverById(storage.shop.driver).name, storage.shop.driver);
@@ -122,6 +131,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
     }
     return;
   }
+  if (action === 'left' || action === 'right' || action === 'jump' || action === 'down') swipeHint.swiped();
   if (action === 'left') steer(world, -1);
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
@@ -201,6 +211,11 @@ view.renderer.setAnimationLoop((now: number) => {
   }
 
   const running = world.phase === 'running' && !paused;
+  // Turbo feel: speed lines (a burst as Ludicrous kicks in, steady through it, faint at top speed).
+  const ludicrous = running && world.power === 'ludicrous';
+  const burst = ludicrous && world.powerTime > LUDICROUS_TIME - 0.7 ? 0.7 : 0;
+  swipeHint.update(running, world.time);
+  speedLines.update(dt, ludicrous ? 1 + burst : running && world.speed > SPEED_MAX * 0.95 ? 0.3 : 0);
   const inAir = running && world.y > world.floor + 0.05 && world.power !== 'hover';
   if (airborne && !inAir && running) audio.land();
   airborne = inAir;

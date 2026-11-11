@@ -3,6 +3,8 @@
 
 export interface SoundDeps {
   get(): { music: boolean; sfx: boolean };
+  /** HD graphics: full screen sharpness, further view (for newer phones and computers). */
+  hd: { get(): boolean; set(on: boolean): void };
   set(music: boolean, sfx: boolean): void;
   openHorns(): void;
   /** Play a short sample so the effects switch is audible right away. */
@@ -34,6 +36,7 @@ export class SoundPanel {
     this.el.innerHTML = `<h2>Sound</h2>
       ${sw('music', '🎵', 'Music', music)}
       ${sw('sfx', '💥', 'Sounds', sfx)}
+      ${sw('hd', '✨', 'HD graphics', this.deps.hd.get())}
       <button class="s-switch s-horn" data-s="horn"><span class="s-icon">📯</span><span>Horn</span><b>›</b></button>
       <button class="g-open s-done" data-s="done">Done</button>`;
   }
@@ -44,6 +47,7 @@ export class SoundPanel {
     const { music, sfx } = this.deps.get();
     if (id === 'music') this.deps.set(!music, sfx);
     else if (id === 'sfx') { this.deps.set(music, !sfx); if (!sfx) this.deps.preview(); }
+    else if (id === 'hd') this.deps.hd.set(!this.deps.hd.get());
     else if (id === 'horn') { this.close(); this.deps.openHorns(); return; }
     else if (id === 'done') { this.close(); return; }
     this.render();

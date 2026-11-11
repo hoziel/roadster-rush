@@ -21,7 +21,7 @@ const HIP = 0.72, SHOULDER = 1.28, HEAD = 1.55, LEG = 0.72, ARM = 0.58;
 const SKINS = ['#f2c7a5', '#e0a77e', '#b9774f', '#8a5434'];
 const BASKETBALL = '#f08a24', VOLLEYBALL = '#ffd23f';
 
-interface Scene { anchor: THREE.Object3D; players: PlayerSpec[]; scale: number }
+interface Scene { anchor: THREE.Object3D; players: PlayerSpec[]; scale: number; size: number }
 
 export class Sideline {
   readonly group = new THREE.Group();
@@ -53,8 +53,9 @@ export class Sideline {
   }
 
   /** Replace every scene: each anchor's players (anchor scale is undone, so players are always life size). */
-  setScenes(scenes: { anchor: THREE.Object3D; players: PlayerSpec[] }[]): void {
-    this.scenes = scenes.map((sc) => ({ ...sc, scale: 1 }));
+  /** size: draw the players this much bigger than life (along the road, so they read from the car). */
+  setScenes(scenes: { anchor: THREE.Object3D; players: PlayerSpec[]; size?: number }[]): void {
+    this.scenes = scenes.map((sc) => ({ ...sc, scale: 1, size: sc.size ?? 1 }));
   }
 
   update(time: number): void {
@@ -149,7 +150,7 @@ export class Sideline {
 
     // Player transform: anchor * (position, yaw), rolling round the body's middle for a cartwheel.
     this.e.set(0, yaw, 0); this.q.setFromEuler(this.e);
-    this.pm.compose(this.v.set(x, y, z), this.q, this.s.setScalar(1));
+    this.pm.compose(this.v.set(x, y, z), this.q, this.s.setScalar(sc.size));
     if (roll) this.pm.multiply(this.m.makeTranslation(0, 1.0, 0)).multiply(this.lm.makeRotationZ(roll)).multiply(this.m.makeTranslation(0, -1.0, 0));
     this.pm.premultiply(this.am);
     const pi = this.nPlayers++;

@@ -21,7 +21,7 @@ import { StartLine, WaitingPolice } from './startline';
 import { SkyLanes } from './skyLanes';
 import { BustScene } from './bust';
 import { FanBoards } from './fanBoards';
-import { FanSpots } from './fanSpots';
+import { FanSpots, SPOT_SCALE } from './fanSpots';
 import { themeFor } from './fanThemes';
 import { Sideline } from './sideline';
 import { ScreenHits, type ScreenHitKind } from './screenHits';
@@ -150,8 +150,9 @@ export class GameView {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
-    const fog = new THREE.Fog('#e9784a', 40, 150);
+    const fog = new THREE.Fog('#e9784a', 65, 195); // far enough that cars 100+ m ahead still read
     this.scene.fog = fog;
+    this.fog = fog;
     const sky = createSky();
     this.scene.add(sky);
     const hemi = new THREE.HemisphereLight('#ffd9a8', '#4a2a6a', 1.4);
@@ -399,7 +400,8 @@ export class GameView {
 
     // Camera trails the car; widens and shakes for speed and bumps.
     this.shake = Math.max(0, this.shake - dt);
-    const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
+    const rumble = w.phase === 'running' && w.power === 'ludicrous' ? 0.07 : 0; // a light, steady shake through Ludicrous
+    const sx = (Math.random() - 0.5) * (this.shake + rumble), sy = (Math.random() - 0.5) * (this.shake + rumble);
     const hov = w.power === 'hover' ? 0.6 : 0;
     this.camLift += ((w.tube ? 0 : w.floor * CAM_DECK_LIFT) - this.camLift) * Math.min(1, dt * 4);
     // Sky lanes: the camera climbs with the car, looking a little down at the city below.
@@ -441,6 +443,11 @@ export class GameView {
       if (Math.abs(this.orbitGoal - this.orbitA) < 0.001) this.orbitGoal = null;
     }
     const orbiting = this.showcase || w.phase === 'ready' || this.bust.active;
+    if (!orbiting && this.camBlend > 0.001) {
+      // Leaving the orbit (a run starts): swing round behind the car while gliding, never through it.
+      const a = Math.atan2(Math.sin(this.orbitA), Math.cos(this.orbitA));
+      this.orbitA = a - a * Math.min(1, dt * CAM_EASE * 2);
+    }
     this.camBlend += ((orbiting ? 1 : 0) - this.camBlend) * ease;
     this.focusBlend += ((this.showcase && this.driverFocus ? 1 : 0) - this.focusBlend) * ease;
     this.garageBlend += ((this.showcase ? 1 : 0) - this.garageBlend) * ease;
@@ -553,7 +560,7 @@ export class GameView {
     const prop = theme.prop ? this.startLine.props[theme.prop] : null;
     this.sideline.setScenes([
       ...(prop ? [{ anchor: prop, players: theme.startPlayers }] : []),
-      ...(prop ? this.fanSpots.anchors().map((anchor) => ({ anchor, players: theme.startPlayers })) : []),
+      ...(prop ? this.fanSpots.anchors().map((anchor, i) => ({ anchor, players: this.fanSpots.playerLists()[i], size: SPOT_SCALE })) : []),
       ...this.fanBoards.anchors.map((anchor, i) => ({ anchor, players: theme.boardPlayers[i % Math.max(1, theme.boardPlayers.length)] ?? [] })),
     ]);
   }
@@ -576,6 +583,14 @@ export class GameView {
   private doorsOpen = false;
   private garageBlend = 0;
   private orbitA = START_ORBIT.angle;
+  private fog!: THREE.Fog;
+  /** HD graphics (a switch in the Sound panel): render at the screen's full sharpness and see further down the road. */
+  setHD(on: boolean): void {
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, on ? 3 : 2));
+    this.fog.near = on ? 90 : 65;
+    this.fog.far = on ? 215 : 195;
+    this.resize();
+  }
   private orbitGoal: number | null = null; // eases the orbit back to the start angle when the start screen opens
   private lastPhase = '';
   private lastDrag = -100;

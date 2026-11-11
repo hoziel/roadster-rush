@@ -579,7 +579,10 @@ function autopilot(w: World): void {
 }
 
 function pickPower(w: World): PowerKind {
-  const options: PowerKind[] = ['ludicrous', 'autopilot', 'hover'];
+  const options: PowerKind[] = ['ludicrous', 'autopilot'];
+  // Hover pickups come up often (kids love the sky lanes): twice as likely, three times with none banked.
+  if (w.hoverCharges < HOVER_CHARGES_MAX) options.push('hover', 'hover');
+  if (w.hoverCharges === 0) options.push('hover');
   if (w.batteries < BATTERIES) options.push('supercharger', 'supercharger');
   return options[Math.floor(w.rng() * options.length)];
 }

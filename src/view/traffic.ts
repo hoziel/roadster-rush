@@ -38,7 +38,7 @@ export class TrafficView {
   private byKind: Record<'car' | 'truck', Loaded[]> = { car: [], truck: [] };
   private counts: number[] = [];
   private lights: THREE.InstancedMesh;
-  private lightMat = new THREE.MeshBasicMaterial({ color: TAIL_OFF.clone() });
+  private lightMat = new THREE.MeshBasicMaterial({ color: TAIL_OFF.clone(), fog: false }); // glow through the haze: far cars stay easy to spot
   private dummy = new THREE.Object3D();
   private m = new THREE.Matrix4();
 
@@ -87,8 +87,7 @@ export class TrafficView {
   /** Draw every live car and truck; `lights` 0..1 is how dark it is (tail lights glow). */
   update(w: World, lights: number, time: number, visible: boolean): void {
     this.group.visible = visible;
-    this.lightMat.color.copy(TAIL_OFF).lerp(TAIL_ON, lights);
-    this.lights.visible = lights > 0.02; // the models' own tail lights read fine by day: save the draw call
+    this.lightMat.color.copy(TAIL_OFF).lerp(TAIL_ON, 0.65 + 0.35 * lights); // always lit, brightest at night
     if (!this.models.length) return;
     this.counts.fill(0);
     let nl = 0;
