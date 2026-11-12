@@ -1,4 +1,54 @@
-# Driver models — current Revision 2
+# Driver models — Revision 3 Nevo style test
+
+## Revision 3 — November 11, 2026
+
+Issue #46 requests **Nevo only, A/B directions before revising the other three drivers**. The new request replaces the toy proportions for this study: slimmer facial planes, smaller head, longer limbs and a defined jaw. The supplied `assets-src/drivers/nevo-full.jpg` and `public/drivers/nevo.jpg` remain the identity and factory-outfit references. Both new models are original authored TypeScript geometry; no downloaded models, reference textures, logos or lettering. Revision 2 builders and images remain available separately.
+
+**Direction studies, awaiting Ofir's A/B choice.** A has more natural eyes and facial volumes but reads older and more generic than the supplied child. B gives a clearer expressive eye read, with a deliberately sharper anime face. Neither is a final approved likeness. Hair sweep, goggle contours and tailored cloth still need refinement after the direction is chosen. The other three drivers await that decision.
+
+| | A — Semi-realistic | B — Anime |
+|---|---|---|
+| Face | Slim cheek/jaw sections, integrated nose bridge/tip, natural almond eyes and thin lips | V-shaped jaw, narrow chin, larger eyes with bold upper lashes/highlights, tiny nose/mouth |
+| Rendering | Smooth vertex-colored Phong | Four-band Toon plus opaque inverted-hull outline |
+| Hair | Compact swept quiff and finer strands | Sharper clumps and graphic highlights |
+| Height / head ratio | 1.30 m / 5.48 heads tall | 1.30 m / 5.15 heads tall |
+| Triangles / meshes / materials | 15,762 / 11 / 1 | 24,708 / 22 / 2, **including outline** |
+| Seated scale | 84% | 82% |
+| Minimum canopy / floor clearance | 29.8 / 23.8 mm | 42.7 / 24.5 mm |
+| Palm-anchor target error | 2.58 mm each | 2.50 mm each |
+
+Both retain dark factory coveralls, red shoulder/collar/pocket trim, boots, five-finger bare hands and forehead goggles. The standing pose places both hands on the hips. Real shoulders and a narrow waist replace the padded silhouette; longer arms and trouser legs reduce the doll read.
+
+### Files and images
+
+- `nevo-r3.ts`: `buildNevoR3('real' | 'anime', 'standing' | 'seated')`; `r3-sculpt.ts` owns the mesh/material helpers. Uses only the palette, pose types and seat anchor from `drivers.ts`.
+- `r3.html` / `r3-preview.ts`: live orbit preview, A/B switch, fixed views, wave and native PNG export.
+- `r3-review.html`: supplied-reference comparisons, faces, three-quarter, seated/chase and other turnaround views. Start here for the direction choice.
+- `nevo-r3-{real,anime}-{front,three-quarter,side,back,face,seated,fit}.png`: fourteen 1000×1000 native renders. `fit` is a close cabin diagnostic with glazing hidden and doors open.
+- `nevo-r3-{real,anime}-{chase,chase-cutaway}.png`: four 540×1170 (9:19.5) views from the same behind/above camera. Normal chase retains the opaque canopy, which conceals the driver. Cutaway hides glazing only to show the seated geometry; it is not a production visibility change.
+- `nevo-r3-both.png`: 1400×1000 native A/B lineup, A left and B right.
+- `r3-style-test.png`, `r3-three-quarter-comparison.png`, `r3-face-comparison.png`, `r3-seated-comparison.png`: four browser-captured review sheets. Supplied artwork appears only in separate reference panels, unaltered; marks in those panels are absent from the models.
+- `r3-validate.mjs` / `r3-validation.json`: repeatable numeric checks and measured results.
+
+All 23 new PNGs are below 2 MB. Model views are actual WebGL renders, not generated target art. Chase road/lighting are simplified art staging rather than production-game screenshots.
+
+### API and seating
+
+Returns the same `DriverParts` fields (`group`, `joints`, `seatedScale`, `setPose`, `setWave`, `dispose`) plus `style`, `headRatio`, `standingHeight`. Units are metres; +Y up, -Z front, standing soles at zero. `setPose('seated')` owns root scale (A .84, B .82 relative to standing); `standing` restores it. Use an outer group for application/world scaling. Place the seated root at `SEAT_POSITION = (-.33, .43, -.07)` for the art roadster. Do not reuse Revision 2's .74 multiplier. Claude must map the production car anchor separately.
+
+The seated arms solve toward the steering wheel; fingers remain relaxed rather than individually gripping it. Roof clearance is the minimum raycast clearance to actual closed art-car glazing across every high vertex, including the anime hull. Floor uses the cabin top y=.335. These static checks establish this pose's fit, not an animation collision solver. `setWave` acts in standing pose. `dispose()` releases owned merged geometry, materials and the generated 4×1 shading ramp idempotently. No image maps or external textures are used.
+
+### Palette and simplification
+
+Nevo palette remains: skin `#edb18a`, blush `#d68d74`, hair `#443027`, hair highlight `#80573d`, suit `#35424b`, red trim `#cf493e`, accents `#6c777b`, iris `#673d28`, boots `#27313a`. Revision 3 details include ink `#252731`, outline `#222332`, eye cream `#f4eee3`, seams `#233039`, natural upper eyelid `#775240`, goggles `#b5c4c5`, smile `#844d44` and skin shading `#cc9277`. Full detail colors are in source.
+
+For a gameplay LOD, preserve head/body proportion, jaw, eye shape, quiff silhouette, goggles and broad suit/trim colors. Reduce zipper/seam tubes, boot laces, fine finger geometry and hair strands first. The anime inverted hull adds an extra mesh/draw for each articulated part and nearly doubles geometry; the stated budget already counts it. These are garage/style studies, not phone-profiled crowd assets. No connected skinning, individual finger rig or production approval is implied.
+
+### Validation
+
+Strict TypeScript passed for the builder, helper and preview. `node art/mockups/07-driver-models/r3-validate.mjs` passed finite geometry, opaque materials, triangle/material limits, standing height/ground, exact pose round trip, wheel targets, actual-canopy/floor clearance, finite wave and idempotent disposal. Browser review covered turnaround/reference/cabin views with no console warnings/errors. Images were checked for PNG dimensions and size.
+
+**Question left for review: A or B as the direction to refine and then apply to the remaining drivers?** Keep the illustrated heroes until a likeness is approved.
 
 ## Revision 2 — November 11, 2026
 

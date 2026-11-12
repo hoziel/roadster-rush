@@ -1,0 +1,66 @@
+[
+  {
+    "style": "real",
+    "triangles": 15762,
+    "meshes": 11,
+    "materials": 1,
+    "height": 1.3,
+    "headRatio": 5.476053037900586,
+    "standing": {
+      "min": [
+        -0.3473370037330167,
+        5.551115123125783e-17,
+        -0.1267947850709588
+      ],
+      "max": [
+        0.3473370037330167,
+        1.3,
+        0.07171803043247277
+      ]
+    },
+    "seatedScale": 0.84,
+    "seatedTop": 1.0138700466936001,
+    "canopyClearance": 0.029809573133911638,
+    "canopySamples": 30214,
+    "floorClearance": 0.02380624854261132,
+    "gripErrors": [
+      0.00257632840642929,
+      0.00257632840642929
+    ],
+    "finiteGeometry": true,
+    "poseRoundTrip": true,
+    "disposalIdempotent": true
+  },
+  {
+    "style": "anime",
+    "triangles": 24708,
+    "meshes": 22,
+    "materials": 2,
+    "height": 1.3,
+    "headRatio": 5.151985738227332,
+    "standing": {
+      "min": [
+        -0.34726867449107196,
+        5.551115123125783e-17,
+        -0.12794937690918828
+      ],
+      "max": [
+        0.34726867449107196,
+        1.3000000000000003,
+        0.07167541792719381
+      ]
+    },
+    "seatedScale": 0.82,
+    "seatedTop": 1.0019768141325953,
+    "canopyClearance": 0.04265249033245788,
+    "canopySamples": 39524,
+    "floorClearance": 0.024511451245938676,
+    "gripErrors": [
+      0.002497497529114314,
+      0.002497497529114314
+    ],
+    "finiteGeometry": true,
+    "poseRoundTrip": true,
+    "disposalIdempotent": true
+  }
+]

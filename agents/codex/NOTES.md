@@ -2,15 +2,17 @@
 
 ## Current work
 
-- Latest assignment: #50 Blossom paint for Ori, `art/mockups/11-blossom-paint/`. Original watercolour PNG, 1024×512 / 279,311 bytes, compensated for existing side UV stretch and door band; 11 native previews and review sheet. Handed to Claude for integration; see latest entry below.
+- Latest assignment: #46 Revision 3, Nevo only A/B semi-realistic vs anime. Built two native studies and 23 PNGs in `art/mockups/07-driver-models/`; `r3-review.html` / `r3-style-test.png` are the review entry points. Other three drivers wait for Ofir's direction choice. See latest dated entry for handoff state.
+- #50 Blossom paint for Ori was handed to Claude for integration; `art/mockups/11-blossom-paint/blossom.png`, 1024×512 / 279,311 bytes. No new acceptance check during the driver revision.
 - Publishing checked November 11: prior session commits (driver Revision 2, bats and handoff notes) are all on origin/main. Latest checked deployment bba666e succeeded. Claude accepted/integrated #49 bats in 2a0f0e5; they are live. Icons Revision 3 are integrated/live too.
-- #46 driver Revision 2 is delivered for review, not production: 23–25k-triangle models plus seated fit, but likeness remains below the requested bar. Keep 2D heroes until an approved character sculpt; no later review decision was posted when checked.
+- #46 Revision 3 supersedes the Nevo direction study only. A reads older/more generic than the child reference; B has sharper anime styling/stronger eyes. Both await style/likeness review; keep 2D heroes meanwhile. R2 models/images are retained.
 - Earlier native art kits (traffic, fans, downtown), car/police assets, screen mockups, driver heroes and icon revisions are recorded in the dated entries below. Work only current Turn=Codex cards; earlier deliveries do not authorize additional revisions.
 - Preserve pre-existing modified look-and-feel A.png/B.png and untracked root demo media. Claude owns integration and pushing.
 
 ## Project workflow
 
 - Board CLI works with `sandbox_permissions=require_escalated`; the earlier `unknown owner type` was a sandbox/network failure. Use actual `gh project item-edit --id ITEM --project-id PROJECT --field-id FIELD --single-select-option-id OPTION` syntax. Project `PVT_kwHOAAmJfc4Bq5YK`; Status field `PVTSSF_lAHOAAmJfc4Bq5YKzhpOb6E`, In Progress `8c6e0b32`; Turn field `PVTSSF_lAHOAAmJfc4Bq5YKzhpO1O8`, Claude `10ec38dc`, Codex `1fe53265`. #44 item `PVTI_lAHOAAmJfc4Bq5YKzhHfPM0`, #45 item `PVTI_lAHOAAmJfc4Bq5YKzhHmk-o`, #43 item `PVTI_lAHOAAmJfc4Bq5YKzhHmwQs`.
+- #46 item `PVTI_lAHOAAmJfc4Bq5YKzhHncfE`. During the R3 session the GraphQL limit was exhausted; connector issue comments still work. Comment-only handoff is valid under COLLAB §3; retry fields/inbox at handoff rather than treating blank/failed output as an empty inbox.
 - Read `COLLAB.md`, this file, `CLAUDE.md`, `SCOPE.md`, and `art/briefs/00-style-guide.md` before art work.
 - Work only in `art/mockups/**` and `agents/codex/**`; stage and commit only those paths.
 - Issue #42 is assigned to Codex per its issue body. The prescribed `gh project item-list` query failed with `unknown owner type`, and `--owner @me` could not connect to GitHub. Project Turn/Status fields could not be verified or changed in this session; handoff is recorded in the issue comment.
@@ -207,3 +209,14 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 - Strict TypeScript and image format/size checks passed; browser no warnings/errors. Claude should load as THREE.Texture (existing cache typed CanvasTexture), set sRGB/white material/standard flipY and mipmaps, up to 4× anisotropy, and project once with doors closed. Texture preload/disposal and public deployment are Claude's work. No new question.
 - Only owned art/memory/prompt paths changed. Commit, handoff and final inbox result follow below.
 - Blossom committed as `f1a3fe5`; handoff https://github.com/hoziel/roadster-rush/issues/50#issuecomment-6810067350 . Turn = Claude, Status = In Progress. Rechecked inbox successfully: no Codex cards. Newly completed Blossom is committed locally and awaits Claude integration/push; the earlier session work was already published to the repo. No new questions left.
+
+## November 11, 2026 — Nevo Revision 3 A/B directions #46
+
+- Latest Claude assignment follows Ofir's rejection of puffy doll faces: Nevo only, semi-realistic A vs anime B, then wait for a choice before touching the other three. Read current rules/brief, supplied Nevo full-body/portrait references and R2 sources. No new reference/model downloads or generated art.
+- Added `nevo-r3.ts`, `r3-sculpt.ts`, native preview, review gallery, validation script/results and 23 PNGs under `07-driver-models/`. Both 1.30 m, smaller heads, narrow jaws/necks, longer limbs, dark factory coveralls/red trims, goggles/quiff, five-finger hands. R2 source/images retained; old preview/gallery now link to R3.
+- A: 15,762 tris / 11 meshes / 1 Phong material, 5.48 heads tall. B: 24,708 tris / 22 meshes / 2 materials including inverted hull, 5.15 heads tall, four-band Toon. No external maps; generated 4×1 shading ramp.
+- `buildNevoR3(style, pose)` is DriverParts-compatible. Seated root scale A .84/B .82; seat contact (-.33,.43,-.07), world scale belongs on an outer wrapper. Actual closed-canopy clearance 29.8/42.7 mm; floor clearance 23.8/24.5 mm; palms within 2.58/2.50 mm of targets. Fingers relaxed, not individually gripped. Opaque chase hides the driver; same-camera cutaways and cabin views explicitly reveal fit.
+- Exported front/three-quarter/side/back/face/seated/fit for each plus two chase variants each, A/B lineup and four comparison sheets beside supplied reference art. All 23 are actual PNGs, largest 662,453 bytes. Browser screenshots initially returned JPEG bytes; losslessly re-encoded those four sheets as PNG to match the requested format.
+- Strict TS and numeric geometry/budget/proportion/pose/wheel/canopy/floor/wave/disposal checks pass. Browser reviewed exported views and reference comparisons without warnings/errors. Fixed face winding/seam normals, collar closure, scalp intersections and seated floor clearance during review.
+- Honest direction verdict: A looks more natural but older/generic relative to the child picture; B has clearer eyes and a deliberately sharp graphic face. Neither claims final likeness approval. Ask Ofir A/B via Claude before refining/applying to other drivers; keep illustrated heroes meanwhile.
+- GraphQL rate limit initially blocked status/inbox. Starting comment posted per COLLAB §3. Status retry at handoff succeeded; board available again. Commit, handoff and final inbox result follow below. No production/public paths edited; preserve unrelated A/B images and root media.
