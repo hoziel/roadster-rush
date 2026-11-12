@@ -75,7 +75,8 @@ export interface World {
   duck: number; // s of ducking left (swipe down): squashed low, fits under an overhead beam
   coins: number;
   batteries: number;
-  invuln: number; // s of post-crash grace left
+  invuln: number; // s of post-crash grace left (the car blinks)
+  landGrace: number; // s of grace after landing from a hover (same protection, but no blinking: nothing went wrong)
   stumble: number; // s of post-crash slowdown left
   jumpBuffer: number; // s left on a jump swiped while still in the air
   chase: number; // s the police stays close (a crash now ends the run)
@@ -135,7 +136,7 @@ export const laneX = (lane: number): number => (lane - (LANE_COUNT - 1) / 2) * L
 
 const runState = () => ({
   time: 0, distance: 0, speed: SPEED_START, lane: 1, x: 0, y: 0, vy: 0, floor: 0, duck: 0, coins: 0, trafficRun: 0,
-  batteries: BATTERIES, invuln: 0, stumble: 0, jumpBuffer: 0, chase: 0, intro: INTRO_CHASE_TIME,
+  batteries: BATTERIES, invuln: 0, landGrace: 0, stumble: 0, jumpBuffer: 0, chase: 0, intro: INTRO_CHASE_TIME,
   hoverCharges: HOVER_CHARGES_START, speedLevel: 0,
   power: null, powerTime: 0, lastPower: null, caught: false, nextRowAt: 40,
   swarmAt: -1, swarmEnd: -1, swarmSeen: true, nextSwarmAt: 0, swarmQueued: false,
@@ -167,7 +168,7 @@ export function clearAround(w: World, radius: number): void {
 
 /** Can't be hurt right now (grace period or a protective power-up). */
 export const isShielded = (w: World): boolean =>
-  w.invuln > 0 || w.power === 'ludicrous' || w.power === 'autopilot' || w.power === 'hover';
+  w.invuln > 0 || w.landGrace > 0 || w.power === 'ludicrous' || w.power === 'autopilot' || w.power === 'hover';
 
 export function steer(w: World, dir: -1 | 1): boolean {
   if (w.phase !== 'running' || w.power === 'autopilot') return false;
@@ -251,7 +252,7 @@ function laySky(w: World): void {
 /** The hover is over: clear what's left up in the sky and give a grace period for the landing. */
 function leaveSky(w: World): void {
   for (const e of w.entities) if (e.alive && e.y !== undefined && e.y >= SKY_HEIGHT - 1) e.alive = false;
-  w.invuln = Math.max(w.invuln, SKY_LAND_GRACE);
+  w.landGrace = SKY_LAND_GRACE;
 }
 
 /** Up on the sky lanes (high enough to meet what flies there). */
@@ -279,6 +280,7 @@ export function step(w: World, dt: number): SimEvent[] {
 
   w.time += dt;
   w.invuln = Math.max(0, w.invuln - dt);
+  w.landGrace = Math.max(0, w.landGrace - dt);
   w.stumble = Math.max(0, w.stumble - dt);
   w.jumpBuffer = Math.max(0, w.jumpBuffer - dt);
   w.duck = Math.max(0, w.duck - dt);

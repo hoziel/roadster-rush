@@ -69,7 +69,8 @@ describe('sky lanes', () => {
     expect(ev).not.toContain('sky-hit');
     expect(ev).toContain('coin');
     expect(w.y).toBe(0);
-    expect(w.invuln).toBeGreaterThan(0); // still in the landing grace
+    expect(w.landGrace).toBeGreaterThan(0); // still in the landing grace
+    expect(w.invuln).toBe(0); // which doesn't blink the car
   });
 
   it('hovering flies faster than driving, and back to normal after', () => {
