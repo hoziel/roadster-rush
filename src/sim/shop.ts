@@ -7,7 +7,7 @@ export const PAINT_IDS = [
 ] as const;
 export const HORN_IDS = ['classic', 'bell', 'tune', 'clown', 'bike'] as const;
 /** Car bodies (all free; they drive, jump and hover the same). */
-export const MODEL_IDS = ['roadster', 'cybercab', 'cybertruck'] as const;
+export const MODEL_IDS = ['roadster', 'cybercab', 'cybertruck', 'waymo'] as const;
 export type ModelId = typeof MODEL_IDS[number];
 export type PaintId = typeof PAINT_IDS[number];
 export type HornId = typeof HORN_IDS[number];

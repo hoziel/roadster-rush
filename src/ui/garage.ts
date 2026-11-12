@@ -23,6 +23,7 @@ const MODELS: Record<ModelId, { name: string; icon: string }> = {
   roadster: { name: 'Roadster', icon: '🏎️' },
   cybercab: { name: 'Cybercab', icon: '🚕' },
   cybertruck: { name: 'Cybertruck', icon: '🛻' },
+  waymo: { name: 'Waymo', icon: '🚙' },
 };
 
 export interface GarageDeps {

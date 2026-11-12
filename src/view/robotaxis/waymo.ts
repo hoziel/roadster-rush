@@ -1,8 +1,8 @@
 import { MeshKit, type BodyRow, type RoofRow, type TrafficModel } from './mesh-kit';
 
 /** I-PACE-inspired sensor crossover, simplified from photos, no logos or text. */
-export function buildWaymo(): TrafficModel {
-  const b = new MeshKit(), white = '#edece6', dark = '#262c36', glass = '#243544', teal = '#55b9b0';
+export function buildWaymo(b = new MeshKit()): TrafficModel {
+  const white = '#edece6', dark = '#262c36', glass = '#243544', teal = '#55b9b0';
   const rows: BodyRow[] = [[-2.35,.73,.84],[-2.13,.86,1.0],[-1.5,.94,1.09],[-.93,.94,1.115],[.40,.95,1.12],[1.48,.95,1.14],[2.15,.86,1.10],[2.35,.79,1.02]];
   b.body(rows,[-1.48,1.43],.39,white,dark);
   const canopy: RoofRow[] = [[-1.24,.84,.84,1.13,1.13],[-.65,.84,.68,1.57,1.12],[.10,.85,.70,1.63,1.12],[1.03,.85,.71,1.58,1.13],[1.78,.82,.77,1.28,1.12],[2.12,.80,.80,1.12,1.12]];
