@@ -14,6 +14,7 @@ import { SoundPanel } from './ui/sound';
 import './ui/hud.css';
 import { GameView } from './view/scene';
 import { themeFor } from './view/fanThemes';
+import { applyUpdate, watchUpdates } from './update';
 import {
   POWER_TIME, clearAround, createWorld, hover, hoverBlocked, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
   queueSwarm, queueTunnel, score,
@@ -73,6 +74,7 @@ void document.fonts?.ready.then(() => view.style.refreshPlate());
 new InstallNudge(document.getElementById('ui')!);
 const cheer = new Cheer(document.getElementById('ui')!); // after the HUD has built #ui
 hud.showReady(storage.best, garage.walletHtml(), garage.buttonsHtml(), world.kidMode);
+watchUpdates(() => world.phase === 'ready' && !garage.isOpen && !sound.isOpen);
 // A soft tap sound for every menu button (start card, garage, sound panel); the hover button has its own.
 document.getElementById('ui')!.addEventListener('click', (e) => {
   const b = (e.target as Element).closest('button');
@@ -90,6 +92,28 @@ document.addEventListener('visibilitychange', () => {
     hud.showPaused();
   }
 });
+
+/** Pause button and the paused card: pause, keep going, or start the run over (its coins are kept). */
+hud.onPause = (act) => {
+  audio.unlock();
+  if (act === 'pause') {
+    if (world.phase !== 'running' || paused) return;
+    audio.uiTap();
+    paused = true;
+    hud.showPaused();
+  } else if (act === 'resume') {
+    paused = false;
+    hud.hideCard();
+  } else if (act === 'restart') {
+    storage.set({ shop: addCoins(storage.shop, world.coins) });
+    paused = false;
+    if (applyUpdate()) return;
+    start(world);
+    view.newRun();
+    audio.runStart();
+    hud.hideCard();
+  }
+};
 
 function honk(): void {
   audio.honk();
@@ -126,6 +150,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   }
   if (world.phase !== 'running') {
     if ((action === 'tap' || action === 'jump') && performance.now() - finishedAt > FINISH_LOCK_MS) {
+      if (applyUpdate()) return; // a new version came in: load it (back on the start screen) instead
       start(world);
       view.newRun();
       audio.runStart();

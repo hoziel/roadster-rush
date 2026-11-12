@@ -7,7 +7,8 @@ export default defineConfig({
   test: { include: ['tests/**/*.test.ts'], testTimeout: 20000 }, // the seeded real-run tests take a few s on a busy machine
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': main.ts decides when to switch to a new version (never mid-run), see src/update.ts.
+      registerType: 'prompt',
       // Offline after the first visit: precache the whole (small) build.
       workbox: { globPatterns: ['**/*.{js,css,html,svg,png,jpg,ttf,woff2,glb,ogg,mp3,m4a,json}'] },
       manifest: {

@@ -5,6 +5,8 @@ const svg = (body: string, vb = '0 0 24 24') =>
   `<svg class="ico" viewBox="${vb}" aria-hidden="true" fill="currentColor">${body}</svg>`;
 
 export const ICON = {
+  pause: svg('<rect x="6" y="4.5" width="4.2" height="15" rx="1.4"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.4"/>'),
+  restart: svg('<path d="M19 12a7 7 0 1 1-2.05-4.95" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5.5H15z"/>'),
   soundOn: svg('<path d="M4 9h3.5L12 5v14l-4.5-4H4z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.6 6.6a7.6 7.6 0 0 1 0 10.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'),
   soundOff: svg('<path d="M4 9h3.5L12 5v14l-4.5-4H4z"/><path d="M15.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>'),
   horn: svg('<path d="M2.5 10.2c0-.9.7-1.6 1.6-1.6H6l9-4.6v15.9l-9-4.6H4.1c-.9 0-1.6-.7-1.6-1.6z"/><path d="M6.5 15.6l1.3 4.1h2.8l-1.2-3.6z"/><path d="M18 9.2a3.4 3.4 0 0 1 0 5.4M20.2 6.8a6.6 6.6 0 0 1 0 10.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'),

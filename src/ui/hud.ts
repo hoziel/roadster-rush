@@ -31,6 +31,9 @@ export class Hud {
   private hornBtn: HTMLButtonElement;
   private lastRun = '';
 
+  /** Pause button and the paused card's buttons ('pause' | 'resume' | 'restart'). */
+  onPause: (act: 'pause' | 'resume' | 'restart') => void = () => {};
+
   constructor(onMute: () => void, onHover: () => void, onHonk: () => void) {
     this.root = document.getElementById('ui')!;
     this.root.innerHTML = `
@@ -38,6 +41,9 @@ export class Hud {
         <div class="hud-coins"><i class="coin-ico"></i><span id="coins">0</span></div>
         <div class="hud-score"><small>Score</small><b id="score">0</b></div>
         <button class="hud-round mute" id="mute" aria-label="Sound on/off"></button>
+      </div>
+      <div class="top-2">
+        <button class="hud-round pause-btn" id="pauseBtn" aria-label="Pause">${ICON.pause}</button>
       </div>
       <div class="batteries" id="batteries"></div>
       <div class="power" id="power"><span id="powerLabel"></span><div class="bar"><div id="powerBar"></div></div></div>
@@ -62,6 +68,19 @@ export class Hud {
     this.muteBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
     this.muteBtn.addEventListener('pointerup', (e) => e.stopPropagation());
     this.muteBtn.addEventListener('click', onMute);
+    const pauseBtn = q('pauseBtn');
+    pauseBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    pauseBtn.addEventListener('pointerup', (e) => e.stopPropagation());
+    pauseBtn.addEventListener('click', () => this.onPause('pause'));
+    // The paused card's buttons (its taps don't reach the game either).
+    const card = q('card');
+    for (const ev of ['pointerdown', 'pointerup'] as const) {
+      card.addEventListener(ev, (e) => { if ((e.target as HTMLElement).closest('[data-pause]')) e.stopPropagation(); });
+    }
+    card.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-pause]');
+      if (b) this.onPause(b.dataset.pause as 'resume' | 'restart');
+    });
 
     // Hover button: fire on pointerdown (fast for kids), and keep the press away from the game's swipe/tap.
     this.speedo = q('speedo');
@@ -181,7 +200,7 @@ export class Hud {
 
   hideCard(): void {
     this.creditsBtn.classList.remove('show');
-    this.root.classList.remove('menu');
+    this.root.classList.remove('menu', 'is-paused');
     this.root.querySelector('#credits')?.classList.remove('show');
     this.el.card.className = 'card';
     this.el.confetti.innerHTML = '';
@@ -244,8 +263,13 @@ export class Hud {
   }
 
   showPaused(): void {
+    this.root.classList.add('menu', 'is-paused');
     this.el.card.className = 'card show paused';
-    this.el.card.innerHTML = `<div class="f-panel"><h1 class="f-head">Paused</h1><div class="m-drive" aria-hidden="true">Keep going ${ICON.play}</div></div>`;
+    this.el.card.innerHTML = `<div class="f-panel"><h1 class="f-head">Paused</h1>
+      <div class="f-actions">
+        <button class="m-drive" data-pause="resume">Keep going ${ICON.play}</button>
+        <button class="m-btn p-restart" data-pause="restart">${ICON.restart}<span>Restart</span></button>
+      </div></div>`;
   }
 
   debug(text: string): void { this.el.debug.textContent = text; }
