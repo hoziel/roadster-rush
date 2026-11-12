@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HAT_ID, HAT_PRICE, PAINT_PRICES, addCoins, buy, canBuy, defaultShop, equip, isOwned, normalizeShop, removeHat,
+  HAT_ID, HAT_PRICE, PAINT_PRICES, addCoins, buy, canBuy, defaultShop, equip, isOwned, normalizeShop, removeHat, setDriver,
 } from '../src/sim/shop';
 
 describe('shop', () => {
@@ -63,5 +63,29 @@ describe('shop', () => {
     expect(s.hat).toBe(false); // hat isn't owned
     const ok = normalizeShop({ wallet: 42.7, owned: ['paint:gold', HAT_ID], paint: 'gold', hat: true, driver: 'b' });
     expect(ok).toMatchObject({ wallet: 42, paint: 'gold', hat: true, driver: 'b' });
+  });
+});
+
+describe('each driver keeps their own look', () => {
+  it('switching drivers saves one look and brings back the other', () => {
+    let s = { ...defaultShop(), wallet: 1000 };
+    s = setDriver(s, 'nevo', 'white');
+    s = buy(s, 'paint:gold'); s = buy(s, 'horn:bell'); s = buy(s, HAT_ID);
+    s = setDriver(s, 'ori', 'blossom');
+    expect([s.paint, s.horn, s.hat]).toEqual(['blossom', 'classic', false]); // first time: her own paint
+    s = equip(s, 'horn:bell');
+    s = setDriver(s, 'nevo', 'white');
+    expect([s.paint, s.horn, s.hat]).toEqual(['gold', 'bell', true]);
+    s = setDriver(s, 'ori', 'blossom');
+    expect([s.paint, s.horn, s.hat]).toEqual(['blossom', 'bell', false]);
+  });
+
+  it('looks survive a save and load', () => {
+    let s = { ...defaultShop(), wallet: 1000 };
+    s = setDriver(s, 'nevo', 'white');
+    s = buy(s, 'paint:sky');
+    s = setDriver(s, 'shiri', 'pink');
+    const back = normalizeShop(JSON.parse(JSON.stringify(s)));
+    expect(setDriver(back, 'nevo').paint).toBe('sky');
   });
 });

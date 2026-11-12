@@ -21,6 +21,9 @@ export const HAT_PRICE = 100;
 export type ItemId = `paint:${PaintId}` | `horn:${HornId}` | 'hat:cowboy';
 export const HAT_ID: ItemId = 'hat:cowboy';
 
+/** What one driver's car looks and sounds like. */
+export interface Look { paint: PaintId; horn: HornId; hat: boolean }
+
 export interface ShopState {
   wallet: number;
   owned: ItemId[];
@@ -29,10 +32,12 @@ export interface ShopState {
   hat: boolean;
   /** Driver id from src/ui/drivers.ts (drivers are free; validated by the UI). */
   driver: string;
+  /** Each driver's own look, kept for next time (paint/horn/hat above are the current driver's). */
+  looks: Record<string, Look>;
 }
 
 export function defaultShop(): ShopState {
-  return { wallet: 0, owned: [], paint: PAINT_IDS[0], horn: HORN_IDS[0], hat: false, driver: '' };
+  return { wallet: 0, owned: [], paint: PAINT_IDS[0], horn: HORN_IDS[0], hat: false, driver: '', looks: {} };
 }
 
 const ALL_ITEMS: ItemId[] = [
@@ -75,14 +80,28 @@ export function buy(s: ShopState, id: ItemId): ShopState {
 export function equip(s: ShopState, id: ItemId): ShopState {
   if (!isOwned(s, id)) return s;
   const [kind, key] = id.split(':');
-  if (kind === 'paint') return { ...s, paint: key as PaintId };
-  if (kind === 'horn') return { ...s, horn: key as HornId };
-  return { ...s, hat: true };
+  if (kind === 'paint') return remember({ ...s, paint: key as PaintId });
+  if (kind === 'horn') return remember({ ...s, horn: key as HornId });
+  return remember({ ...s, hat: true });
 }
 
-export function removeHat(s: ShopState): ShopState { return { ...s, hat: false }; }
+export function removeHat(s: ShopState): ShopState { return remember({ ...s, hat: false }); }
 
-export function setDriver(s: ShopState, driver: string): ShopState { return { ...s, driver }; }
+/** Store the current look as the current driver's. */
+function remember(s: ShopState): ShopState {
+  if (!s.driver) return s;
+  return { ...s, looks: { ...s.looks, [s.driver]: { paint: s.paint, horn: s.horn, hat: s.hat } } };
+}
+
+/**
+ * Switch driver: the car takes that driver's saved look (paint, horn, hat), or, the first time, their own
+ * paint (`firstPaint`) with the classic horn and no hat.
+ */
+export function setDriver(s: ShopState, driver: string, firstPaint?: PaintId): ShopState {
+  const saved = remember(s);
+  const look = saved.looks[driver] ?? { paint: firstPaint ?? s.paint, horn: HORN_IDS[0], hat: false };
+  return remember({ ...saved, driver, ...look });
+}
 
 /** Clean up whatever came out of storage (old saves, hand edits, garbage). */
 export function normalizeShop(raw: unknown): ShopState {
@@ -100,10 +119,21 @@ export function normalizeShop(raw: unknown): ShopState {
     horn: HORN_IDS.includes(r.horn as HornId) ? r.horn as HornId : d.horn,
     hat: r.hat === true,
     driver: typeof r.driver === 'string' ? r.driver : d.driver,
+    looks: {},
   };
+  const okLook = (l: Record<string, unknown>): Look | null =>
+    PAINT_IDS.includes(l.paint as PaintId) && HORN_IDS.includes(l.horn as HornId)
+    && isOwned(s, `paint:${l.paint as PaintId}`) && isOwned(s, `horn:${l.horn as HornId}`)
+      ? { paint: l.paint as PaintId, horn: l.horn as HornId, hat: l.hat === true && isOwned(s, HAT_ID) } : null;
+  if (r.looks && typeof r.looks === 'object') {
+    for (const [id, l] of Object.entries(r.looks as Record<string, unknown>)) {
+      const look = l && typeof l === 'object' ? okLook(l as Record<string, unknown>) : null;
+      if (look) s.looks[id] = look;
+    }
+  }
   // Never leave something equipped that isn't owned.
   if (!isOwned(s, `paint:${s.paint}`)) s.paint = d.paint;
   if (!isOwned(s, `horn:${s.horn}`)) s.horn = d.horn;
   if (!isOwned(s, HAT_ID)) s.hat = false;
-  return s;
+  return remember(s); // older saves: the current look becomes the current driver's
 }

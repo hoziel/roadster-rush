@@ -130,9 +130,8 @@ export class Garage {
     if (act === 'close') { this.close(); return; }
     if (act === 'tab') { this.tab = id as Tab; this.preview = null; }
     else if (act === 'driver') {
-      // Each driver has their own car colour; picking them paints the car.
-      const paint = driverById(id).paint;
-      this.save(paint ? equip(setDriver(s, id), `paint:${paint}`) : setDriver(s, id));
+      // Each driver keeps their own look (paint, horn, hat); the first time, their own car colour.
+      this.save(setDriver(s, id, driverById(id).paint));
       // Update the cards in place: re-rendering would reload every picture and flash for a frame.
       for (const c of this.el.querySelectorAll<HTMLElement>('.g-dcard')) {
         const on = c.dataset.id === id;
