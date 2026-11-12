@@ -15,10 +15,12 @@ const BOARDS = 3;
 const GAP = [110, 170]; // m between boards
 const FIRST = 90; // m into a run before the first
 const X = 9.4; // m from the road centre: just past the sidewalk
-const W = 12, H = 6, POST = 3.2; // panel size and height of its bottom edge (m)
+const W = 12, H = 6, POST = 4.2; // panel size and height of its bottom edge (m)
 const CUT_W = 5.2, CUT_H = CUT_W * 4 / 3; // die-cut figure (m), from a 3:4 canvas
 const BULB_STEP = 0.8; // m between marquee bulbs
-const CLEAR_Z = 18; // m along the road either side of a board kept free of street trees
+// Street trees kept clear: from a little behind a board to well in front of it, since seen from down the road
+// the trees in front of a board (nearer the car) are the ones in the line of sight.
+const CLEAR_BEHIND = 12, CLEAR_FRONT = 50; // m
 const FRAME = '#ff3d8b';
 
 // The canvas: ad 768x384 on top; below it the 384x512 cut-out on the left, frame colour on the right.
@@ -109,7 +111,8 @@ export class FanBoards {
     if (!this.group.visible) return false;
     for (const b of this.boards) {
       if (b.s < 0 || x * b.side <= 0) continue;
-      if (Math.abs(z - b.group.position.z) < CLEAR_Z) return true;
+      const dz = z - b.group.position.z; // + = nearer the car
+      if (dz > -CLEAR_BEHIND && dz < CLEAR_FRONT) return true;
     }
     return false;
   }
