@@ -117,7 +117,8 @@ describe('sky lanes', () => {
     expect(new Set(before.map((e) => e.lane)).size).toBe(3);
     expect(firstObstacle.s - w.distance).toBeGreaterThan((w.hoverEnd - w.distance) * 0.4);
     expect(Math.max(...items.map((e) => e.s))).toBeLessThan(w.hoverEnd);
-    // The hover ends as the car reaches hoverEnd.
+    // The hover ends as the car reaches hoverEnd (nothing to fly into on the way).
+    for (const e of w.entities) if (isSky(e.kind)) e.alive = false;
     for (let t = 0; t < HOVER_TIME + 2 && w.power === 'hover'; t += DT) step(w, DT);
     expect(Math.abs(w.distance - w.hoverEnd)).toBeLessThan(1);
   });
