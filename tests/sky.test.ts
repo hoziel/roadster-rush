@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BATTERIES, HOVER_BOOST, HOVER_TIME, SKY_HEIGHT } from '../src/sim/config';
 import { isSky } from '../src/sim/sky';
-import { createWorld, hover, start, step, type Entity, type World } from '../src/sim/world';
+import { createWorld, hover, hoverBlocked, start, step, type Entity, type World } from '../src/sim/world';
 
 const DT = 1 / 120;
 const run = (w: World, seconds: number) => {
@@ -88,15 +88,37 @@ describe('sky lanes', () => {
     const w = emptyRunning();
     hover(w);
     run(w, 2);
-    w.entities.push({ kind: 'coin', lane: w.lane, s: w.distance + 5, alive: true } as Entity);
-    const coins = w.coins;
+    const ground = { kind: 'coin', lane: w.lane, s: w.distance + 5, alive: true } as Entity;
+    w.entities.push(ground);
     run(w, 0.5);
-    expect(w.coins).toBe(coins);
+    expect(ground.alive).toBe(true); // flown over, left on the road
   });
 
-  it('no hover while a tube tunnel is coming up', () => {
+  it('no hover with a tube tunnel just ahead; with one further on, the hover lands before it', () => {
     const w = emptyRunning();
     w.tunnelAt = w.distance + 60; w.tunnelEnd = w.tunnelAt + 100;
     expect(hover(w)).toBe(false);
+    expect(hoverBlocked(w)).toBe('tunnel');
+    w.tunnelAt = w.distance + 250; w.tunnelEnd = w.tunnelAt + 150;
+    expect(hover(w)).toBe(true);
+    expect(w.hoverEnd).toBeLessThan(w.tunnelAt - 30);
+    while (w.distance < w.tunnelAt - 1) step(w, DT);
+    expect(w.y).toBe(0); // back on the road before the tunnel
+  });
+
+  it('a hover starts with only coins, in every lane, and ends where its sky lanes end', () => {
+    const w = emptyRunning(4);
+    hover(w);
+    const items = w.entities.filter((e) => e.alive && e.y !== undefined).sort((a, b) => a.s - b.s);
+    const firstObstacle = items.find((e) => isSky(e.kind))!;
+    const before = items.filter((e) => e.s < firstObstacle.s - 20);
+    expect(before.length).toBeGreaterThan(20);
+    expect(before.every((e) => e.kind === 'coin')).toBe(true);
+    expect(new Set(before.map((e) => e.lane)).size).toBe(3);
+    expect(firstObstacle.s - w.distance).toBeGreaterThan((w.hoverEnd - w.distance) * 0.4);
+    expect(Math.max(...items.map((e) => e.s))).toBeLessThan(w.hoverEnd);
+    // The hover ends as the car reaches hoverEnd.
+    for (let t = 0; t < HOVER_TIME + 2 && w.power === 'hover'; t += DT) step(w, DT);
+    expect(Math.abs(w.distance - w.hoverEnd)).toBeLessThan(1);
   });
 });

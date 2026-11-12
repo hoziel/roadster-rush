@@ -78,6 +78,10 @@ export const SKY_START_TIME = 2.4; // s after the hover starts before the first 
 export const SKY_END_TIME = 1.2; // s before the hover ends that the last row is passed
 export const SKY_NEAR = 30; // m ahead: a sky obstacle announces itself (its sound) at this distance
 export const SKY_COIN_Y = 0.9; // m above the sky lane
+export const SKY_COINS_ONLY = 0.5; // the first part of a hover (fraction of its road) has only coins, no obstacles
+export const SKY_COIN_SPACING = 2.6; // m between coin rows in that stretch
+export const SKY_LAND_TIME = 3; // s of road kept between a hover's end and a tube tunnel (the glide down)
+export const SKY_MIN_REACH = 5; // s: a hover shorter than this (a tunnel too close) isn't started
 
 // Sunset-to-night cycle (phase 0..1 loops: 0 sunset, ~0.3 dusk, ~0.5-0.8 night, back to sunset)
 export const DAY_CYCLE = 210; // s of driving for one full loop

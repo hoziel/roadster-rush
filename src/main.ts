@@ -15,7 +15,7 @@ import './ui/hud.css';
 import { GameView } from './view/scene';
 import { themeFor } from './view/fanThemes';
 import {
-  POWER_TIME, clearAround, createWorld, hover, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
+  POWER_TIME, clearAround, createWorld, hover, hoverBlocked, jump, policeClose, queueConstruction, queueHighroad, queueLonghorns, queueOverhead, queuePoliceStop,
   queueSwarm, queueTunnel, score,
   slam, start, steer, step,
 } from './sim/world';
@@ -40,7 +40,7 @@ const hud = new Hud(() => {
   audio.unlock();
   audio.setMuted(storage.muted);
   hud.setMuted(storage.muted);
-}, () => { audio.unlock(); if (!paused && hover(world)) audio.hover(); },
+}, () => { audio.unlock(); if (!paused) tryHover(); },
 () => { audio.unlock(); if (!paused && world.phase === 'running') honk(); });
 hud.setMuted(storage.muted);
 
@@ -138,7 +138,7 @@ bindInput(view.renderer.domElement, (action, x, y) => {
   else if (action === 'right') steer(world, 1);
   else if (action === 'jump') { if (jump(world)) audio.kickflip(); }
   else if (action === 'down') { if (slam(world)) audio.duckWhoosh(); }
-  else if (action === 'hover') { if (hover(world)) audio.hover(); }
+  else if (action === 'hover') tryHover();
   else if (action === 'honk') honk();
   else if (action === 'tap' && x !== undefined && y !== undefined && view.hitsCar(x, y)) honk();
 }, () => audio.unlock()); // raw pointerdown/up/keydown: real gestures, so iOS lets audio start
@@ -163,6 +163,14 @@ let acc = 0;
 let frames = 0, fpsTime = 0;
 let stampDraws = false; // debug go mode (headless shots): show draw calls every frame
 let airborne = false; // for the kickflip touchdown sound
+
+/** Hover button: fly, or say why not (so it never seems broken). */
+function tryHover(): void {
+  if (hover(world)) { audio.hover(); return; }
+  const why = hoverBlocked(world);
+  if (why === 'charges') hud.toast('No hovers left: grab a 🛸', '#b18cff');
+  else if (why === 'tunnel') hud.toast(world.tube ? 'No hover in the tunnel' : 'Tunnel ahead: hover after it', '#b18cff');
+}
 let ballToastAt = -1; // the volley of hobby balls last announced
 
 view.renderer.setAnimationLoop((now: number) => {
@@ -234,7 +242,7 @@ view.renderer.setAnimationLoop((now: number) => {
   cheer.update(world, driverById(storage.shop.driver).name, storage.shop.driver);
   view.render(world, dt, now / 1000);
   // A volley of hobby balls is about to be thrown: tell the young driver what to do.
-  if (world.phase === 'running' && world.ballAt >= 0 && world.ballAt !== ballToastAt && world.ballAt - world.distance < 45) {
+  if (world.phase === 'running' && world.y < 4 && world.ballAt >= 0 && world.ballAt !== ballToastAt && world.ballAt - world.distance < 45) {
     ballToastAt = world.ballAt;
     hud.toast('Jump to catch the balls!', '#ffd23f');
   }

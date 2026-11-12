@@ -31,7 +31,7 @@ import { PolicePatrol } from './policePatrol';
 import { HazardView } from './roadwork';
 import { HighroadView } from './highroad';
 
-const MAX_COINS = 160;
+const MAX_COINS = 240;
 const MAX_CONES = 80;
 const MAX_POWERS = 8;
 const ROAD_LENGTH = 320; // 220 m ahead of the car plus 100 m behind (seen from the start-screen orbit)

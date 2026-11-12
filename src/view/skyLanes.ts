@@ -130,7 +130,8 @@ export class SkyLanes {
     const markerCount = MARK_LINES.length * Math.ceil(MARK_SPAN / MARK_EVERY);
     this.markers = inst(new THREE.OctahedronGeometry(0.22).scale(1, 1.6, 1), new THREE.MeshBasicMaterial({ color: LANE_GLOW }), markerCount);
     // Faint glass lanes: one strip per lane, glowing on the add.
-    const stripGeo = mergeGeometries([0, 1, 2].map((l) => new THREE.PlaneGeometry(LANE_WIDTH - 0.35, MARK_SPAN).rotateX(-Math.PI / 2).translate(laneX(l), 0, -MARK_SPAN / 2 + 12)))!;
+    // 1 m long, from z = 0 to -1: stretched each frame from near the camera to where the hover ends.
+    const stripGeo = mergeGeometries([0, 1, 2].map((l) => new THREE.PlaneGeometry(LANE_WIDTH - 0.35, 1).rotateX(-Math.PI / 2).translate(laneX(l), 0, -0.5)))!;
     this.stripMat = new THREE.MeshBasicMaterial({ color: LANE_GLOW, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false });
     this.strips = new THREE.Mesh(stripGeo, this.stripMat);
     this.strips.position.y = SKY_HEIGHT - 0.4;
@@ -161,11 +162,14 @@ export class SkyLanes {
     if (!this.group.visible) return;
 
     // Lane markers: bobbing diamonds along the lane edges, scrolling with the road.
+    // Everything stops where the hover ends, so it's clear how far the sky lanes go.
+    const endZ = -(w.hoverEnd - w.distance);
     const off = w.distance % MARK_EVERY;
     let n = 0;
     const pop = THREE.MathUtils.smoothstep(k, 0.3, 1);
     for (let j = 0; j * MARK_EVERY < MARK_SPAN; j++) {
       const z = 12 - j * MARK_EVERY + off;
+      if (z < endZ) break;
       for (const x of MARK_LINES) {
         this.q.setFromEuler(this.e.set(0, time * 2 + j * 0.4, 0));
         this.m.compose(this.v.set(x, SKY_HEIGHT - 0.1 + Math.sin(time * 3 + j * 0.7) * 0.12, z), this.q, this.s.setScalar(pop));
@@ -175,7 +179,10 @@ export class SkyLanes {
     this.markers.count = n;
     this.markers.instanceMatrix.needsUpdate = true;
     this.stripMat.opacity = 0.12 * pop;
-    this.strips.position.z = 0;
+    const len = Math.min(MARK_SPAN, 12 - endZ);
+    this.strips.visible = len > 0.5;
+    this.strips.position.z = 12;
+    this.strips.scale.z = Math.max(0.01, len);
 
     // Clouds on both sides, drifting past (they move with the road and a little slower: far away).
     for (let i = 0; i < CLOUDS; i++) {

@@ -14,7 +14,7 @@ export const SKY_DEPTH: Record<SkyKind, number> = { bird: 1.4, drone: 1.3, heli:
 
 export interface SkyItem { kind: SkyKind | 'coin'; lane: number; s: number }
 
-/** One row of the sky course at `s`: one or two blocked lanes, a short coin line in a free lane just before it. */
+/** One row of the sky course at `s`: one blocked lane, short coin lines in both free lanes just before it. */
 export function skyRow(rng: Rng, s: number, gap: number): SkyItem[] {
   const blocked = 1; // two lanes always free
   const lanes = [0, 1, 2].sort(() => rng() - 0.5);
@@ -22,7 +22,8 @@ export function skyRow(rng: Rng, s: number, gap: number): SkyItem[] {
   const kind: SkyKind = r < 0.45 ? 'bird' : r < 0.8 ? 'drone' : 'heli';
   const out: SkyItem[] = [];
   for (let i = 0; i < blocked; i++) out.push({ kind, lane: lanes[i], s });
-  const free = lanes[blocked];
-  for (let i = 0; i < 4; i++) out.push({ kind: 'coin', lane: free, s: s - gap * 0.55 + i * 2.6 });
+  for (const free of lanes.slice(blocked)) {
+    for (let i = 0; i < 5; i++) out.push({ kind: 'coin', lane: free, s: s - gap * 0.6 + i * 2.6 });
+  }
   return out.filter((it) => it.lane >= 0 && it.lane < LANE_COUNT);
 }
