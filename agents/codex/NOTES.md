@@ -2,11 +2,11 @@
 
 ## Current work
 
-- Latest feedback: Ofir said “I don’t like number three” after the R3 three-column comparison. Clarification requested: rightmost B anime model or both Revision 3 models? No approval of A inferred; no new revision started. Feedback recorded on #46, comment 6810913732; Turn remains Claude.
+- Latest decision: Ofir clarified “Both designs suck.” Both R3 Nevo models are rejected; the earlier ambiguity is resolved. Do not integrate or extend either to the other drivers. Claude owns the next brief; a native head-and-shoulders study is Codex's recommendation, not an approved direction.
 - Latest assignment: #46 Revision 3, Nevo only A/B semi-realistic vs anime. Built two native studies and 23 PNGs in `art/mockups/07-driver-models/`; `r3-review.html` / `r3-style-test.png` are the review entry points. Other three drivers wait for Ofir's direction choice. See latest dated entry for handoff state.
 - #50 Blossom paint for Ori was handed to Claude for integration; `art/mockups/11-blossom-paint/blossom.png`, 1024×512 / 279,311 bytes. No new acceptance check during the driver revision.
 - Publishing checked November 11: prior session commits (driver Revision 2, bats and handoff notes) are all on origin/main. Latest checked deployment bba666e succeeded. Claude accepted/integrated #49 bats in 2a0f0e5; they are live. Icons Revision 3 are integrated/live too.
-- #46 Revision 3 supersedes the Nevo direction study only. A reads older/more generic than the child reference; B has sharper anime styling/stronger eyes. Both await style/likeness review; keep 2D heroes meanwhile. R2 models/images are retained.
+- #46 Revision 3 is rejected. Keep 2D heroes; R2/R3 models/images remain as historical studies, not approved assets.
 - Earlier native art kits (traffic, fans, downtown), car/police assets, screen mockups, driver heroes and icon revisions are recorded in the dated entries below. Work only current Turn=Codex cards; earlier deliveries do not authorize additional revisions.
 - Preserve pre-existing modified look-and-feel A.png/B.png and untracked root demo media. Claude owns integration and pushing.
 
@@ -226,3 +226,8 @@ Ofir requested “Let Claude know and pass the asset.” Posted a fresh [codex �
 ## November 11, 2026 — feedback on “number three”
 
 - Recorded Ofir's exact negative feedback on #46: https://github.com/hoziel/roadster-rush/issues/46#issuecomment-6810913732 . Displayed columns are reference / A semi-realistic / B anime; “number three” might mean B or Revision 3 as a whole. Asked for clarification and left the artwork unchanged. Rejection does not imply approval of A. Board has no Codex cards and #46 remains In Progress / Claude.
+
+## November 11, 2026 — both R3 designs rejected
+
+- Ofir clarified “Both designs suck.” Both A/B executions are rejected; no preferred replacement style has been chosen. Recorded decision: https://github.com/hoziel/roadster-rush/issues/46#issuecomment-6810973392 . Updated asset notes to supersede the pending A/B choice.
+- Codex assessment: generic faces, excessively long exposed necks, rigid clothing and weak likeness. Recommended one native head-and-shoulders study before another full-body pass; this is a proposal to Claude, not approval from Ofir. Existing 2D heroes remain. Board inbox empty; #46 stays In Progress / Claude for the next brief. No geometry or production files changed.

@@ -4,7 +4,9 @@
 
 Issue #46 requests **Nevo only, A/B directions before revising the other three drivers**. The new request replaces the toy proportions for this study: slimmer facial planes, smaller head, longer limbs and a defined jaw. The supplied `assets-src/drivers/nevo-full.jpg` and `public/drivers/nevo.jpg` remain the identity and factory-outfit references. Both new models are original authored TypeScript geometry; no downloaded models, reference textures, logos or lettering. Revision 2 builders and images remain available separately.
 
-**Direction studies, awaiting Ofir's A/B choice.** A has more natural eyes and facial volumes but reads older and more generic than the supplied child. B gives a clearer expressive eye read, with a deliberately sharper anime face. Neither is a final approved likeness. Hair sweep, goggle contours and tailored cloth still need refinement after the direction is chosen. The other three drivers await that decision.
+**Review result: both Revision 3 designs rejected by Ofir.** The clarification was “Both designs suck.” Neither A nor B is an approved direction; do not integrate them or extend either to the other drivers. The files below remain a record of the rejected studies. This rejects the executions, not necessarily either style as a whole.
+
+Codex assessment: faces remain generic, exposed necks are too long, clothing is rigid and the likeness misses the supplied picture. Technical fit/budget checks passed but do not establish visual quality. Recommended next step for Claude's brief: one carefully shaped native head-and-shoulders study beside the supplied reference before another full-body pass. This recommendation is not a new direction approved by Ofir.
 
 | | A — Semi-realistic | B — Anime |
 |---|---|---|
@@ -48,7 +50,7 @@ For a gameplay LOD, preserve head/body proportion, jaw, eye shape, quiff silhoue
 
 Strict TypeScript passed for the builder, helper and preview. `node art/mockups/07-driver-models/r3-validate.mjs` passed finite geometry, opaque materials, triangle/material limits, standing height/ground, exact pose round trip, wheel targets, actual-canopy/floor clearance, finite wave and idempotent disposal. Browser review covered turnaround/reference/cabin views with no console warnings/errors. Images were checked for PNG dimensions and size.
 
-**Question left for review: A or B as the direction to refine and then apply to the remaining drivers?** Keep the illustrated heroes until a likeness is approved.
+**The A/B choice is closed: both rejected.** Keep the illustrated heroes until a new likeness is approved; Claude owns the next brief.
 
 ## Revision 2 — November 11, 2026
 
