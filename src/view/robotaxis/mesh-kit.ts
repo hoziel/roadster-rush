@@ -17,17 +17,24 @@ export interface TrafficModel {
 /** Geometry-only assembly. All colour is baked per vertex; one final opaque draw call. */
 export class MeshKit {
   private pieces: THREE.BufferGeometry[] = [];
+  private paintPieces: THREE.BufferGeometry[] = [];
+  /** Player car: body colours that take the paint, each with its shade (1 = the paint itself). */
+  paintTones?: Map<string, number>;
+  /** Player car: the painted panels, merged by `finish` (vertex colour = shade). */
+  paintGeometry?: THREE.BufferGeometry;
 
   add(source: THREE.BufferGeometry, hex: string) {
     const g = source.index ? source.toNonIndexed() : source;
     if (g !== source) source.dispose();
     g.deleteAttribute('uv');
     if (!g.hasAttribute('normal')) g.computeVertexNormals();
-    const c = new THREE.Color(hex), count = g.getAttribute('position').count;
+    const tone = this.paintTones?.get(hex);
+    const c = tone === undefined ? new THREE.Color(hex) : new THREE.Color(tone, tone, tone);
+    const count = g.getAttribute('position').count;
     const colors = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) colors.set([c.r, c.g, c.b], i * 3);
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    this.pieces.push(g);
+    (tone === undefined ? this.pieces : this.paintPieces).push(g);
   }
 
   panel(points: Point[], color: string, outward: Point = [0, 1, 0]) {
@@ -152,6 +159,10 @@ export class MeshKit {
   }
 
   finish(name: string): TrafficModel {
+    if (this.paintPieces.length) {
+      this.paintGeometry = mergeGeometries(this.paintPieces, false);
+      this.paintPieces.forEach(g => g.dispose()); this.paintPieces = [];
+    }
     const geometry = mergeGeometries(this.pieces, false);
     this.pieces.forEach(g => g.dispose()); this.pieces = [];
     geometry.computeBoundingBox(); geometry.computeBoundingSphere();

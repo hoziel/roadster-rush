@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HAT_ID, HAT_PRICE, PAINT_PRICES, addCoins, buy, canBuy, defaultShop, equip, isOwned, normalizeShop, removeHat, setDriver,
+  HAT_ID, HAT_PRICE, PAINT_PRICES, addCoins, buy, canBuy, defaultShop, equip, isOwned, normalizeShop, removeHat, setDriver, setModel,
 } from '../src/sim/shop';
 
 describe('shop', () => {
@@ -87,5 +87,20 @@ describe('each driver keeps their own look', () => {
     s = setDriver(s, 'shiri', 'pink');
     const back = normalizeShop(JSON.parse(JSON.stringify(s)));
     expect(setDriver(back, 'nevo').paint).toBe('sky');
+  });
+
+  it('keeps each driver\'s car model', () => {
+    let s = setDriver(defaultShop(), 'nevo', 'black');
+    expect(s.model).toBe('roadster');
+    s = setModel(s, 'cybertruck');
+    s = setDriver(s, 'ori', 'blossom');
+    expect(s.model).toBe('roadster');
+    s = setModel(s, 'cybercab');
+    s = setDriver(s, 'nevo');
+    expect(s.model).toBe('cybertruck');
+    const back = normalizeShop(JSON.parse(JSON.stringify(s)));
+    expect(back.model).toBe('cybertruck');
+    expect(back.looks.ori.model).toBe('cybercab');
+    expect(normalizeShop({ model: 'tank' }).model).toBe('roadster');
   });
 });

@@ -3,9 +3,10 @@ import { GRAVITY, JUMP_VELOCITY, LANE_COUNT, LANE_WIDTH, SPEED_MAX, SKY_HEIGHT, 
 import { SLOT_ANGLE } from '../sim/tunnel';
 import { isPower, type PowerKind } from '../sim/spawner';
 import { isDucking, laneX, policeClose, rampSlope, type World } from '../sim/world';
-import { buildRoadster, type RoadsterParts } from './roadster';
+import { buildPlayerCar, type PlayerCar } from './playerCars';
+import type { ModelId } from '../sim/shop';
 import { buildPoliceRoadster } from './policeRoadster';
-import { CarStyle } from './carStyle';
+import { CarStyle, type CarLook } from './carStyle';
 import { Scenery } from './scenery';
 import { createSky } from './sky';
 import { dayPhase } from '../sim/daycycle';
@@ -86,15 +87,20 @@ export class GameView {
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
   private baseFov = 62;
-  private car: RoadsterParts;
+  private car!: PlayerCar;
+  private cars = new Map<ModelId, { car: PlayerCar; style: CarStyle }>();
+  private carScale = CAR_SCALE;
   /** Parent of the car: placed on the tube wall (and rolled) inside a tunnel, plain lane offset outside. */
   private carMount = new THREE.Group();
   /** Parent of the thruster puffs: rolls around the tube axis with the car so puffs blow off the wall. */
   private puffFrame = new THREE.Group();
   private tunnel = new TunnelView();
   private tubeAngle = 0; // eased angle around the ring (rad) used for the car, camera, puffs
-  /** Paint, driver, hat and plate on the player car. */
-  readonly style: CarStyle;
+  /** Car body, paint, driver, hat and plate on the player car. */
+  readonly style = {
+    set: (look: CarLook & { model: ModelId }) => { this.useModel(look.model).set(look); },
+    refreshPlate: () => { for (const c of this.cars.values()) c.style.refreshPlate(); },
+  };
   /** Garage open: orbit the camera around the parked car. */
   showcase = false;
   private police: ReturnType<typeof buildPoliceRoadster>;
@@ -189,11 +195,8 @@ export class GameView {
       this.scene.add(walk, curb);
     }
 
-    this.car = buildRoadster('#e8344e', { liveDoors: true });
-    this.car.group.scale.setScalar(CAR_SCALE);
-    this.carMount.add(this.car.group);
+    this.useModel('roadster');
     this.scene.add(this.carMount);
-    this.style = new CarStyle(this.car);
     this.police = buildPoliceRoadster();
     this.police.group.scale.setScalar(CAR_SCALE);
     this.police.group.position.z = POLICE_FAR;
@@ -245,6 +248,29 @@ export class GameView {
     this.baseFov = w / h < 0.8 ? 72 : 62; // portrait needs more vertical FOV to see all lanes
     this.camera.fov = this.baseFov;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Put the chosen car body on the road (built the first time it's picked) and return its styler. */
+  private useModel(model: ModelId): CarStyle {
+    let entry = this.cars.get(model);
+    if (!entry) {
+      const car = buildPlayerCar(model);
+      entry = { car, style: new CarStyle(car) };
+      this.cars.set(model, entry);
+    }
+    if (this.car !== entry.car) {
+      const old = this.car as PlayerCar | undefined;
+      if (old) {
+        entry.car.group.position.copy(old.group.position);
+        entry.car.group.rotation.copy(old.group.rotation);
+        this.carMount.remove(old.group);
+      }
+      this.car = entry.car;
+      this.carScale = entry.car.scale;
+      this.car.group.scale.setScalar(this.carScale);
+      this.carMount.add(this.car.group);
+    }
+    return entry.style;
   }
 
   hitsCar(clientX: number, clientY: number): boolean {
@@ -361,7 +387,8 @@ export class GameView {
     // Ducking (swipe down): squash flat and a little wider, then pop back up.
     this.duckK += ((isDucking(w) && w.phase === 'running' ? 1 : 0) - this.duckK) * Math.min(1, dt * DUCK_EASE);
     const squash = 1 - DUCK_SQUASH * this.duckK, widen = 1 + 0.12 * this.duckK;
-    car.scale.set(CAR_SCALE * widen, CAR_SCALE * squash * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), CAR_SCALE * widen);
+    const sc = this.carScale;
+    car.scale.set(sc * widen, sc * squash * (1 + Math.sin(this.honkBounce * Math.PI) * 0.25), sc * widen);
     // Blink during the post-crash grace period.
     car.visible = w.invuln <= 0 || Math.floor(time * 12) % 2 === 0;
     // Glow in the power-up's color.

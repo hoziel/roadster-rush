@@ -1,8 +1,7 @@
 import { MeshKit, type BodyRow, type RoofRow, type TrafficModel } from './mesh-kit';
 
 /** Stylized photo-informed robotaxi, no marks or textures. Metres, +Y up, -Z forward. */
-export function buildCybercab(): TrafficModel {
-  const b = new MeshKit();
+export function buildCybercab(b = new MeshKit()): TrafficModel {
   const gold = '#d3b66e', shadow = '#a28b55', dark = '#25262c', glass = '#263442';
   const rows: BodyRow[] = [[-2.1,.76,.67],[-1.86,.87,.76],[-1.34,.94,.86],[-.80,.94,.87],[.25,.92,.90],[1.30,.95,.95],[1.8,.89,.91],[2.1,.82,.86]];
   b.body(rows, [-1.32,1.30], .37, gold, dark);

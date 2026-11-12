@@ -6,6 +6,9 @@ export const PAINT_IDS = [
   'white', 'cherry', 'pink', 'blossom', 'black', 'sky', 'sunny', 'silver', 'gold', 'neonPink', 'neonGreen', 'stripe', 'twoTone', 'sunset',
 ] as const;
 export const HORN_IDS = ['classic', 'bell', 'tune', 'clown', 'bike'] as const;
+/** Car bodies (all free; they drive, jump and hover the same). */
+export const MODEL_IDS = ['roadster', 'cybercab', 'cybertruck'] as const;
+export type ModelId = typeof MODEL_IDS[number];
 export type PaintId = typeof PAINT_IDS[number];
 export type HornId = typeof HORN_IDS[number];
 
@@ -22,7 +25,7 @@ export type ItemId = `paint:${PaintId}` | `horn:${HornId}` | 'hat:cowboy';
 export const HAT_ID: ItemId = 'hat:cowboy';
 
 /** What one driver's car looks and sounds like. */
-export interface Look { paint: PaintId; horn: HornId; hat: boolean }
+export interface Look { paint: PaintId; horn: HornId; hat: boolean; model: ModelId }
 
 export interface ShopState {
   wallet: number;
@@ -30,6 +33,7 @@ export interface ShopState {
   paint: PaintId;
   horn: HornId;
   hat: boolean;
+  model: ModelId;
   /** Driver id from src/ui/drivers.ts (drivers are free; validated by the UI). */
   driver: string;
   /** Each driver's own look, kept for next time (paint/horn/hat above are the current driver's). */
@@ -37,7 +41,7 @@ export interface ShopState {
 }
 
 export function defaultShop(): ShopState {
-  return { wallet: 0, owned: [], paint: PAINT_IDS[0], horn: HORN_IDS[0], hat: false, driver: '', looks: {} };
+  return { wallet: 0, owned: [], paint: PAINT_IDS[0], horn: HORN_IDS[0], hat: false, model: MODEL_IDS[0], driver: '', looks: {} };
 }
 
 const ALL_ITEMS: ItemId[] = [
@@ -87,19 +91,24 @@ export function equip(s: ShopState, id: ItemId): ShopState {
 
 export function removeHat(s: ShopState): ShopState { return remember({ ...s, hat: false }); }
 
+/** Switch the car body (free). */
+export function setModel(s: ShopState, model: ModelId): ShopState {
+  return MODEL_IDS.includes(model) ? remember({ ...s, model }) : s;
+}
+
 /** Store the current look as the current driver's. */
 function remember(s: ShopState): ShopState {
   if (!s.driver) return s;
-  return { ...s, looks: { ...s.looks, [s.driver]: { paint: s.paint, horn: s.horn, hat: s.hat } } };
+  return { ...s, looks: { ...s.looks, [s.driver]: { paint: s.paint, horn: s.horn, hat: s.hat, model: s.model } } };
 }
 
 /**
  * Switch driver: the car takes that driver's saved look (paint, horn, hat), or, the first time, their own
- * paint (`firstPaint`) with the classic horn and no hat.
+ * paint (`firstPaint`) with the classic horn, no hat and the roadster.
  */
 export function setDriver(s: ShopState, driver: string, firstPaint?: PaintId): ShopState {
   const saved = remember(s);
-  const look = saved.looks[driver] ?? { paint: firstPaint ?? s.paint, horn: HORN_IDS[0], hat: false };
+  const look = saved.looks[driver] ?? { paint: firstPaint ?? s.paint, horn: HORN_IDS[0], hat: false, model: MODEL_IDS[0] };
   return remember({ ...saved, driver, ...look });
 }
 
@@ -118,13 +127,15 @@ export function normalizeShop(raw: unknown): ShopState {
     paint: PAINT_IDS.includes(r.paint as PaintId) ? r.paint as PaintId : d.paint,
     horn: HORN_IDS.includes(r.horn as HornId) ? r.horn as HornId : d.horn,
     hat: r.hat === true,
+    model: MODEL_IDS.includes(r.model as ModelId) ? r.model as ModelId : d.model,
     driver: typeof r.driver === 'string' ? r.driver : d.driver,
     looks: {},
   };
   const okLook = (l: Record<string, unknown>): Look | null =>
     PAINT_IDS.includes(l.paint as PaintId) && HORN_IDS.includes(l.horn as HornId)
     && isOwned(s, `paint:${l.paint as PaintId}`) && isOwned(s, `horn:${l.horn as HornId}`)
-      ? { paint: l.paint as PaintId, horn: l.horn as HornId, hat: l.hat === true && isOwned(s, HAT_ID) } : null;
+      ? { paint: l.paint as PaintId, horn: l.horn as HornId, hat: l.hat === true && isOwned(s, HAT_ID),
+        model: MODEL_IDS.includes(l.model as ModelId) ? l.model as ModelId : MODEL_IDS[0] } : null;
   if (r.looks && typeof r.looks === 'object') {
     for (const [id, l] of Object.entries(r.looks as Record<string, unknown>)) {
       const look = l && typeof l === 'object' ? okLook(l as Record<string, unknown>) : null;

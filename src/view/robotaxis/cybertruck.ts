@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { MeshKit, type Point, type TrafficModel } from './mesh-kit.js';
 
 /** Original low-poly photo-informed traffic study. Metres, +Y up, -Z forward. */
-export function buildCybertruck(): TrafficModel {
-  const b=new MeshKit(),steel='#b8bfc0',lightSteel='#d1d5d3',lowerSteel='#949ea2',dark='#242a31',glass='#24343e',tire='#202127';
+export function buildCybertruck(b = new MeshKit()): TrafficModel {
+  const steel='#b8bfc0',lightSteel='#d1d5d3',lowerSteel='#949ea2',dark='#242a31',glass='#24343e',tire='#202127';
   const axles=[-1.82,1.67],radius=.45;
   const rows:[number,number,number][]=[[-2.75,.88,1.05],[-2.40,.97,1.14],[-1.55,1,1.265],[.95,1,1.285],[2.75,.96,1.23]];
   const width=(z:number)=>{for(let i=1;i<rows.length;i++)if(z<=rows[i][0]){const a=rows[i-1],c=rows[i];return THREE.MathUtils.lerp(a[1],c[1],(z-a[0])/(c[0]-a[0]));}return .96;};

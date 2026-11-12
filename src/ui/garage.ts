@@ -1,22 +1,29 @@
 import { HORN_NAMES } from '../audio/horns';
 import {
-  HAT_ID, HORN_IDS, PAINT_IDS, buy, canBuy, equip, isOwned, priceOf, removeHat, setDriver,
-  type HornId, type ItemId, type PaintId, type ShopState,
+  HAT_ID, HORN_IDS, MODEL_IDS, PAINT_IDS, buy, canBuy, equip, isOwned, priceOf, removeHat, setDriver, setModel,
+  type HornId, type ModelId, type ItemId, type PaintId, type ShopState,
 } from '../sim/shop';
 import { DRIVERS, avatarHtml, driverById, fullUrl, type Driver } from './drivers';
 import './garage.css';
 import { ICON } from './icons';
 import { PAINTS, swatchCss, type PaintLook } from './paints';
 
-type Tab = 'driver' | 'paint' | 'horn' | 'hat';
+type Tab = 'driver' | 'car' | 'paint' | 'horn' | 'hat';
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'driver', icon: '👤', label: 'Driver' },
+  { id: 'car', icon: '🚗', label: 'Car' },
   { id: 'paint', icon: '🎨', label: 'Paint' },
   { id: 'horn', icon: '📯', label: 'Horn' },
   { id: 'hat', icon: '🤠', label: 'Hat' },
 ];
 
-export interface GarageLook { paint: PaintLook; driver: Driver; hat: boolean }
+export interface GarageLook { paint: PaintLook; driver: Driver; hat: boolean; model: ModelId }
+
+const MODELS: Record<ModelId, { name: string; icon: string }> = {
+  roadster: { name: 'Roadster', icon: '🏎️' },
+  cybercab: { name: 'Cybercab', icon: '🚕' },
+  cybertruck: { name: 'Cybertruck', icon: '🛻' },
+};
 
 export interface GarageDeps {
   getShop(): ShopState;
@@ -37,7 +44,7 @@ export function lookOf(s: ShopState, preview: ItemId | null = null): GarageLook 
   let paint = s.paint, hat = s.hat;
   if (preview?.startsWith('paint:')) paint = preview.slice(6) as PaintId;
   if (preview === HAT_ID) hat = true;
-  return { paint: PAINTS[paint], driver: driverById(s.driver), hat };
+  return { paint: PAINTS[paint], driver: driverById(s.driver), hat, model: s.model };
 }
 
 const coin = (n: number) => `<i class="coin-ico"></i><span>${n.toLocaleString('en-US')}</span>`;
@@ -143,6 +150,7 @@ export class Garage {
       this.deps.showLook(lookOf(this.deps.getShop(), this.preview));
       return;
     }
+    else if (act === 'model') { this.save(setModel(s, id as ModelId)); }
     else if (act === 'nohat') { this.save(removeHat(s)); this.preview = null; }
     else if (act === 'item') {
       const item = id as ItemId;
@@ -193,6 +201,9 @@ export class Garage {
         return `<button class="g-dcard ${on ? 'on' : ''}" data-act="driver" data-id="${d.id}">
           ${avatarHtml(d, 132)}<span class="g-dname">${d.name}</span>${on ? '<span class="g-check">✓</span>' : ''}</button>`;
       }).join('');
+    }
+    if (this.tab === 'car') {
+      return MODEL_IDS.map((m) => tile('model', m, `<span class="g-big">${MODELS[m].icon}</span>`, MODELS[m].name, s.model === m, '')).join('');
     }
     if (this.tab === 'paint') {
       return PAINT_IDS.map((p) => {

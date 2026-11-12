@@ -3,7 +3,8 @@ import { blossomTexture, projectSideUVs } from './blossom';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Driver } from '../ui/drivers';
 import type { PaintLook } from '../ui/paints';
-import { lowerGeometry, stripeGeometry, type RoadsterParts } from './roadster';
+import { lowerGeometry, stripeGeometry } from './roadster';
+import type { PlayerCar } from './playerCars';
 
 // Driver, hat and plate sizes. The head sits in the left seat, under the see-through canopy.
 const HEAD_R = 0.17;
@@ -35,7 +36,7 @@ export class CarStyle {
   private metalMap: THREE.DataTexture;
   private plateName = '';
 
-  constructor(private car: RoadsterParts) {
+  constructor(private car: PlayerCar) {
     const HEAD_POS = car.seat;
     const head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 18, 14), this.skin);
     head.position.copy(HEAD_POS);
@@ -71,7 +72,7 @@ export class CarStyle {
     this.plateTex.anisotropy = 4;
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(PLATE_W, PLATE_H), new THREE.MeshBasicMaterial({ map: this.plateTex }));
     plate.position.copy(PLATE_POS); // the back of the car, facing the chase camera
-    car.group.add(this.stripe, this.lower);
+    if (car.accents) car.group.add(this.stripe, this.lower); // shaped for the roadster only
     void plate;
 
     const data = new Uint8Array(METALLIC_STEPS.flatMap((v) => [v, v, v, 255]));
@@ -94,8 +95,8 @@ export class CarStyle {
     mat.userData.glow = paint.finish === 'neon' ? paint.color : '#000000';
     mat.userData.glowIntensity = paint.finish === 'neon' ? NEON_GLOW : 0;
     this.accent.color.set(paint.accent ?? paint.color);
-    this.stripe.visible = paint.finish === 'stripe';
-    this.lower.visible = paint.finish === 'twoTone';
+    this.stripe.visible = this.car.accents && paint.finish === 'stripe';
+    this.lower.visible = this.car.accents && paint.finish === 'twoTone';
 
     this.skin.color.set(driver.skin);
     this.hair.color.set(driver.hair);
